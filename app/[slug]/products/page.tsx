@@ -1128,7 +1128,7 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
                 {flattenedCategories
                   .filter(c => c.id !== editingCategoryId && c.depth < 3)
                   .map(c => (
-                    <option key={c.id} value={c.id}>{c.label} (Level {c.depth} -> allows Level {c.depth + 1})</option>
+                    <option key={c.id} value={c.id}>{c.label} (Level {c.depth} to Level {c.depth + 1})</option>
                   ))}
               </select>
             </div>
