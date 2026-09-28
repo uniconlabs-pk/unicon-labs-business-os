@@ -1384,7 +1384,7 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
                                             }}
                                             className="text-[9px] text-indigo-700 font-bold px-1.5 py-0.5 bg-indigo-100 rounded hover:bg-indigo-200"
                                           >
-                                            {subExpanded ? '▲' : '▼ L3'}
+                                            {subExpanded ? '▲' : '&#9660; L3'}
                                           </button>
                                         )}
                                       </div>
