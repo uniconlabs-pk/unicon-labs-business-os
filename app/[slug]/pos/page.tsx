@@ -348,6 +348,29 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     }
   }, [slug])
 
+  // Beacon unload cleanup listener so closing tab or exiting releases session instantly
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const storedStaff = sessionStorage.getItem(`unicon_staff_session_${slug}`)
+      if (storedStaff && business?.id) {
+        try {
+          const parsed = JSON.parse(storedStaff)
+          if (parsed?.id) {
+            const beaconData = JSON.stringify({ businessId: business.id, staffId: parsed.id })
+            navigator.sendBeacon('/api/auth/session-release', beaconData)
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
+  }, [slug, business?.id])
+
   useEffect(() => {
     if (slug) {
       const savedFavs = localStorage.getItem(`unicon_pos_favorites_${slug}`)
@@ -1545,17 +1568,35 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
   }
 
   const handleLockSession = async () => {
-    if (business?.id && authenticatedStaff?.id) {
+    // Fallback extraction from sessionStorage if state variable is lost
+    let targetBizId = business?.id;
+    let targetStaffId = authenticatedStaff?.id;
+
+    if (!targetBizId || !targetStaffId) {
+      try {
+        const stored = sessionStorage.getItem(`unicon_staff_session_${slug}`);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          targetStaffId = parsed.id;
+          targetBizId = parsed.business_id || business?.id;
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    if (targetBizId && targetStaffId) {
       try {
         await fetch('/api/auth/session-release', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ businessId: business.id, staffId: authenticatedStaff.id })
+          body: JSON.stringify({ businessId: targetBizId, staffId: targetStaffId })
         })
       } catch (err) {
         console.warn('Session release network note:', err)
       }
     }
+
     sessionStorage.removeItem(`unicon_staff_session_${slug}`)
     setAuthenticatedStaff(null)
     setShowSecurityGate(true)
@@ -1607,7 +1648,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
           requiredModule="pos"
           onAuthenticated={(staff) => {
             setAuthenticatedStaff(staff)
-            sessionStorage.setItem(`unicon_staff_session_${slug}`, JSON.stringify(staff))
+            sessionStorage.setItem(`unicon_staff_session_${slug}`, JSON.stringify({ ...staff, business_id: business.id }))
             setShowSecurityGate(false)
           }}
           onCancel={() => router.push(`/`)}
