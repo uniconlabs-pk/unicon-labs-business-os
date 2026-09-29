@@ -32,6 +32,10 @@ export default function TenantLoginPage({ params }: PageProps) {
 
       if (data) {
         setBusiness(data)
+        // Dynamically set browser tab title to "Login - [Tenant Name]"
+        if (data.name) {
+          document.title = `Login - ${data.name}`
+        }
       }
       setLoading(false)
     }

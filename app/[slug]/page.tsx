@@ -142,6 +142,11 @@ export default function TenantDashboard({ params }: PageProps) {
       setEditNextSerialSeq(String(biz.next_serial_seq ?? 100000))
       setEditNextKotSeq(String(biz.next_kot_seq ?? 100000))
 
+      // Dynamically update browser tab title to Tenant Name (e.g., "Krunchy Bite")
+      if (biz.name) {
+        document.title = biz.name
+      }
+
       const prof = getBusinessProfile(biz.business_type)
       setEditHasPos(biz.has_pos ?? true)
       setEditHasKds(biz.has_kds ?? prof.modules.hasKDS)
@@ -315,6 +320,10 @@ export default function TenantDashboard({ params }: PageProps) {
           setEditHasStorefront(updatedBiz.has_storefront ?? true)
           setEditHasErp(updatedBiz.has_erp ?? true)
           setEditHasTables(updatedBiz.has_tables ?? false)
+          
+          if (updatedBiz.name) {
+            document.title = updatedBiz.name
+          }
         }
       )
       .subscribe()
@@ -449,6 +458,9 @@ export default function TenantDashboard({ params }: PageProps) {
         next_serial_seq: parsedSerialSeq,
         next_kot_seq: parsedKotSeq
       })
+      if (editName) {
+        document.title = editName
+      }
       setShowSettingsDrawer(false)
     }
     setSavingSettings(false)
@@ -819,7 +831,7 @@ export default function TenantDashboard({ params }: PageProps) {
                 href={`/${slug}/storefront`} 
                 className="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-gray-300 hover:bg-slate-800 hover:text-white font-semibold text-xs transition"
               >
-                <span>🛍️</span>
+                <span>🛍️️</span>
                 <span>STOREFRONT Controls</span>
               </a>
             )}
@@ -969,7 +981,7 @@ export default function TenantDashboard({ params }: PageProps) {
                     <span className="text-[10px] font-extrabold uppercase text-gray-400">Active Categories</span>
                     <div className="text-2xl font-black font-mono text-gray-900 mt-0.5">{stats.categoriesCount}</div>
                   </div>
-                  <div className="w-10 h-10 bg-blue-50 text-blue-700 rounded-xl flex items-center justify-center font-bold">🏷️</div>
+                  <div className="w-10 h-10 bg-blue-50 text-blue-700 rounded-xl flex items-center justify-center font-bold">🏷️️</div>
                 </div>
 
                 <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
@@ -1071,7 +1083,7 @@ export default function TenantDashboard({ params }: PageProps) {
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-black uppercase tracking-wider text-gray-900">
-                    🛠️ Inventory & Administrative Management
+                    🛠️️ Inventory & Administrative Management
                   </h3>
                   <span className="text-[11px] text-gray-400 font-medium">Configuration & auditing</span>
                 </div>
