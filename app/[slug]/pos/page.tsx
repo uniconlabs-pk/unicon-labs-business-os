@@ -471,6 +471,11 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       }
       setBusiness(biz)
 
+      // Dynamically set browser tab title to "POS - [Tenant Name]"
+      if (biz.name) {
+        document.title = `POS - ${biz.name}`
+      }
+
       const tenantProfile = getBusinessProfile(biz.business_type)
       setProfile(tenantProfile)
 
@@ -612,6 +617,9 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         },
         (payload) => {
           setBusiness(payload.new)
+          if (payload.new?.name) {
+            document.title = `POS - ${payload.new.name}`
+          }
         }
       )
       .subscribe()
