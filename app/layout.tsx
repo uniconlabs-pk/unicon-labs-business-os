@@ -15,6 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Home - Unicon Labs",
   description: "Unicon Labs - Modern Software Development & Business Ecosystems",
+  manifest: "/site.webmanifest",
   icons: {
     icon: [
       { url: '/favicon.ico' },
