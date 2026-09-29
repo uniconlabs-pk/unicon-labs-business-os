@@ -1544,17 +1544,28 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     alert(`Order ${assignedOrderCode} settled successfully!`)
   }
 
-  const handleLockSession = () => {
+  const handleLockSession = async () => {
+    if (business?.id && authenticatedStaff?.id) {
+      try {
+        await fetch('/api/auth/session-release', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ businessId: business.id, staffId: authenticatedStaff.id })
+        })
+      } catch (err) {
+        console.warn('Session release network note:', err)
+      }
+    }
     sessionStorage.removeItem(`unicon_staff_session_${slug}`)
     setAuthenticatedStaff(null)
     setShowSecurityGate(true)
   }
 
-  const handleWorkstationExit = () => {
+  const handleWorkstationExit = async () => {
     if (authenticatedStaff?.role === 'Admin' || authenticatedStaff?.role === 'owner') {
       router.push(`/${slug}`)
     } else {
-      handleLockSession()
+      await handleLockSession()
     }
   }
 
