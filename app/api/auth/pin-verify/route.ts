@@ -16,25 +16,28 @@ export async function POST(req: Request) {
 
     const cleanedInput = String(pin).replace(/[\r\n\x00-\x1F\x7F]/g, '').trim()
 
-    // Resolve business UUID if slug was passed
+    // Resolve business UUID & fetch seat limit if slug was passed
     let resolvedBusinessId = businessId
-    const { data: bizMatch } = await supabase
+    const { data: bizMatch, error: bizErr } = await supabase
       .from('businesses')
-      .select('id')
+      .select('id, pos_seat_limit')
       .or(`id.eq.${businessId},slug.eq.${businessId}`)
       .single()
 
-    if (bizMatch) {
-      resolvedBusinessId = bizMatch.id
+    if (bizErr || !bizMatch) {
+      return NextResponse.json({ error: 'Business workspace not found: ' + (bizErr?.message || '') }, { status: 404 })
     }
 
-    const { data: staffList, error } = await supabase
+    resolvedBusinessId = bizMatch.id
+    const seatLimit = bizMatch.pos_seat_limit ?? 1
+
+    const { data: staffList, error: staffErr } = await supabase
       .from('staff_profiles')
       .select('*')
       .eq('business_id', resolvedBusinessId)
 
-    if (error) {
-      return NextResponse.json({ error: 'Database query failed: ' + error.message }, { status: 500 })
+    if (staffErr) {
+      return NextResponse.json({ error: 'Database query failed: ' + staffErr.message }, { status: 500 })
     }
 
     if (!staffList || staffList.length === 0) {
@@ -59,6 +62,59 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Staff member lacks KDS module permission' }, { status: 403 })
     }
 
+    // --- CONCERN NO. 1: Single Active Session Per User Check ---
+    const { data: existingUserSession, error: fetchSessionErr } = await supabase
+      .from('active_pos_sessions')
+      .select('*')
+      .eq('business_id', resolvedBusinessId)
+      .eq('staff_id', staff.id)
+      .maybeSingle()
+
+    if (existingUserSession) {
+      const lastActive = new Date(existingUserSession.last_heartbeat_at).getTime()
+      const now = Date.now()
+      const isStale = (now - lastActive) > 3 * 60 * 1000 // 3 minutes TTL
+
+      if (!isStale) {
+        return NextResponse.json({
+          error: 'This user is already logged in or using the POS Terminal and right now you are not allowed to log in or first close the existing session and try again.'
+        }, { status: 409 })
+      } else {
+        // Clear stale session
+        await supabase.from('active_pos_sessions').delete().eq('id', existingUserSession.id)
+      }
+    }
+
+    // --- CONCERN NO. 2: POS Seat Limit Licensing Check ---
+    const { count: activeSessionsCount, error: countErr } = await supabase
+      .from('active_pos_sessions')
+      .select('*', { count: 'exact', head: true })
+      .eq('business_id', resolvedBusinessId)
+
+    if (countErr) {
+      console.warn('Active session count error:', countErr.message)
+    }
+
+    if ((activeSessionsCount || 0) >= seatLimit) {
+      return NextResponse.json({
+        error: `POS Terminal seat limit reached (${activeSessionsCount}/${seatLimit} active seats). Please log out an existing terminal or contact Unicon Labs to assign additional seats.`
+      }, { status: 403 })
+    }
+
+    // Register new active session explicitly with error capture
+    const { error: upsertErr } = await supabase.from('active_pos_sessions').upsert({
+      business_id: resolvedBusinessId,
+      staff_id: staff.id,
+      last_heartbeat_at: new Date().toISOString()
+    }, {
+      onConflict: 'business_id,staff_id'
+    })
+
+    if (upsertErr) {
+      console.error('Failed to insert active POS session:', upsertErr.message)
+      return NextResponse.json({ error: 'Failed to initialize session tracking: ' + upsertErr.message }, { status: 500 })
+    }
+
     return NextResponse.json({
       valid: true,
       staff: {
@@ -72,6 +128,7 @@ export async function POST(req: Request) {
       }
     })
   } catch (err: any) {
+    console.error('PIN Verify critical exception:', err)
     return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 })
   }
 }
