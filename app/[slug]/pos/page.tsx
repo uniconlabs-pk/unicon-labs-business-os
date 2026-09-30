@@ -2608,6 +2608,174 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       </div>
       )}
 
+      {/* SETTLEMENT & PAYMENT MODAL */}
+      {showSettlementModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs font-sans">
+          <div className="bg-white rounded-3xl p-6 max-w-lg w-full space-y-5 shadow-2xl border border-gray-200 text-gray-800">
+            <div className="flex justify-between items-center pb-3 border-b border-gray-100">
+              <h3 className="font-black text-sm uppercase text-slate-900">Payment Settlement & Tender ({serviceType})</h3>
+              <button 
+                type="button" 
+                onClick={() => setShowSettlementModal(false)}
+                className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center font-bold transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-slate-50 p-4 rounded-2xl border border-gray-200 flex justify-between items-center">
+                <div>
+                  <span className="text-[10px] font-extrabold uppercase text-gray-400 block">Amount Payable</span>
+                  <span className="font-mono font-black text-xl text-emerald-700">{currencySymbol} {grandTotal}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-extrabold uppercase text-gray-400 block">Customer</span>
+                  <span className="font-bold text-gray-900 text-xs">{customerName}</span>
+                </div>
+              </div>
+
+              {/* Tender Method Selector */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="block text-[11px] font-extrabold uppercase text-gray-700">Payment Method:</label>
+                  <label className="flex items-center space-x-1.5 text-[11px] font-bold text-purple-700 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={isSplitPayment} 
+                      onChange={e => setIsSplitPayment(e.target.checked)} 
+                      className="accent-purple-700 w-3.5 h-3.5"
+                    />
+                    <span>Split Payment</span>
+                  </label>
+                </div>
+
+                {!isSplitPayment ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      {availableTenderMethods.map(m => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setSingleMethod(m)}
+                          className={`py-2.5 px-3 rounded-xl border text-xs font-bold uppercase transition cursor-pointer ${
+                            singleMethod === m ? 'bg-slate-900 text-white border-slate-900 shadow-xs' : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                          }`}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+
+                    {singleMethod === 'CASH' && (
+                      <div className="space-y-2 bg-emerald-50/50 p-3 rounded-xl border border-emerald-200">
+                        <label className="block text-[10px] font-bold text-emerald-900 uppercase">Cash Received:</label>
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {[grandTotal, 500, 1000, 5000].map(amt => (
+                            <button
+                              key={amt}
+                              type="button"
+                              onClick={() => { setSingleReceivedCash(amt); setCustomReceivedCash(''); }}
+                              className={`py-1.5 rounded-lg border font-mono font-bold text-xs transition cursor-pointer ${
+                                singleReceivedCash === amt && customReceivedCash === '' ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white text-gray-800 border-gray-200'
+                              }`}
+                            >
+                              {currencySymbol} {amt}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="flex justify-between items-center pt-2">
+                          <span className="text-[11px] font-bold text-gray-600">Change Returned:</span>
+                          <span className="font-mono font-black text-emerald-700 text-sm">
+                            {currencySymbol} {changeReturned}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-3 bg-purple-50/40 p-3.5 rounded-2xl border border-purple-200">
+                    <div className="text-[10px] font-bold text-purple-900 uppercase">Configure Tender Splits (Must equal {grandTotal}):</div>
+                    {tenderSplits.map((split, sIdx) => (
+                      <div key={sIdx} className="flex items-center space-x-2">
+                        <select
+                          value={split.method}
+                          onChange={e => {
+                            const updated = [...tenderSplits]
+                            updated[sIdx].method = e.target.value as any
+                            setTenderSplits(updated)
+                          }}
+                          className="bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-xs font-bold"
+                        >
+                          {availableTenderMethods.map(m => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
+                        <input
+                          type="number"
+                          value={split.amount || ''}
+                          onChange={e => {
+                            const updated = [...tenderSplits]
+                            updated[sIdx].amount = Number(e.target.value)
+                            setTenderSplits(updated)
+                          }}
+                          placeholder="Amount"
+                          className="flex-1 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 font-mono text-xs"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setTenderSplits(tenderSplits.filter((_, i) => i !== sIdx))}
+                          className="text-red-600 font-bold px-2 py-1"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setTenderSplits([...tenderSplits, { method: 'CARD', amount: 0 }])}
+                      className="text-[11px] text-purple-700 font-bold hover:underline cursor-pointer"
+                    >
+                      + Add Another Tender Split
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-gray-100 flex space-x-2">
+              <button 
+                type="button" 
+                onClick={() => setShowSettlementModal(false)}
+                className="w-1/3 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                onClick={finalizePayment}
+                className="w-2/3 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-xs transition uppercase tracking-wider cursor-pointer shadow-sm"
+              >
+                Complete Payment & Print 🖨️
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* HIDDEN THERMAL RECEIPT PRINT CONTAINERS */}
+      <div className="hidden print:block">
+        <div ref={printReceiptRef}>
+          {printOrderData && <ThermalReceipt data={printOrderData} />}
+        </div>
+        <div ref={printKotRef}>
+          {printKotData && <ThermalReceipt data={printKotData} isKot={true} />}
+        </div>
+        <div ref={printSrrRef}>
+          {printSrrData && <ThermalReceipt data={printSrrData} isSrr={true} />}
+        </div>
+      </div>
+
       {/* PRODUCT CUSTOMIZATION MODAL (EXACT 100% TEMPLATE MATCH UI) */}
       {showCustomizeModal && customizingItem && (() => {
         const modalVariantPrice = selectedVariant?.price || 0
