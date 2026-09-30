@@ -391,7 +391,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     }
   }, [serviceType])
 
-  // FIXED: CRM lookup hook to unconditionally populate delivery address when matched
+  // CRM phone lookup with unconditional default address population
   useEffect(() => {
     const cleanPhone = customerPhone.replace(/\D/g, '')
     if (cleanPhone.length < 7 || !slug) {
@@ -884,7 +884,8 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     }
 
     const hasVariants = item.variants && item.variants.length > 0
-    const hasModifiers = effectiveModules.hasKDS && item.has_modifiers && addOnsProducts.length > 0
+    // FIXED: Removed strict effectiveModules.hasKDS dependency so modifiers open reliably based on item configuration
+    const hasModifiers = Boolean(item.has_modifiers) || (item.modifiers && item.modifiers.length > 0)
 
     if (hasVariants || hasModifiers) {
       setCustomizingItem(item)
