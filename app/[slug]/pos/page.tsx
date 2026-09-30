@@ -124,7 +124,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
   const [showSettlementModal, setShowSettlementModal] = useState(false)
   const [isSplitPayment, setIsSplitPayment] = useState(false)
   const [singleMethod, setSingleMethod] = useState<'CASH' | 'CARD' | 'DIGITAL WALLET' | 'BANK TRANSFER' | 'CASH ON DELIVERY'>('CASH')
-  const [singleReceivedCash, setSingleReceivedCash] = useState<number>(0)
+  const [singleReceivedCash, setSingleReceivedCash] = useState<number>(500)
   const [customReceivedCash, setCustomReceivedCash] = useState<string>('')
   const [tenderSplits, setTenderSplits] = useState<TenderSplit[]>([
     { method: 'CASH', amount: 0 },
@@ -1291,8 +1291,8 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       items: unsentItems
     }
 
-    // Respect KDS Module toggle status for digital database routing
-    if (effectiveModules.hasKDS) {
+    // Respect KDS Module toggle status for digital database routing with safe try/catch
+    if (effectiveModules.hasKDS && business?.id) {
       try {
         const nextKot = baseKotSeq + 1
         await supabase.from('businesses').update({ next_kot_seq: nextKot }).eq('id', business.id)
@@ -1351,7 +1351,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       { method: serviceType === 'DELIVERY' ? 'CASH ON DELIVERY' : 'CASH', amount: grandTotal },
       { method: 'CARD', amount: 0 }
     ])
-    setSingleReceivedCash(grandTotal)
+    setSingleReceivedCash(500)
     setCustomReceivedCash('')
     setShowSettlementModal(true)
   }
@@ -1393,8 +1393,8 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         items: unsentItems
       }
 
-      // Respect KDS Module toggle status for digital KOT ticket generation
-      if (effectiveModules.hasKDS) {
+      // Respect KDS Module toggle status for digital KOT ticket generation with safe try/catch
+      if (effectiveModules.hasKDS && business?.id) {
         try {
           const nextKot = baseKotSeq + 1
           await supabase.from('businesses').update({ next_kot_seq: nextKot }).eq('id', business.id)
@@ -2671,7 +2671,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                       <div className="space-y-2 bg-emerald-50/50 p-3 rounded-xl border border-emerald-200">
                         <label className="block text-[10px] font-bold text-emerald-900 uppercase">Cash Received:</label>
                         <div className="grid grid-cols-4 gap-1.5">
-                          {[grandTotal, 500, 1000, 5000].map(amt => (
+                          {[500, 1000, 5000].map(amt => (
                             <button
                               key={amt}
                               type="button"
@@ -2683,7 +2683,29 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                               {currencySymbol} {amt}
                             </button>
                           ))}
+                          <button
+                            type="button"
+                            onClick={() => { setSingleReceivedCash(-1); setCustomReceivedCash(''); }}
+                            className={`py-1.5 rounded-lg border font-mono font-bold text-xs transition cursor-pointer ${
+                              singleReceivedCash === -1 ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white text-gray-800 border-gray-200'
+                            }`}
+                          >
+                            Custom
+                          </button>
                         </div>
+
+                        {singleReceivedCash === -1 && (
+                          <div className="pt-1">
+                            <input
+                              type="number"
+                              placeholder="Enter custom cash amount..."
+                              value={customReceivedCash}
+                              onChange={e => setCustomReceivedCash(e.target.value)}
+                              className="w-full bg-white border border-emerald-300 rounded-lg px-2.5 py-1.5 font-mono text-xs text-gray-900"
+                            />
+                          </div>
+                        )}
+
                         <div className="flex justify-between items-center pt-2">
                           <span className="text-[11px] font-bold text-gray-600">Change Returned:</span>
                           <span className="font-mono font-black text-emerald-700 text-sm">
@@ -2763,15 +2785,15 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         </div>
       )}
 
-      {/* HIDDEN THERMAL RECEIPT PRINT CONTAINERS */}
-      <div className="hidden print:block">
-        <div ref={printReceiptRef}>
+      {/* HIDDEN THERMAL RECEIPT PRINT CONTAINERS WITH PROPER VISIBILITY STYLING */}
+      <div className="hidden print:block fixed inset-0 z-50 bg-white">
+        <div ref={printReceiptRef} className="w-full">
           {printOrderData && <ThermalReceipt data={printOrderData} />}
         </div>
-        <div ref={printKotRef}>
+        <div ref={printKotRef} className="w-full">
           {printKotData && <ThermalReceipt data={printKotData} isKot={true} />}
         </div>
-        <div ref={printSrrRef}>
+        <div ref={printSrrRef} className="w-full">
           {printSrrData && <ThermalReceipt data={printSrrData} isSrr={true} />}
         </div>
       </div>
