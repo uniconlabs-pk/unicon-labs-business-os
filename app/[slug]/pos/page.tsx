@@ -2608,7 +2608,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       </div>
       )}
 
-      {/* PRODUCT CUSTOMIZATION MODAL (VARIANTS & ADD-ONS) */}
+      {/* PRODUCT CUSTOMIZATION MODAL (EXACT 100% TEMPLATE MATCH UI) */}
       {showCustomizeModal && customizingItem && (() => {
         const modalVariantPrice = selectedVariant?.price || 0
         const modalAddonsTotal = selectedAddons.reduce((acc, a) => {
@@ -2623,67 +2623,73 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs font-sans">
-            <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-5 shadow-2xl border border-gray-200 text-gray-800">
-              <div className="flex justify-between items-center pb-3 border-b border-gray-100">
+            <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl border border-gray-200 text-gray-800">
+              
+              {/* HEADER WITH CLOSE BUTTON */}
+              <div className="flex justify-between items-start pb-2 border-b border-gray-100">
                 <div>
-                  <h3 className="font-black text-sm uppercase text-gray-900">Customize {customizingItem.name}</h3>
+                  <h3 className="font-black text-sm uppercase text-gray-900">CUSTOMIZE {customizingItem.name}</h3>
                   <p className="text-[11px] text-gray-500">Select your preferred options and add-ons</p>
                 </div>
                 <button 
                   type="button" 
                   onClick={() => setShowCustomizeModal(false)}
-                  className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center font-bold transition cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center font-bold transition cursor-pointer shadow-inner"
                 >
                   ✕
                 </button>
               </div>
 
-              <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
-                {/* VARIANTS SECTION: Rendered as a Clean Vertical Radio Dropdown/List */}
+              {/* PRODUCT IMAGE & LIVE RED PRICE CARD */}
+              <div className="flex items-center justify-between bg-gray-50/60 p-3 rounded-2xl border border-gray-100">
+                <div className="w-20 h-20 bg-white rounded-xl border border-gray-100 flex items-center justify-center overflow-hidden p-1 shrink-0 shadow-xs">
+                  {customizingItem.image_url ? (
+                    <img src={customizingItem.image_url} alt={customizingItem.name} className="w-full h-full object-contain" />
+                  ) : (
+                    <span className="text-2xl">🍔</span>
+                  )}
+                </div>
+                <div className="text-right">
+                  <span className="font-mono font-black text-red-600 text-2xl tracking-tight">Rs. {modalCalculatedUnitPrice}</span>
+                </div>
+              </div>
+
+              <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
+                {/* VARIANTS SECTION (IF APPLICABLE) */}
                 {customizingItem.variants && customizingItem.variants.length > 0 && (
                   <div className="space-y-2">
-                    <label className="block text-[11px] font-extrabold uppercase text-purple-900">Choose Size / Variant:</label>
+                    <label className="block text-[11px] font-extrabold uppercase text-purple-900 tracking-wider">CHOOSE SIZE / VARIANT:</label>
                     <div className="space-y-1.5">
                       {customizingItem.variants.map((v: any, vIdx: number) => {
                         const isSelected = selectedVariant?.name === v.name
                         return (
-                          <label
+                          <div
                             key={vIdx}
                             onClick={() => setSelectedVariant(v)}
-                            className={`flex items-center justify-between p-3 rounded-xl border text-xs transition cursor-pointer ${
+                            className={`flex items-center justify-between p-3 rounded-2xl border text-xs transition cursor-pointer shadow-2xs ${
                               isSelected 
-                                ? 'bg-purple-50 border-purple-600 ring-1 ring-purple-600 font-bold text-purple-950 shadow-xs' 
-                                : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                                ? 'bg-emerald-50/60 border-emerald-600 font-bold text-emerald-950 ring-1 ring-emerald-600' 
+                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
                             }`}
                           >
                             <div className="flex items-center space-x-2.5">
-                              <input
-                                type="radio"
-                                name="product-main-variant"
-                                checked={isSelected}
-                                onChange={() => setSelectedVariant(v)}
-                                className="accent-purple-700 w-4 h-4"
-                              />
-                              <span className="text-sm font-semibold">{v.name}</span>
+                              <span className={`w-5 h-5 rounded-full border flex items-center justify-center ${isSelected ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-gray-300 bg-white'}`}>
+                                {isSelected && <span className="w-2 h-2 rounded-full bg-white"></span>}
+                              </span>
+                              <span className="text-xs font-bold">{v.name}</span>
                             </div>
-                            <span className="font-mono text-xs text-emerald-700 font-extrabold">+{currencySymbol} {v.price}</span>
-                          </label>
+                            <span className="font-mono text-emerald-700 font-extrabold">+Rs. {v.price}</span>
+                          </div>
                         )
                       })}
                     </div>
                   </div>
                 )}
 
-                {/* LIVE DYNAMIC UNIT PRICE DISPLAY */}
-                <div className="bg-slate-900 text-white p-3.5 rounded-2xl flex justify-between items-center shadow-sm">
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-gray-300">Updated Unit Price:</span>
-                  <span className="font-mono font-black text-emerald-400 text-base">{currencySymbol} {modalCalculatedUnitPrice}</span>
-                </div>
-
-                {/* MODIFIERS / ADD-ONS SECTION: Strictly condition-gated so variant-only items (like Soft Drink 1L) never show this */}
+                {/* AVAILABLE ADD-ONS & MODIFIERS HEADING */}
                 {itemHasModifiersEnabled && addOnsProducts.length > 0 && (
                   <div className="space-y-2 pt-2 border-t border-gray-100">
-                    <label className="block text-[11px] font-extrabold uppercase text-blue-950">Available Add-ons & Modifiers:</label>
+                    <h4 className="font-black text-xs uppercase text-slate-900 tracking-wide">AVAILABLE ADD-ONS & MODIFIERS:</h4>
                     <div className="space-y-2">
                       {addOnsProducts.map((addon: any) => {
                         const isSelected = selectedAddons.some(a => a.id === addon.id)
@@ -2696,8 +2702,9 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                         const chosenAddonVar = addonVariants[addon.id]
 
                         return (
-                          <div key={addon.id} className={`p-3 rounded-xl border transition space-y-2 ${isSelected ? 'bg-blue-50/40 border-blue-400' : 'bg-gray-50 border-gray-200'}`}>
-                            <div className="flex justify-between items-center cursor-pointer" onClick={() => {
+                          <div 
+                            key={addon.id} 
+                            onClick={() => {
                               if (isSelected) {
                                 setSelectedAddons(selectedAddons.filter(a => a.id !== addon.id))
                                 const copy = { ...addonVariants }
@@ -2709,40 +2716,43 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                                   setAddonVariants({ ...addonVariants, [addon.id]: addonParsedVars[0] })
                                 }
                               }
-                            }}>
-                              <div className="flex items-center space-x-2">
-                                <span>{isSelected ? '☑' : '☐'}</span>
-                                <span className="font-bold text-gray-900">{addon.name}</span>
+                            }}
+                            className={`p-3.5 rounded-2xl border transition flex flex-col justify-between cursor-pointer shadow-2xs ${
+                              isSelected ? 'bg-emerald-50/30 border-emerald-600' : 'bg-white border-gray-200 hover:border-gray-300'
+                            }`}
+                          >
+                            <div className="flex justify-between items-center w-full">
+                              <div className="flex items-center space-x-3">
+                                <div className={`w-5 h-5 rounded-md border flex items-center justify-center font-bold ${isSelected ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-gray-300 bg-white text-transparent'}`}>
+                                  ✓
+                                </div>
+                                <span className="font-bold text-gray-900 text-xs">{addon.name}</span>
                               </div>
-                              <span className="font-mono text-emerald-700 font-bold">+{currencySymbol} {addon.price}</span>
+                              <span className="font-mono text-emerald-700 font-extrabold text-xs">+Rs. {addon.price}</span>
                             </div>
 
                             {/* VERTICAL RADIO BUTTON LIST FOR ADD-ON VARIANTS */}
                             {isSelected && addonParsedVars.length > 0 && (
-                              <div className="pl-6 pt-2 space-y-1.5 border-t border-blue-100/60 mt-2">
-                                <span className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Select {addon.name} Option:</span>
+                              <div className="pl-8 pt-2.5 space-y-1.5 border-t border-emerald-100 mt-2.5" onClick={(e) => e.stopPropagation()}>
+                                <span className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Select Option:</span>
                                 {addonParsedVars.map((av: any, avIdx: number) => {
                                   const isVarSelected = chosenAddonVar?.name === av.name
                                   return (
-                                    <label
+                                    <div
                                       key={avIdx}
                                       onClick={() => setAddonVariants({ ...addonVariants, [addon.id]: av })}
-                                      className={`flex items-center justify-between p-2 rounded-lg border text-xs transition cursor-pointer ${
-                                        isVarSelected ? 'bg-blue-100/70 border-blue-500 font-bold text-blue-950' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                                      className={`flex items-center justify-between p-2 rounded-xl border text-xs transition cursor-pointer ${
+                                        isVarSelected ? 'bg-emerald-100/60 border-emerald-500 font-bold text-emerald-950' : 'bg-gray-50 border-gray-200 text-gray-700'
                                       }`}
                                     >
-                                      <div className="flex items-center space-x-2">
-                                        <input
-                                          type="radio"
-                                          name={`addon-variant-${addon.id}`}
-                                          checked={isVarSelected}
-                                          onChange={() => setAddonVariants({ ...addonVariants, [addon.id]: av })}
-                                          className="accent-blue-600"
-                                        />
+                                      <div className="flex items-center space-x-2.5">
+                                        <span className={`w-4 h-4 rounded-full border flex items-center justify-center ${isVarSelected ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-gray-300 bg-white'}`}>
+                                          {isVarSelected && <span className="w-1.5 h-1.5 rounded-full bg-white"></span>}
+                                        </span>
                                         <span>{av.name}</span>
                                       </div>
-                                      <span className="font-mono text-[11px] text-emerald-700 font-bold">+{currencySymbol} {av.price}</span>
-                                    </label>
+                                      <span className="font-mono text-emerald-700 font-bold">+Rs. {av.price}</span>
+                                    </div>
                                   )
                                 })}
                               </div>
@@ -2755,22 +2765,17 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                 )}
               </div>
 
-              <div className="pt-2 border-t border-gray-100 flex space-x-2">
-                <button 
-                  type="button" 
-                  onClick={() => setShowCustomizeModal(false)}
-                  className="w-1/3 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs transition cursor-pointer"
-                >
-                  Cancel
-                </button>
+              {/* FOOTER BUTTON (EXACT YELLOW/AMBER THEME FROM TEMPLATE) */}
+              <div className="pt-2">
                 <button 
                   type="button" 
                   onClick={handleAddCustomizedToCart}
-                  className="w-2/3 py-3 bg-slate-900 hover:bg-black text-white font-black rounded-xl text-xs transition uppercase tracking-wider cursor-pointer shadow-sm"
+                  className="w-full py-3.5 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black rounded-2xl text-sm transition uppercase tracking-wide cursor-pointer shadow-md flex items-center justify-center space-x-2"
                 >
-                  Add to Cart 🛒
+                  <span>Add to CART</span>
                 </button>
               </div>
+
             </div>
           </div>
         )
