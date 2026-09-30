@@ -30,7 +30,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
   const [business, setBusiness] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [serviceType, setServiceType] = useState<'DINE-IN' | 'TAKEAWAY' | 'DELIVERY' | 'COUNTER'>('COUNTER')
+  const [serviceType, setServiceType] = useState<'DINE-IN' | 'TAKEAWAY' | 'DELIVERY' | 'COUNTER'>('TAKEAWAY')
   
   // Waiter Attribution State
   const [waiters, setWaiters] = useState<any[]>([])
@@ -47,10 +47,11 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
   const [waiterSearchInput, setWaiterSearchInput] = useState('')
   const [showWaiterDropdown, setShowWaiterDropdown] = useState(false)
 
-  // New Customer Modal State
+  // New Customer Modal State (with optional address field and exact field sequence)
   const [showNewCustomerModal, setShowNewCustomerModal] = useState(false)
   const [newCustNameInput, setNewCustNameInput] = useState('')
   const [newCustEmailInput, setNewCustEmailInput] = useState('')
+  const [newCustAddressInput, setNewCustAddressInput] = useState('')
   const [savingNewCustomer, setSavingNewCustomer] = useState(false)
 
   // Security Gate & Staff Authentication States (with sessionStorage hydration)
@@ -102,7 +103,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
   const [selectedMotherCategoryFilter, setSelectedMotherCategoryFilter] = useState('ALL')
   const [selectedSubCategoryFilter, setSelectedSubCategoryFilter] = useState<string | null>(null)
 
-  // Favorites / Fast-Moving Items management
+  // Favorites / Fast-Moving Items management (Supabase persisted)
   const [favorites, setFavorites] = useState<any[]>([])
   const [isFavoriteManagerOpen, setIsFavoriteManagerOpen] = useState(false)
   const [favSearchQuery, setFavSearchQuery] = useState('')
@@ -371,23 +372,14 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     }
   }, [slug, business?.id])
 
-  useEffect(() => {
-    if (slug) {
-      const savedFavs = localStorage.getItem(`unicon_pos_favorites_${slug}`)
-      if (savedFavs) {
-        try {
-          setFavorites(JSON.parse(savedFavs))
-        } catch {
-          // ignore parse error
-        }
-      }
-    }
-  }, [slug])
-
-  const saveFavoritesPermanently = (newFavs: any[]) => {
+  const saveFavoritesPermanently = async (newFavs: any[]) => {
     setFavorites(newFavs)
-    if (slug) {
-      localStorage.setItem(`unicon_pos_favorites_${slug}`, JSON.stringify(newFavs))
+    if (business?.id) {
+      const favIds = newFavs.map(f => f.id)
+      await supabase
+        .from('businesses')
+        .update({ pos_favorites: favIds })
+        .eq('id', business.id)
     }
   }
 
@@ -479,12 +471,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       const tenantProfile = getBusinessProfile(biz.business_type)
       setProfile(tenantProfile)
 
-      if (tenantProfile.modules.hasTables) {
-        setServiceType('DINE-IN')
-      } else {
-        setServiceType('COUNTER')
-      }
-
       // Fetching from staff_profiles table with robust filtering for waiters
       const { data: staffList, error: staffErr } = await supabase
         .from('staff_profiles')
@@ -500,40 +486,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         setWaiters(filteredWaiters)
       } else {
         console.warn('Failed to load staff profiles:', staffErr)
-      }
-
-      if (tenantProfile.modules.hasTables) {
-        const { data: tableData } = await supabase
-          .from('tables')
-          .select('*')
-          .eq('business_id', biz.id)
-          .order('sort_order', { ascending: true })
-
-        if (tableData && tableData.length > 0) {
-          setTables(tableData)
-          
-          if (biz.zone_arrangement && Array.isArray(biz.zone_arrangement) && biz.zone_arrangement.length > 0) {
-            const fetchedZones = Array.from(new Set(tableData.map((t: any) => t.zone || t.zone_name || 'MAIN HALL'))) as string[]
-            const savedArrangement = biz.zone_arrangement.filter((z: string) => fetchedZones.includes(z))
-            const missingZones = fetchedZones.filter((z: string) => !savedArrangement.includes(z))
-            setZones([...savedArrangement, ...missingZones])
-          } else {
-            const uniqueZones = Array.from(new Set(tableData.map((t: any) => t.zone || t.zone_name || 'MAIN HALL'))) as string[]
-            setZones(uniqueZones)
-          }
-
-          setSelectedTable(tableData[0])
-        }
-
-        const { data: resData } = await supabase
-          .from('reservations')
-          .select('*')
-          .eq('business_id', biz.id)
-          .eq('status', 'RESERVED')
-
-        if (resData) {
-          setReservations(resData)
-        }
       }
 
       const { data: catData } = await supabase
@@ -553,9 +505,59 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         setProducts(productData)
         const addons = productData.filter((p: any) => p.category?.toUpperCase() === 'ADD ONS' || p.category?.toUpperCase() === 'ADD-ONS')
         setAddOnsProducts(addons)
-        const savedFavs = localStorage.getItem(`unicon_pos_favorites_${slug}`)
-        if (!savedFavs) {
+
+        // Load permanent favorites from database column `pos_favorites`
+        if (biz.pos_favorites && Array.isArray(biz.pos_favorites) && biz.pos_favorites.length > 0) {
+          const mappedFavs = biz.pos_favorites.map((id: string) => productData.find((p: any) => p.id === id)).filter(Boolean)
+          setFavorites(mappedFavs)
+        } else {
           setFavorites(productData.slice(0, 6))
+        }
+      }
+
+      if (tenantProfile.modules.hasTables) {
+        const { data: tableData } = await supabase
+          .from('tables')
+          .select('*')
+          .eq('business_id', biz.id)
+          .order('sort_order', { ascending: true })
+
+        if (tableData && tableData.length > 0) {
+          setTables(tableData)
+          
+          let orderedZones: string[] = []
+          if (biz.zone_arrangement && Array.isArray(biz.zone_arrangement) && biz.zone_arrangement.length > 0) {
+            const fetchedZones = Array.from(new Set(tableData.map((t: any) => t.zone || t.zone_name || 'MAIN HALL'))) as string[]
+            const savedArrangement = biz.zone_arrangement.filter((z: string) => fetchedZones.includes(z))
+            const missingZones = fetchedZones.filter((z: string) => !savedArrangement.includes(z))
+            orderedZones = [...savedArrangement, ...missingZones]
+            setZones(orderedZones)
+          } else {
+            orderedZones = Array.from(new Set(tableData.map((t: any) => t.zone || t.zone_name || 'MAIN HALL'))) as string[]
+            setZones(orderedZones)
+          }
+
+          // Select the very first table in the very first primary zone by sequence
+          const firstZoneName = orderedZones[0]
+          const firstZoneTables = tableData
+            .filter(t => (t.zone || t.zone_name || 'MAIN HALL') === firstZoneName)
+            .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || (a.name || a.table_number || '').localeCompare(b.name || b.table_number || ''))
+
+          if (firstZoneTables.length > 0) {
+            setSelectedTable(firstZoneTables[0])
+          } else {
+            setSelectedTable(tableData[0])
+          }
+        }
+
+        const { data: resData } = await supabase
+          .from('reservations')
+          .select('*')
+          .eq('business_id', biz.id)
+          .eq('status', 'RESERVED')
+
+        if (resData) {
+          setReservations(resData)
         }
       }
 
@@ -620,6 +622,10 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
           if (payload.new?.name) {
             document.title = `POS - ${payload.new.name}`
           }
+          if (payload.new?.pos_favorites && Array.isArray(payload.new.pos_favorites)) {
+            const mappedFavs = payload.new.pos_favorites.map((id: string) => products.find((p: any) => p.id === id)).filter(Boolean)
+            if (mappedFavs.length > 0) setFavorites(mappedFavs)
+          }
         }
       )
       .subscribe()
@@ -627,7 +633,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [business?.id])
+  }, [business?.id, products])
 
   useEffect(() => {
     if (!business || reservations.length === 0) return
@@ -826,7 +832,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
           name: newCustNameInput.trim(),
           phone: customerPhone.trim(),
           email: newCustEmailInput.trim() || null,
-          default_address: deliveryAddress.trim() || null,
+          default_address: newCustAddressInput.trim() || deliveryAddress.trim() || null,
           loyalty_points: 0,
           updated_at: new Date().toISOString()
         }, {
@@ -839,10 +845,14 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         alert(`Failed to save customer: ${error.message}`)
       } else if (data) {
         setCustomerName(data.name)
+        if (data.default_address) {
+          setDeliveryAddress(data.default_address)
+        }
         setCrmStatus('found')
         setShowNewCustomerModal(false)
         setNewCustNameInput('')
         setNewCustEmailInput('')
+        setNewCustAddressInput('')
       }
     } catch (err: any) {
       alert(`Error saving customer: ${err.message || err}`)
@@ -1429,7 +1439,15 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     const deliveryAddrSnapshot = deliveryAddress.trim()
     const deliveryNoteSnapshot = deliveryNote.trim()
 
+    // Sync and update delivery address in customer record if present
     await syncCustomerProfile()
+    if (serviceType === 'DELIVERY' && custPhoneSnapshot && deliveryAddrSnapshot) {
+      await supabase
+        .from('customers')
+        .update({ default_address: deliveryAddrSnapshot, updated_at: new Date().toISOString() })
+        .eq('business_id', business.id)
+        .eq('phone', custPhoneSnapshot)
+    }
 
     const tenderBreakdownList = isSplitPayment 
       ? tenderSplits.filter(t => t.amount > 0)
@@ -1576,7 +1594,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
   }
 
   const handleLockSession = async () => {
-    // Fallback extraction from sessionStorage if state variable is lost
     let targetBizId = business?.id;
     let targetStaffId = authenticatedStaff?.id;
 
@@ -2289,6 +2306,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                     onClick={() => {
                       setNewCustNameInput('')
                       setNewCustEmailInput('')
+                      setNewCustAddressInput(deliveryAddress || '')
                       setShowNewCustomerModal(true)
                     }}
                     className="text-[9px] bg-amber-100 hover:bg-amber-200 text-amber-900 px-2 py-0.5 rounded font-black transition animate-bounce cursor-pointer"
@@ -2580,7 +2598,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       </div>
       )}
 
-      {/* MODAL: ADD NEW CUSTOMER RECORD */}
+      {/* MODAL: ADD NEW CUSTOMER RECORD (Updated sequence: Name, Phone, Email, Address) */}
       {showNewCustomerModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <form onSubmit={handleSaveNewCustomer} className="bg-white rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-2xl">
@@ -2590,16 +2608,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
             </div>
 
             <div className="space-y-3 text-xs">
-              <div>
-                <label className="block text-gray-600 font-bold mb-1">Mobile Phone Number</label>
-                <input 
-                  type="text" 
-                  value={customerPhone} 
-                  disabled 
-                  className="w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2 font-mono text-gray-600 cursor-not-allowed"
-                />
-              </div>
-
               <div>
                 <label className="block text-gray-700 font-bold mb-1">Customer Full Name *</label>
                 <input 
@@ -2613,12 +2621,33 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
               </div>
 
               <div>
-                <label className="block text-gray-700 font-bold mb-1">Email Address (Optional)</label>
+                <label className="block text-gray-600 font-bold mb-1">Mobile Phone Number</label>
+                <input 
+                  type="text" 
+                  value={customerPhone} 
+                  disabled 
+                  className="w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2 font-mono text-gray-600 cursor-not-allowed"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-700 font-bold mb-1">E-Mail (Optional)</label>
                 <input 
                   type="email" 
                   placeholder="customer@domain.com" 
                   value={newCustEmailInput} 
                   onChange={e => setNewCustEmailInput(e.target.value)} 
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-700 font-bold mb-1">Address (Optional)</label>
+                <input 
+                  type="text" 
+                  placeholder="Street, Area, City" 
+                  value={newCustAddressInput} 
+                  onChange={e => setNewCustAddressInput(e.target.value)} 
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-emerald-500"
                 />
               </div>
