@@ -2618,6 +2618,9 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         }, 0)
         const modalCalculatedUnitPrice = (customizingItem.price || 0) + modalVariantPrice + modalAddonsTotal
 
+        // Strict Check: Display modifiers/add-ons section ONLY if the item's own modifier flag is explicitly true
+        const itemHasModifiersEnabled = Boolean(customizingItem.has_modifiers) || (Array.isArray(customizingItem.modifiers) && customizingItem.modifiers.length > 0)
+
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs font-sans">
             <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-5 shadow-2xl border border-gray-200 text-gray-800">
@@ -2636,27 +2639,35 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
               </div>
 
               <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
-                {/* VARIANTS SECTION */}
+                {/* VARIANTS SECTION: Rendered as a Clean Vertical Radio Dropdown/List */}
                 {customizingItem.variants && customizingItem.variants.length > 0 && (
                   <div className="space-y-2">
                     <label className="block text-[11px] font-extrabold uppercase text-purple-900">Choose Size / Variant:</label>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1.5">
                       {customizingItem.variants.map((v: any, vIdx: number) => {
                         const isSelected = selectedVariant?.name === v.name
                         return (
-                          <button
+                          <label
                             key={vIdx}
-                            type="button"
                             onClick={() => setSelectedVariant(v)}
-                            className={`p-3 rounded-xl border text-left transition flex justify-between items-center cursor-pointer ${
+                            className={`flex items-center justify-between p-3 rounded-xl border text-xs transition cursor-pointer ${
                               isSelected 
-                                ? 'bg-purple-50 border-purple-600 ring-1 ring-purple-600 font-bold text-purple-950' 
-                                : 'bg-gray-50 border-gray-200 hover:border-gray-300 text-gray-700'
+                                ? 'bg-purple-50 border-purple-600 ring-1 ring-purple-600 font-bold text-purple-950 shadow-xs' 
+                                : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
                             }`}
                           >
-                            <span className="truncate">{v.name}</span>
-                            <span className="font-mono text-[11px] text-emerald-700 font-bold shrink-0 ml-1">+{currencySymbol} {v.price}</span>
-                          </button>
+                            <div className="flex items-center space-x-2.5">
+                              <input
+                                type="radio"
+                                name="product-main-variant"
+                                checked={isSelected}
+                                onChange={() => setSelectedVariant(v)}
+                                className="accent-purple-700 w-4 h-4"
+                              />
+                              <span className="text-sm font-semibold">{v.name}</span>
+                            </div>
+                            <span className="font-mono text-xs text-emerald-700 font-extrabold">+{currencySymbol} {v.price}</span>
+                          </label>
                         )
                       })}
                     </div>
@@ -2669,8 +2680,8 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                   <span className="font-mono font-black text-emerald-400 text-base">{currencySymbol} {modalCalculatedUnitPrice}</span>
                 </div>
 
-                {/* MODIFIERS / ADD-ONS SECTION */}
-                {addOnsProducts.length > 0 && (
+                {/* MODIFIERS / ADD-ONS SECTION: Strictly condition-gated so variant-only items (like Soft Drink 1L) never show this */}
+                {itemHasModifiersEnabled && addOnsProducts.length > 0 && (
                   <div className="space-y-2 pt-2 border-t border-gray-100">
                     <label className="block text-[11px] font-extrabold uppercase text-blue-950">Available Add-ons & Modifiers:</label>
                     <div className="space-y-2">
