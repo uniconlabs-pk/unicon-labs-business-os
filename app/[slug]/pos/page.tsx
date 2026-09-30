@@ -2031,7 +2031,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
                           {isReserved && timeLeftStr && (
                             <div className="text-[9px] font-mono font-bold text-amber-800 bg-amber-100/80 px-1.5 py-0.5 rounded text-center">
-                              ⏱️️ {timeLeftStr} left
+                              ⏱️ {timeLeftStr} left
                             </div>
                           )}
 
@@ -2230,7 +2230,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
           <div className="flex-1 p-4 overflow-y-auto">
             {isTableLockedByReservation ? (
               <div className="flex flex-col items-center justify-center h-full space-y-3 bg-amber-50/50 border border-amber-200 rounded-3xl p-8 text-center">
-                <span className="text-3xl">⚠️</span>
+                <span className="text-3xl">⚠️️</span>
                 <h3 className="font-black text-sm uppercase text-amber-900">Table is Currently Reserved</h3>
                 <p className="text-xs text-amber-700 max-w-md">
                   This table is booked for a pre-scheduled reservation. Order entry is locked until the customer arrives and you click **"Attended"** on the table tile on the left sidebar.
@@ -2499,7 +2499,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                   <div className="text-right space-y-1">
                     <div className="font-mono font-black text-gray-950">{currencySymbol} {ci.finalUnitPrice * ci.qty}</div>
                     <button onClick={() => updateCurrentCart(currentCart.filter((_, i) => i !== idx))} className="text-gray-400 hover:text-red-600 text-xs cursor-pointer">
-                      🗑️
+                      🗑️️
                     </button>
                   </div>
                 </div>
@@ -2606,6 +2606,137 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         </aside>
 
       </div>
+      )}
+
+      {/* PRODUCT CUSTOMIZATION MODAL (VARIANTS & ADD-ONS) */}
+      {showCustomizeModal && customizingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs font-sans">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-5 shadow-2xl border border-gray-200 text-gray-800">
+            <div className="flex justify-between items-center pb-3 border-b border-gray-100">
+              <div>
+                <h3 className="font-black text-sm uppercase text-gray-900">Customize {customizingItem.name}</h3>
+                <p className="text-[11px] text-gray-500">Select your preferred options and add-ons</p>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setShowCustomizeModal(false)}
+                className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center font-bold transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+              {/* VARIANTS SECTION */}
+              {customizingItem.variants && customizingItem.variants.length > 0 && (
+                <div className="space-y-2">
+                  <label className="block text-[11px] font-extrabold uppercase text-purple-900">Choose Size / Variant:</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {customizingItem.variants.map((v: any, vIdx: number) => {
+                      const isSelected = selectedVariant?.name === v.name
+                      return (
+                        <button
+                          key={vIdx}
+                          type="button"
+                          onClick={() => setSelectedVariant(v)}
+                          className={`p-3 rounded-xl border text-left transition flex justify-between items-center cursor-pointer ${
+                            isSelected 
+                              ? 'bg-purple-50 border-purple-600 ring-1 ring-purple-600 font-bold text-purple-950' 
+                              : 'bg-gray-50 border-gray-200 hover:border-gray-300 text-gray-700'
+                          }`}
+                        >
+                          <span className="truncate">{v.name}</span>
+                          <span className="font-mono text-[11px] text-emerald-700 font-bold shrink-0 ml-1">+{currencySymbol} {v.price}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* MODIFIERS / ADD-ONS SECTION */}
+              {addOnsProducts.length > 0 && (
+                <div className="space-y-2 pt-2 border-t border-gray-100">
+                  <label className="block text-[11px] font-extrabold uppercase text-blue-950">Available Add-ons & Modifiers:</label>
+                  <div className="space-y-2">
+                    {addOnsProducts.map((addon: any) => {
+                      const isSelected = selectedAddons.some(a => a.id === addon.id)
+                      let addonParsedVars = []
+                      try {
+                        addonParsedVars = typeof addon.variants === 'string' ? JSON.parse(addon.variants) : (Array.isArray(addon.variants) ? addon.variants : [])
+                      } catch {
+                        addonParsedVars = []
+                      }
+                      const chosenAddonVar = addonVariants[addon.id]
+
+                      return (
+                        <div key={addon.id} className={`p-3 rounded-xl border transition space-y-2 ${isSelected ? 'bg-blue-50/40 border-blue-400' : 'bg-gray-50 border-gray-200'}`}>
+                          <div className="flex justify-between items-center cursor-pointer" onClick={() => {
+                            if (isSelected) {
+                              setSelectedAddons(selectedAddons.filter(a => a.id !== addon.id))
+                              const copy = { ...addonVariants }
+                              delete copy[addon.id]
+                              setAddonVariants(copy)
+                            } else {
+                              setSelectedAddons([...selectedAddons, addon])
+                              if (addonParsedVars.length > 0) {
+                                setAddonVariants({ ...addonVariants, [addon.id]: addonParsedVars[0] })
+                              }
+                            }
+                          }}>
+                            <div className="flex items-center space-x-2">
+                              <span>{isSelected ? '☑' : '☐'}</span>
+                              <span className="font-bold text-gray-900">{addon.name}</span>
+                            </div>
+                            <span className="font-mono text-emerald-700 font-bold">+{currencySymbol} {addon.price}</span>
+                          </div>
+
+                          {/* Nested Variant Selector for Addon if applicable */}
+                          {isSelected && addonParsedVars.length > 0 && (
+                            <div className="pl-6 pt-1 flex flex-wrap gap-1">
+                              {addonParsedVars.map((av: any, avIdx: number) => {
+                                const isVarSelected = chosenAddonVar?.name === av.name
+                                return (
+                                  <button
+                                    key={avIdx}
+                                    type="button"
+                                    onClick={() => setAddonVariants({ ...addonVariants, [addon.id]: av })}
+                                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition cursor-pointer ${
+                                      isVarSelected ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-200'
+                                    }`}
+                                  >
+                                    {av.name} (+{currencySymbol} {av.price})
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-gray-100 flex space-x-2">
+              <button 
+                type="button" 
+                onClick={() => setShowCustomizeModal(false)}
+                className="w-1/3 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                onClick={handleAddCustomizedToCart}
+                className="w-2/3 py-3 bg-slate-900 hover:bg-black text-white font-black rounded-xl text-xs transition uppercase tracking-wider cursor-pointer shadow-sm"
+              >
+                Add to Cart 🛒
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>
