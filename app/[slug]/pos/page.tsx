@@ -876,7 +876,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     return true
   }
 
-  // PROFESSIONAL SAFE CLICK HANDLER WITH FALLBACK GUARD
   const handleProductClick = (item: any) => {
     if (item.in_stock === false) return
     if (isTableLockedByReservation) {
@@ -884,7 +883,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       return
     }
 
-    // Safely parse variants
     let parsedVariants = []
     try {
       parsedVariants = typeof item.variants === 'string' ? JSON.parse(item.variants) : (Array.isArray(item.variants) ? item.variants : [])
@@ -895,9 +893,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     const hasVariants = parsedVariants.length > 0
     const hasModifiers = Boolean(item.has_modifiers) || (Array.isArray(item.modifiers) && item.modifiers.length > 0)
 
-    // SAFEGUARD: If item is flagged for modifiers or variants, but none are actually available, 
-    // fallback gracefully to adding the base item directly to the cart instead of crashing or freezing.
-    if ((hasVariants || hasModifiers) && (hasVariants || addOnsProducts.length > 0)) {
+    if (hasVariants || hasModifiers) {
       setCustomizingItem({ ...item, variants: parsedVariants })
       setSelectedVariant(hasVariants ? parsedVariants[0] : null)
       setSelectedAddons([])
@@ -924,6 +920,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
       addItemToActiveCart({ 
         ...item, 
+        variants: parsedVariants,
         qty: 1, 
         selectedVariant: null, 
         selectedAddons: [], 
@@ -2034,7 +2031,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
                           {isReserved && timeLeftStr && (
                             <div className="text-[9px] font-mono font-bold text-amber-800 bg-amber-100/80 px-1.5 py-0.5 rounded text-center">
-                              ⏱️ {timeLeftStr} left
+                              ⏱️️ {timeLeftStr} left
                             </div>
                           )}
 
@@ -2233,7 +2230,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
           <div className="flex-1 p-4 overflow-y-auto">
             {isTableLockedByReservation ? (
               <div className="flex flex-col items-center justify-center h-full space-y-3 bg-amber-50/50 border border-amber-200 rounded-3xl p-8 text-center">
-                <span className="text-3xl">⚠️️</span>
+                <span className="text-3xl">⚠️</span>
                 <h3 className="font-black text-sm uppercase text-amber-900">Table is Currently Reserved</h3>
                 <p className="text-xs text-amber-700 max-w-md">
                   This table is booked for a pre-scheduled reservation. Order entry is locked until the customer arrives and you click **"Attended"** on the table tile on the left sidebar.
