@@ -34,7 +34,7 @@ export async function GET(req: Request) {
 
     const { data: customers, error: custErr } = await supabase
       .from('customers')
-      .select('name, phone, business_id')
+      .select('id, name, phone, email, default_address, business_id')
       .eq('business_id', biz.id)
       .or(`phone.ilike.%${rawClean}%,phone.ilike.%${suffix}%`)
       .limit(1)
