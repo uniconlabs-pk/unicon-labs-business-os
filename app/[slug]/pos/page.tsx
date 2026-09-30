@@ -884,7 +884,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     }
 
     const hasVariants = item.variants && item.variants.length > 0
-    // FIXED: Removed strict effectiveModules.hasKDS dependency so modifiers open reliably based on item configuration
+    // FIXED: Safely evaluate variants and modifiers independently of KDS module state or undefined structures
     const hasModifiers = Boolean(item.has_modifiers) || (item.modifiers && item.modifiers.length > 0)
 
     if (hasVariants || hasModifiers) {
