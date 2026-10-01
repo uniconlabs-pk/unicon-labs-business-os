@@ -124,7 +124,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
   const [showSettlementModal, setShowSettlementModal] = useState(false)
   const [isSplitPayment, setIsSplitPayment] = useState(false)
   const [singleMethod, setSingleMethod] = useState<'CASH' | 'CARD' | 'DIGITAL WALLET' | 'BANK TRANSFER' | 'CASH ON DELIVERY'>('CASH')
-  const [singleReceivedCash, setSingleReceivedCash] = useState<number>(500)
+  const [singleReceivedCash, setSingleReceivedCash] = useState<number>(0)
   const [customReceivedCash, setCustomReceivedCash] = useState<string>('')
   const [tenderSplits, setTenderSplits] = useState<TenderSplit[]>([
     { method: 'CASH', amount: 0 },
@@ -391,7 +391,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     }
   }, [serviceType])
 
-  // CRM phone lookup with unconditional default address population
   useEffect(() => {
     const cleanPhone = customerPhone.replace(/\D/g, '')
     if (cleanPhone.length < 7 || !slug) {
@@ -410,9 +409,8 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
           if (match.name) {
             setCustomerName(match.name)
           }
-          const savedAddr = match.default_address || match.address
-          if (savedAddr) {
-            setDeliveryAddress(savedAddr)
+          if (match.default_address) {
+            setDeliveryAddress(match.default_address)
           }
           setCrmStatus('found')
         } else {
@@ -429,7 +427,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     }, 450)
 
     return () => clearTimeout(timer)
-  }, [customerPhone, slug])
+  }, [customerPhone, slug, serviceType])
 
   const handleTableSelect = async (t: any) => {
     setSelectedTable(t)
@@ -883,19 +881,12 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       return
     }
 
-    let parsedVariants = []
-    try {
-      parsedVariants = typeof item.variants === 'string' ? JSON.parse(item.variants) : (Array.isArray(item.variants) ? item.variants : [])
-    } catch {
-      parsedVariants = []
-    }
-
-    const hasVariants = parsedVariants.length > 0
-    const hasModifiers = Boolean(item.has_modifiers) || (Array.isArray(item.modifiers) && item.modifiers.length > 0)
+    const hasVariants = item.variants && item.variants.length > 0
+    const hasModifiers = effectiveModules.hasKDS && item.has_modifiers && addOnsProducts.length > 0
 
     if (hasVariants || hasModifiers) {
-      setCustomizingItem({ ...item, variants: parsedVariants })
-      setSelectedVariant(hasVariants ? parsedVariants[0] : null)
+      setCustomizingItem(item)
+      setSelectedVariant(hasVariants ? item.variants[0] : null)
       setSelectedAddons([])
       setAddonVariants({})
       setShowCustomizeModal(true)
@@ -920,7 +911,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
       addItemToActiveCart({ 
         ...item, 
-        variants: parsedVariants,
         qty: 1, 
         selectedVariant: null, 
         selectedAddons: [], 
@@ -1291,8 +1281,8 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       items: unsentItems
     }
 
-    // Respect KDS Module toggle status for digital database routing with safe try/catch
-    if (effectiveModules.hasKDS && business?.id) {
+    // Respect KDS Module toggle status for digital database routing
+    if (effectiveModules.hasKDS) {
       try {
         const nextKot = baseKotSeq + 1
         await supabase.from('businesses').update({ next_kot_seq: nextKot }).eq('id', business.id)
@@ -1351,7 +1341,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       { method: serviceType === 'DELIVERY' ? 'CASH ON DELIVERY' : 'CASH', amount: grandTotal },
       { method: 'CARD', amount: 0 }
     ])
-    setSingleReceivedCash(500)
+    setSingleReceivedCash(grandTotal)
     setCustomReceivedCash('')
     setShowSettlementModal(true)
   }
@@ -1393,8 +1383,8 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         items: unsentItems
       }
 
-      // Respect KDS Module toggle status for digital KOT ticket generation with safe try/catch
-      if (effectiveModules.hasKDS && business?.id) {
+      // Respect KDS Module toggle status for digital KOT ticket generation
+      if (effectiveModules.hasKDS) {
         try {
           const nextKot = baseKotSeq + 1
           await supabase.from('businesses').update({ next_kot_seq: nextKot }).eq('id', business.id)
@@ -2608,368 +2598,820 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       </div>
       )}
 
-      {/* SETTLEMENT & PAYMENT MODAL */}
-      {showSettlementModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs font-sans">
-          <div className="bg-white rounded-3xl p-6 max-w-lg w-full space-y-5 shadow-2xl border border-gray-200 text-gray-800">
-            <div className="flex justify-between items-center pb-3 border-b border-gray-100">
-              <h3 className="font-black text-sm uppercase text-slate-900">Payment Settlement & Tender ({serviceType})</h3>
-              <button 
-                type="button" 
-                onClick={() => setShowSettlementModal(false)}
-                className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center font-bold transition cursor-pointer"
-              >
-                ✕
-              </button>
+      {/* MODAL: ADD NEW CUSTOMER RECORD */}
+      {showNewCustomerModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <form onSubmit={handleSaveNewCustomer} className="bg-white rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h3 className="font-black text-sm uppercase text-gray-900">➕ Add New Customer</h3>
+              <button type="button" onClick={() => setShowNewCustomerModal(false)} className="text-gray-400 hover:text-black font-bold cursor-pointer">✕</button>
             </div>
 
-            <div className="space-y-4">
-              <div className="bg-slate-50 p-4 rounded-2xl border border-gray-200 flex justify-between items-center">
-                <div>
-                  <span className="text-[10px] font-extrabold uppercase text-gray-400 block">Amount Payable</span>
-                  <span className="font-mono font-black text-xl text-emerald-700">{currencySymbol} {grandTotal}</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] font-extrabold uppercase text-gray-400 block">Customer</span>
-                  <span className="font-bold text-gray-900 text-xs">{customerName}</span>
-                </div>
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block text-gray-700 font-bold mb-1">Customer Full Name *</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. Malik Asad" 
+                  value={newCustNameInput} 
+                  onChange={e => setNewCustNameInput(e.target.value)} 
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 font-medium focus:outline-none focus:border-emerald-500"
+                  required 
+                />
               </div>
 
-              {/* Tender Method Selector */}
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <label className="block text-[11px] font-extrabold uppercase text-gray-700">Payment Method:</label>
-                  <label className="flex items-center space-x-1.5 text-[11px] font-bold text-purple-700 cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      checked={isSplitPayment} 
-                      onChange={e => setIsSplitPayment(e.target.checked)} 
-                      className="accent-purple-700 w-3.5 h-3.5"
-                    />
-                    <span>Split Payment</span>
-                  </label>
-                </div>
+              <div>
+                <label className="block text-gray-600 font-bold mb-1">Mobile Phone Number</label>
+                <input 
+                  type="text" 
+                  value={customerPhone} 
+                  disabled 
+                  className="w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2 font-mono text-gray-600 cursor-not-allowed"
+                />
+              </div>
 
-                {!isSplitPayment ? (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-2">
-                      {availableTenderMethods.map(m => (
-                        <button
-                          key={m}
-                          type="button"
-                          onClick={() => setSingleMethod(m)}
-                          className={`py-2.5 px-3 rounded-xl border text-xs font-bold uppercase transition cursor-pointer ${
-                            singleMethod === m ? 'bg-slate-900 text-white border-slate-900 shadow-xs' : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
-                          }`}
-                        >
-                          {m}
-                        </button>
-                      ))}
-                    </div>
+              <div>
+                <label className="block text-gray-700 font-bold mb-1">E-Mail (Optional)</label>
+                <input 
+                  type="email" 
+                  placeholder="customer@domain.com" 
+                  value={newCustEmailInput} 
+                  onChange={e => setNewCustEmailInput(e.target.value)} 
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
 
-                    {singleMethod === 'CASH' && (
-                      <div className="space-y-2 bg-emerald-50/50 p-3 rounded-xl border border-emerald-200">
-                        <label className="block text-[10px] font-bold text-emerald-900 uppercase">Cash Received:</label>
-                        <div className="grid grid-cols-4 gap-1.5">
-                          {[500, 1000, 5000].map(amt => (
-                            <button
-                              key={amt}
-                              type="button"
-                              onClick={() => { setSingleReceivedCash(amt); setCustomReceivedCash(''); }}
-                              className={`py-1.5 rounded-lg border font-mono font-bold text-xs transition cursor-pointer ${
-                                singleReceivedCash === amt && customReceivedCash === '' ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white text-gray-800 border-gray-200'
-                              }`}
-                            >
-                              {currencySymbol} {amt}
-                            </button>
-                          ))}
-                          <button
-                            type="button"
-                            onClick={() => { setSingleReceivedCash(-1); setCustomReceivedCash(''); }}
-                            className={`py-1.5 rounded-lg border font-mono font-bold text-xs transition cursor-pointer ${
-                              singleReceivedCash === -1 ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white text-gray-800 border-gray-200'
-                            }`}
-                          >
-                            Custom
-                          </button>
-                        </div>
-
-                        {singleReceivedCash === -1 && (
-                          <div className="pt-1">
-                            <input
-                              type="number"
-                              placeholder="Enter custom cash amount..."
-                              value={customReceivedCash}
-                              onChange={e => setCustomReceivedCash(e.target.value)}
-                              className="w-full bg-white border border-emerald-300 rounded-lg px-2.5 py-1.5 font-mono text-xs text-gray-900"
-                            />
-                          </div>
-                        )}
-
-                        <div className="flex justify-between items-center pt-2">
-                          <span className="text-[11px] font-bold text-gray-600">Change Returned:</span>
-                          <span className="font-mono font-black text-emerald-700 text-sm">
-                            {currencySymbol} {changeReturned}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-3 bg-purple-50/40 p-3.5 rounded-2xl border border-purple-200">
-                    <div className="text-[10px] font-bold text-purple-900 uppercase">Configure Tender Splits (Must equal {grandTotal}):</div>
-                    {tenderSplits.map((split, sIdx) => (
-                      <div key={sIdx} className="flex items-center space-x-2">
-                        <select
-                          value={split.method}
-                          onChange={e => {
-                            const updated = [...tenderSplits]
-                            updated[sIdx].method = e.target.value as any
-                            setTenderSplits(updated)
-                          }}
-                          className="bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-xs font-bold"
-                        >
-                          {availableTenderMethods.map(m => (
-                            <option key={m} value={m}>{m}</option>
-                          ))}
-                        </select>
-                        <input
-                          type="number"
-                          value={split.amount || ''}
-                          onChange={e => {
-                            const updated = [...tenderSplits]
-                            updated[sIdx].amount = Number(e.target.value)
-                            setTenderSplits(updated)
-                          }}
-                          placeholder="Amount"
-                          className="flex-1 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 font-mono text-xs"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setTenderSplits(tenderSplits.filter((_, i) => i !== sIdx))}
-                          className="text-red-600 font-bold px-2 py-1"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => setTenderSplits([...tenderSplits, { method: 'CARD', amount: 0 }])}
-                      className="text-[11px] text-purple-700 font-bold hover:underline cursor-pointer"
-                    >
-                      + Add Another Tender Split
-                    </button>
-                  </div>
-                )}
+              <div>
+                <label className="block text-gray-700 font-bold mb-1">Address (Optional)</label>
+                <input 
+                  type="text" 
+                  placeholder="Street, Area, City" 
+                  value={newCustAddressInput} 
+                  onChange={e => setNewCustAddressInput(e.target.value)} 
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-emerald-500"
+                />
               </div>
             </div>
 
-            <div className="pt-2 border-t border-gray-100 flex space-x-2">
+            <div className="flex space-x-2 pt-2">
               <button 
                 type="button" 
-                onClick={() => setShowSettlementModal(false)}
-                className="w-1/3 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs transition cursor-pointer"
+                onClick={() => setShowNewCustomerModal(false)}
+                className="w-1/2 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs cursor-pointer"
               >
                 Cancel
               </button>
               <button 
-                type="button" 
-                onClick={finalizePayment}
-                className="w-2/3 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-xs transition uppercase tracking-wider cursor-pointer shadow-sm"
+                type="submit" 
+                disabled={savingNewCustomer}
+                className="w-1/2 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-xs shadow-sm uppercase cursor-pointer"
               >
-                Complete Payment & Print 🖨️
+                {savingNewCustomer ? 'Saving...' : 'Save Customer 💾'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* SECURE MANAGER REFUND & RETURN AUTHORIZATION MODAL WITH QR BADGE SCANNER */}
+      {showRefundAuthModal && selectedOrderForRefund && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 font-sans">
+          <form onSubmit={handleProcessRefund} className="bg-white rounded-3xl w-full max-w-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden text-xs">
+            
+            <div className="p-5 bg-rose-900 text-white flex justify-between items-center shrink-0">
+              <div className="flex items-center space-x-2">
+                <span className="text-base">↩️</span>
+                <h3 className="font-black text-sm uppercase tracking-wider">Process Order Refund & Return</h3>
+              </div>
+              <button type="button" onClick={() => setShowRefundAuthModal(false)} className="text-rose-200 hover:text-white font-bold cursor-pointer">✕</button>
+            </div>
+
+            <div className="flex-1 p-6 overflow-y-auto space-y-4 bg-gray-50">
+              
+              <div className="bg-white p-3.5 rounded-2xl border border-gray-200 shadow-2xs flex justify-between items-center">
+                <div>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase">Original Invoice</span>
+                  <div className="font-mono font-black text-sm text-slate-900">
+                    {selectedOrderForRefund.order_number ? `KB-${String(selectedOrderForRefund.order_number).padStart(6, '0')}` : 'SAVED'}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase">Original Total</span>
+                  <div className="font-mono font-black text-emerald-700 text-sm">{currencySymbol} {selectedOrderForRefund.total_amount}</div>
+                </div>
+              </div>
+
+              {/* Item Level Selection with Remaining Quantity Tracking */}
+              <div className="space-y-2">
+                <label className="block text-gray-700 font-bold uppercase tracking-wide text-[11px]">Select Items & Quantities to Return:</label>
+                <div className="bg-white border border-gray-200 rounded-2xl p-3 space-y-2 max-h-48 overflow-y-auto">
+                  {selectedOrderForRefund.items && selectedOrderForRefund.items.map((item: any, idx: number) => {
+                    const totalQty = item.qty || item.quantity || 1
+                    const alreadyRefunded = item.refunded_qty || 0
+                    const sel = refundItemsSelection[idx] || { returnQty: 0, maxQty: Math.max(0, totalQty - alreadyRefunded) }
+                    const isFullyRefunded = sel.maxQty <= 0
+
+                    return (
+                      <div key={idx} className={`flex justify-between items-center py-2 border-b border-gray-100 last:border-0 ${isFullyRefunded ? 'opacity-50 bg-gray-50 px-2 rounded-xl' : ''}`}>
+                        <div>
+                          <div className="font-bold text-gray-900 flex items-center space-x-1.5">
+                            <span>{item.name} {item.selectedVariant ? `[${item.selectedVariant.name}]` : ''}</span>
+                            {isFullyRefunded && (
+                              <span className="bg-red-100 text-red-800 text-[8px] font-black uppercase px-1.5 py-0.2 rounded">Fully Refunded</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-gray-500 font-mono">
+                            {currencySymbol} {item.finalUnitPrice || item.price} each • Total Ordered: {totalQty} {alreadyRefunded > 0 ? `(Already Refunded: ${alreadyRefunded})` : ''}
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          {!isFullyRefunded ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = { ...refundItemsSelection }
+                                  if (updated[idx].returnQty > 0) updated[idx].returnQty -= 1
+                                  setRefundItemsSelection(updated)
+                                }}
+                                className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 font-bold flex items-center justify-center cursor-pointer"
+                              >
+                                -
+                              </button>
+                              <span className="font-mono font-black text-gray-900 w-6 text-center">{sel.returnQty}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = { ...refundItemsSelection }
+                                  if (updated[idx].returnQty < updated[idx].maxQty) updated[idx].returnQty += 1
+                                  setRefundItemsSelection(updated)
+                                }}
+                                className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 font-bold flex items-center justify-center cursor-pointer"
+                              >
+                                +
+                              </button>
+                            </>
+                          ) : (
+                            <span className="text-[10px] font-bold text-red-600 font-mono">Locked</span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Mandatory Reason Code */}
+              <div className="space-y-1.5">
+                <label className="block text-gray-700 font-bold uppercase tracking-wide text-[11px]">Refund / Damage Reason Code *</label>
+                <select
+                  value={refundReasonCode}
+                  onChange={e => setRefundReasonCode(e.target.value)}
+                  className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-gray-900 uppercase"
+                  required
+                >
+                  <option value="Quality Issue / Damaged">🍔 Quality Issue / Damaged (Write-off Inventory)</option>
+                  <option value="Customer Cancelled / Changed Mind">❌ Customer Cancelled / Changed Mind (Restock Stock)</option>
+                  <option value="Delivery Mishap / Driver Drop">🛵 Delivery Mishap / Driver Drop</option>
+                  <option value="Wrong Item Prepared">⚠️ Wrong Item Prepared</option>
+                </select>
+              </div>
+
+              {/* Manager Authorization: QR Badge Scan OR PIN */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="bg-indigo-50 border border-indigo-200 p-3.5 rounded-2xl space-y-1.5">
+                  <label className="block text-indigo-950 font-black uppercase tracking-wide text-[10px]">🪪 Manager QR Badge Scan (Instant)</label>
+                  <input
+                    type="text"
+                    placeholder="Scan manager badge token..."
+                    value={refundManagerQrToken}
+                    onChange={e => {
+                      setRefundManagerQrToken(e.target.value)
+                      handleManagerQrScan(e.target.value)
+                    }}
+                    className="w-full bg-white border border-indigo-300 rounded-xl px-3 py-2 font-mono text-xs text-indigo-900 font-bold focus:outline-none focus:border-indigo-600"
+                  />
+                  <span className="text-[9px] text-indigo-700 block">Scanning valid badge processes refund instantly.</span>
+                </div>
+
+                <div className="bg-rose-50 border border-rose-200 p-3.5 rounded-2xl space-y-1.5">
+                  <label className="block text-rose-900 font-black uppercase tracking-wide text-[10px]">🔑 Manager Security PIN</label>
+                  <input
+                    type="password"
+                    maxLength={6}
+                    placeholder="Enter 4-6 digit PIN..."
+                    value={refundManagerPin}
+                    onChange={e => setRefundManagerPin(e.target.value)}
+                    className="w-full bg-white border border-rose-300 rounded-xl px-3 py-2 font-mono text-gray-900 font-bold tracking-widest text-sm focus:outline-none focus:border-rose-500"
+                  />
+                  <span className="text-[9px] text-rose-700 block">Manual PIN requires button authorization.</span>
+                </div>
+              </div>
+
+            </div>
+
+            <div className="p-4 bg-white border-t flex justify-end space-x-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowRefundAuthModal(false)}
+                className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={processingRefund}
+                className="px-6 py-2.5 bg-rose-700 hover:bg-rose-600 disabled:opacity-50 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-sm cursor-pointer"
+              >
+                {processingRefund ? 'Processing Refund...' : 'Authorize & Process Refund ↩️'}
+              </button>
+            </div>
+
+          </form>
+        </div>
+      )}
+
+      {/* MODAL: CUSTOMIZE ITEM */}
+      {showCustomizeModal && customizingItem && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+            
+            <div className="p-6 pb-3 border-b flex justify-between items-start bg-white shrink-0">
+              <div>
+                <span className="text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">
+                  Customize Item
+                </span>
+                <h2 className="text-base font-black uppercase text-gray-900 mt-1">{customizingItem.name}</h2>
+                <p className="text-xs text-emerald-700 font-mono font-bold">Price: {currencySymbol} {customizingItem.price}</p>
+              </div>
+              <button onClick={() => setShowCustomizeModal(false)} className="text-gray-400 hover:text-black font-bold text-sm cursor-pointer">✕</button>
+            </div>
+
+            <div className="p-6 py-4 overflow-y-auto space-y-5 flex-1">
+              {customizingItem.variants && customizingItem.variants.length > 0 && (
+                <div className="space-y-2 bg-purple-50/50 p-3 rounded-xl border border-purple-200">
+                  <span className="text-[11px] font-extrabold uppercase text-purple-900 block">Select Variant / Option:</span>
+                  <div className="space-y-1.5">
+                    {customizingItem.variants.map((v: any, idx: number) => {
+                      const isSelected = selectedVariant?.name === v.name
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setSelectedVariant(v)}
+                          className={`w-full p-2.5 rounded-lg border text-left flex justify-between items-center transition text-xs font-bold cursor-pointer ${
+                            isSelected ? 'bg-purple-600 text-white border-purple-600 shadow-2xs' : 'bg-white border-gray-200 text-gray-800 hover:bg-gray-50'
+                          }`}
+                        >
+                          <span>{v.name}</span>
+                          <span className="font-mono">+{currencySymbol} {v.price}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {profile.modules.hasKDS && customizingItem.has_modifiers && addOnsProducts.length > 0 && (
+                <div className="space-y-2.5 bg-blue-50/50 p-3 rounded-xl border border-blue-200">
+                  <span className="text-[11px] font-extrabold uppercase text-blue-900 block">Add-ons & Modifiers:</span>
+                  <div className="space-y-2">
+                    {addOnsProducts.map((addon: any) => {
+                      const isChecked = selectedAddons.some(a => a.id === addon.id)
+                      const addonHasVariants = addon.variants && addon.variants.length > 0
+                      const currentAddonVariant = addonVariants[addon.id] || (addonHasVariants ? addon.variants[0] : null)
+
+                      return (
+                        <div key={addon.id} className="bg-white border border-gray-200 rounded-xl p-2.5 space-y-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (isChecked) {
+                                setSelectedAddons(selectedAddons.filter(a => a.id !== addon.id))
+                                const newVarState = { ...addonVariants }
+                                delete newVarState[addon.id]
+                                setAddonVariants(newVarState)
+                              } else {
+                                setSelectedAddons([...selectedAddons, addon])
+                                if (addonHasVariants) {
+                                  setAddonVariants({ ...addonVariants, [addon.id]: addon.variants[0] })
+                                }
+                              }
+                            }}
+                            className={`w-full text-left flex justify-between items-center transition text-xs font-bold cursor-pointer ${
+                              isChecked ? 'text-blue-700' : 'text-gray-800'
+                            }`}
+                          >
+                            <span className="flex items-center space-x-2">
+                              <span>{isChecked ? '☑' : '☐'}</span>
+                              <span>{addon.name}</span>
+                            </span>
+                            <span className="font-mono">+{currencySymbol} {addon.price}</span>
+                          </button>
+
+                          {isChecked && addonHasVariants && (
+                            <div className="pt-2 border-t border-gray-100 space-y-1.5 pl-6">
+                              <span className="text-[9px] font-bold uppercase text-gray-500 block">Select {addon.name} Option:</span>
+                              <div className="space-y-1">
+                                {addon.variants.map((av: any, avIdx: number) => {
+                                  const isVarSelected = currentAddonVariant?.name === av.name
+                                  return (
+                                    <label
+                                      key={avIdx}
+                                      onClick={() => setAddonVariants({ ...addonVariants, [addon.id]: av })}
+                                      className={`flex items-center justify-between py-1.5 px-2.5 rounded-lg cursor-pointer border text-xs font-bold transition ${
+                                        isVarSelected ? 'bg-blue-50 border-blue-600 text-blue-900' : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                                      }`}
+                                    >
+                                      <div className="flex items-center space-x-2">
+                                        <input
+                                          type="radio"
+                                          name={`addon-var-${addon.id}`}
+                                          checked={isVarSelected}
+                                          onChange={() => setAddonVariants({ ...addonVariants, [addon.id]: av })}
+                                          className="accent-blue-600 cursor-pointer"
+                                        />
+                                        <span>{av.name}</span>
+                                      </div>
+                                      <span className="font-mono">+{currencySymbol} {av.price}</span>
+                                    </label>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 pt-3 border-t bg-white flex justify-between items-center shrink-0">
+              <div>
+                <span className="text-[10px] text-gray-500 font-bold uppercase block">Total Amount</span>
+                <span className="text-base font-mono font-black text-emerald-700">
+                  {currencySymbol} {
+                    customizingItem.price + 
+                    (selectedVariant?.price || 0) + 
+                    selectedAddons.reduce((acc, a) => {
+                      const vPrice = addonVariants[a.id]?.price || 0
+                      return acc + (a.price || 0) + vPrice
+                    }, 0)
+                  }
+                </span>
+              </div>
+              <div className="flex space-x-2">
+                <button 
+                  type="button" 
+                  onClick={() => setShowCustomizeModal(false)} 
+                  className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-bold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button" 
+                  onClick={handleAddCustomizedToCart} 
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm cursor-pointer"
+                >
+                  Add to Cart
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: SETTLEMENT, TENDER MODES, SPLIT PAYMENT */}
+      {showSettlementModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-lg space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h3 className="font-black text-sm uppercase text-gray-900">Settle & Finalize Payment</h3>
+              <button onClick={() => setShowSettlementModal(false)} className="text-gray-400 hover:text-black font-bold cursor-pointer">✕</button>
+            </div>
+
+            <div className="flex justify-between items-center bg-gray-50 p-3 rounded-xl border">
+              <span className="text-xs font-bold text-gray-600 uppercase">Grand Total Payable</span>
+              <span className="text-lg font-mono font-black text-emerald-700">{currencySymbol} {grandTotal}</span>
+            </div>
+
+            {/* SPECIAL INSTRUCTION NOTE FIELD FOR DELIVERY ORDERS */}
+            {serviceType === 'DELIVERY' && (
+              <div className="space-y-1">
+                <label className="block text-[10px] font-bold text-gray-500 uppercase">Special Instruction Note (Delivery)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Leave food at front gate / Ring bell twice..."
+                  value={deliveryNote}
+                  onChange={e => setDeliveryNote(e.target.value)}
+                  className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium text-gray-900 focus:outline-none focus:border-emerald-600"
+                />
+              </div>
+            )}
+
+            <div className="flex space-x-2">
+              <button
+                type="button"
+                onClick={() => setIsSplitPayment(false)}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold cursor-pointer ${!isSplitPayment ? 'bg-slate-900 text-white' : 'bg-gray-100 text-gray-700'}`}
+              >
+                Single Tender / Payment Mode
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsSplitPayment(true)}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold cursor-pointer ${isSplitPayment ? 'bg-slate-900 text-white' : 'bg-gray-100 text-gray-700'}`}
+              >
+                Split Payment Option
+              </button>
+            </div>
+
+            {!isSplitPayment ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-2">
+                  {availableTenderMethods.map(method => (
+                    <button
+                      key={method}
+                      type="button"
+                      onClick={() => {
+                        setSingleMethod(method)
+                        if (method === 'CASH') setSingleReceivedCash(grandTotal)
+                      }}
+                      className={`py-2.5 rounded-xl border font-bold text-xs cursor-pointer ${
+                        singleMethod === method ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white border-gray-200 text-gray-800'
+                      }`}
+                    >
+                      {method}
+                    </button>
+                  ))}
+                </div>
+
+                {singleMethod === 'CASH' && (
+                  <div className="space-y-2 bg-emerald-50/50 p-3 rounded-xl border border-emerald-200">
+                    <span className="text-[11px] font-bold uppercase text-emerald-900 block">Received Cash Denomination / Quick Select:</span>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {[500, 1000, 5000].map(amt => (
+                        <button
+                          key={amt}
+                          type="button"
+                          onClick={() => { setSingleReceivedCash(amt); setCustomReceivedCash('') }}
+                          className={`py-2 rounded-lg font-mono font-bold text-xs border cursor-pointer ${
+                            singleReceivedCash === amt ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white text-gray-800 border-gray-300'
+                          }`}
+                        >
+                          {currencySymbol} {amt}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => { setSingleReceivedCash(-1) }}
+                        className={`py-2 rounded-lg font-bold text-xs border cursor-pointer ${
+                          singleReceivedCash === -1 ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white text-gray-800 border-gray-300'
+                        }`}
+                      >
+                        Custom
+                      </button>
+                    </div>
+
+                    {(singleReceivedCash === -1) && (
+                      <div className="pt-1">
+                        <input
+                          type="number"
+                          placeholder="Enter Custom Received Cash..."
+                          value={customReceivedCash}
+                          onChange={e => setCustomReceivedCash(e.target.value)}
+                          className="w-full bg-white border border-emerald-400 rounded-lg px-3 py-1.5 font-mono text-xs text-gray-900"
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-center pt-2 border-t border-emerald-200 text-xs font-bold text-emerald-950">
+                      <span>Change to be Returned:</span>
+                      <span className="font-mono text-sm text-emerald-700">{currencySymbol} {Math.max(0, changeReturned)}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2.5 max-h-48 overflow-y-auto">
+                {tenderSplits.map((split, idx) => (
+                  <div key={idx} className="grid grid-cols-3 gap-2 items-center">
+                    <select
+                      value={split.method}
+                      onChange={e => {
+                        const updated = [...tenderSplits]
+                        updated[idx].method = e.target.value as any
+                        setTenderSplits(updated)
+                      }}
+                      className="bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs font-bold"
+                    >
+                      {availableTenderMethods.map(m => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      value={split.amount || ''}
+                      onChange={e => {
+                        const updated = [...tenderSplits]
+                        updated[idx].amount = Number(e.target.value) || 0
+                        setTenderSplits(updated)
+                      }}
+                      className="col-span-2 bg-white border border-gray-200 rounded-lg p-2 font-mono text-xs"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex space-x-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowSettlementModal(false)}
+                className="w-1/3 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={finalizePayment}
+                className="w-2/3 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-xs uppercase cursor-pointer"
+              >
+                Finalize & Print Thermal Receipt
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* HIDDEN THERMAL RECEIPT PRINT CONTAINERS WITH PROPER VISIBILITY STYLING */}
-      <div className="hidden print:block fixed inset-0 z-50 bg-white">
-        <div ref={printReceiptRef} className="w-full">
-          {printOrderData && <ThermalReceipt data={printOrderData} />}
-        </div>
-        <div ref={printKotRef} className="w-full">
-          {printKotData && <ThermalReceipt data={printKotData} isKot={true} />}
-        </div>
-        <div ref={printSrrRef} className="w-full">
-          {printSrrData && <ThermalReceipt data={printSrrData} isSrr={true} />}
-        </div>
-      </div>
+      {/* HIDDEN THERMAL PRINT DOM STAGING */}
+      <div className="hidden print:block print:w-[80mm] print:m-0 print:p-0">
+        <style jsx global>{`
+          @media print {
+            @page {
+              size: 80mm auto !important;
+              margin: 0 !important;
+            }
+            html, body {
+              width: 80mm !important;
+              max-width: 80mm !important;
+              height: auto !important;
+              min-height: 0 !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              overflow: visible !important;
+              background: #fff !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            body * {
+              visibility: hidden;
+            }
+            .print-receipt-wrapper, .print-receipt-wrapper * {
+              visibility: visible;
+            }
+            .print-receipt-wrapper {
+              position: absolute !important;
+              left: 0 !important;
+              top: 0 !important;
+              width: 80mm !important;
+              max-width: 80mm !important;
+              height: auto !important;
+              max-height: none !important;
+              overflow: visible !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              page-break-before: avoid !important;
+              page-break-after: avoid !important;
+              page-break-inside: auto !important;
+              break-before: avoid !important;
+              break-after: avoid !important;
+              break-inside: auto !important;
+            }
+          }
+        `}</style>
 
-      {/* PRODUCT CUSTOMIZATION MODAL (EXACT 100% TEMPLATE MATCH UI) */}
-      {showCustomizeModal && customizingItem && (() => {
-        const modalVariantPrice = selectedVariant?.price || 0
-        const modalAddonsTotal = selectedAddons.reduce((acc, a) => {
-          const chosenVar = addonVariants[a.id]
-          const varPrice = chosenVar ? (chosenVar.price || 0) : 0
-          return acc + (a.price || 0) + varPrice
-        }, 0)
-        const modalCalculatedUnitPrice = (customizingItem.price || 0) + modalVariantPrice + modalAddonsTotal
-
-        // Strict Check: Display modifiers/add-ons section ONLY if the item's own modifier flag is explicitly true
-        const itemHasModifiersEnabled = Boolean(customizingItem.has_modifiers) || (Array.isArray(customizingItem.modifiers) && customizingItem.modifiers.length > 0)
-
-        return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs font-sans">
-            <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl border border-gray-200 text-gray-800">
+        {printKotData && (
+          <div ref={printKotRef} className="print-receipt-wrapper bg-white text-black font-sans text-xs p-2 leading-tight select-none w-[80mm]">
+            
+            <div className="text-center mb-2">
+              <img 
+                src={`/tenants/${slug}/logo-thermal.png`} 
+                alt="Thermal Logo" 
+                className="w-24 h-24 mx-auto object-contain mb-1 grayscale contrast-200" 
+              />
+              <h1 className="font-black text-xl tracking-wider uppercase text-black">{business?.name || 'KRUNCHY BITE'}</h1>
+              <div className="bg-black text-white text-[9px] font-black uppercase px-3 py-0.5 rounded tracking-widest inline-block my-1">
+                TASTY - JUICY - SPICY
+              </div>
               
-              {/* HEADER WITH CLOSE BUTTON */}
-              <div className="flex justify-between items-start pb-2 border-b border-gray-100">
-                <div>
-                  <h3 className="font-black text-sm uppercase text-gray-900">CUSTOMIZE {customizingItem.name}</h3>
-                  <p className="text-[11px] text-gray-500">Select your preferred options and add-ons</p>
-                </div>
-                <button 
-                  type="button" 
-                  onClick={() => setShowCustomizeModal(false)}
-                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center font-bold transition cursor-pointer shadow-inner"
-                >
-                  ✕
-                </button>
-              </div>
+              <div className="font-black text-lg tracking-widest uppercase mt-2">- KOT -</div>
+              <div className="font-bold text-xs tracking-wide">( KITCHEN ORDER TICKET )</div>
+            </div>
 
-              {/* PRODUCT IMAGE & LIVE RED PRICE CARD */}
-              <div className="flex items-center justify-between bg-gray-50/60 p-3 rounded-2xl border border-gray-100">
-                <div className="w-20 h-20 bg-white rounded-xl border border-gray-100 flex items-center justify-center overflow-hidden p-1 shrink-0 shadow-xs">
-                  {customizingItem.image_url ? (
-                    <img src={customizingItem.image_url} alt={customizingItem.name} className="w-full h-full object-contain" />
-                  ) : (
-                    <span className="text-2xl">🍔</span>
-                  )}
-                </div>
-                <div className="text-right">
-                  <span className="font-mono font-black text-red-600 text-2xl tracking-tight">Rs. {modalCalculatedUnitPrice}</span>
-                </div>
+            <div className="border-t-2 border-b-2 border-black py-2 space-y-1 mb-2 text-xs font-semibold">
+              <div className="flex justify-between">
+                <span>Date/Time:</span>
+                <span className="font-mono">{printKotData.time}</span>
               </div>
+              <div className="flex justify-between">
+                <span>Order Number:</span>
+                <span className="font-mono font-bold">{printKotData.orderNumber}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>KOT Number:</span>
+                <span className="font-mono font-bold">{printKotData.kotNo}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Order Type:</span>
+                <span className="font-bold uppercase">{printKotData.serviceType}</span>
+              </div>
+              {printKotData.tableName && (
+                <div className="flex justify-between">
+                  <span>Table Number:</span>
+                  <span className="font-mono font-bold">{printKotData.tableName}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span>Merchant Name:</span>
+                <span>{printKotData.staff}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Waiter Name:</span>
+                <span className="font-bold">{printKotData.waiter}</span>
+              </div>
+              {printKotData.deliveryNote && (
+                <div className="pt-1 border-t border-dashed border-black mt-1">
+                  <span className="font-bold uppercase">Instruction:</span> {printKotData.deliveryNote}
+                </div>
+              )}
+            </div>
 
-              <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
-                {/* VARIANTS SECTION (IF APPLICABLE) */}
-                {customizingItem.variants && customizingItem.variants.length > 0 && (
-                  <div className="space-y-2">
-                    <label className="block text-[11px] font-extrabold uppercase text-purple-900 tracking-wider">CHOOSE SIZE / VARIANT:</label>
-                    <div className="space-y-1.5">
-                      {customizingItem.variants.map((v: any, vIdx: number) => {
-                        const isSelected = selectedVariant?.name === v.name
-                        return (
-                          <div
-                            key={vIdx}
-                            onClick={() => setSelectedVariant(v)}
-                            className={`flex items-center justify-between p-3 rounded-2xl border text-xs transition cursor-pointer shadow-2xs ${
-                              isSelected 
-                                ? 'bg-emerald-50/60 border-emerald-600 font-bold text-emerald-950 ring-1 ring-emerald-600' 
-                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                            }`}
-                          >
-                            <div className="flex items-center space-x-2.5">
-                              <span className={`w-5 h-5 rounded-full border flex items-center justify-center ${isSelected ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-gray-300 bg-white'}`}>
-                                {isSelected && <span className="w-2 h-2 rounded-full bg-white"></span>}
-                              </span>
-                              <span className="text-xs font-bold">{v.name}</span>
-                            </div>
-                            <span className="font-mono text-emerald-700 font-extrabold">+Rs. {v.price}</span>
-                          </div>
-                        )
-                      })}
+            <div className="mb-3 text-xs">
+              <div className="font-black uppercase tracking-wider text-sm mb-1 border-b border-black pb-0.5">ORDER DETAIL</div>
+              <div className="font-black uppercase text-xs mb-1.5">ITEM DESCRIPTION</div>
+              <div className="border-b border-dotted border-black mb-2"></div>
+
+              <div className="space-y-2.5">
+                {printKotData.items.map((i: any, k: number) => (
+                  <div key={k} className="space-y-0.5">
+                    <div className="font-black text-sm text-black">
+                      {i.qty}x {i.name} {i.selectedVariant ? `[${i.selectedVariant.name}]` : ''}
+                    </div>
+                    {i.dealComponents && i.dealComponents.length > 0 && (
+                      <div className="pl-4 text-xs text-gray-900 space-y-0.5 font-medium">
+                        {i.dealComponents.map((dc: any, dcK: number) => (
+                          <div key={dcK}>&nbsp;&nbsp;&nbsp;&nbsp;{dc.qty} {dc.name}</div>
+                        ))}
+                      </div>
+                    )}
+                    {i.selectedAddons && i.selectedAddons.length > 0 && (
+                      <div className="pl-4 text-[11px] text-gray-800">
+                        {i.selectedAddons.map((ao: any, aoK: number) => (
+                          <div key={aoK}>&nbsp;&nbsp;&nbsp;&nbsp;+ {ao.name}</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="text-center font-black text-xs pt-2 border-t-2 border-black tracking-widest uppercase mt-4">
+              --- END OF KOT ---
+            </div>
+
+          </div>
+        )}
+
+        {printSrrData && (
+          <div ref={printSrrRef} className="print-receipt-wrapper bg-white text-black font-sans text-xs p-3 leading-tight select-none w-[80mm]">
+            <div className="text-center mb-3">
+              <h1 className="font-black text-xl tracking-wider uppercase">{printSrrData.storeName}</h1>
+              <p className="text-[10px]">{printSrrData.address}</p>
+              <p className="text-[10px] font-mono">Phone: {printSrrData.phone}</p>
+              <div className="bg-black text-white text-[10px] font-black uppercase px-3 py-1 rounded tracking-widest inline-block my-2">
+                SALES RETURN RECEIPT (SRR)
+              </div>
+            </div>
+
+            <div className="border-t border-b border-black py-2 space-y-1 mb-3 text-[11px] font-semibold font-mono">
+              <div className="flex justify-between">
+                <span>SRR No:</span>
+                <span className="font-bold">{printSrrData.srrNo}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Original Order:</span>
+                <span>{printSrrData.originalOrderNo}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Serial Number:</span>
+                <span>{printSrrData.serialNumber}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Date & Time:</span>
+                <span>{printSrrData.date}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Order Type:</span>
+                <span className="uppercase">{printSrrData.serviceType}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Payment Mode:</span>
+                <span className="uppercase">{printSrrData.paymentMode}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Authorized By:</span>
+                <span className="font-bold">{printSrrData.authorizedManager}</span>
+              </div>
+              <div className="pt-1 border-t border-dashed border-black">
+                <span className="font-bold uppercase">Return Reason:</span> {printSrrData.refundReason}
+              </div>
+            </div>
+
+            <div className="mb-3">
+              <div className="font-black uppercase text-[11px] mb-1 border-b border-black pb-0.5">RETURNED ITEMS BREAKDOWN</div>
+              <div className="space-y-2 pt-1">
+                {printSrrData.returnedItems.map((ri: any, riIdx: number) => (
+                  <div key={riIdx} className="flex justify-between items-start text-xs border-b border-dotted border-gray-300 pb-1">
+                    <div>
+                      <span className="font-bold">{ri.qty}x {ri.name} {ri.selectedVariant ? `[${ri.selectedVariant.name}]` : ''}</span>
+                      <div className="text-[10px] font-mono text-gray-600">Unit: {currencySymbol} {ri.finalUnitPrice || ri.price}</div>
+                    </div>
+                    <div className="font-mono font-bold">
+                      {currencySymbol} {(ri.finalUnitPrice || ri.price || 0) * ri.qty}
                     </div>
                   </div>
-                )}
-
-                {/* AVAILABLE ADD-ONS & MODIFIERS HEADING */}
-                {itemHasModifiersEnabled && addOnsProducts.length > 0 && (
-                  <div className="space-y-2 pt-2 border-t border-gray-100">
-                    <h4 className="font-black text-xs uppercase text-slate-900 tracking-wide">AVAILABLE ADD-ONS & MODIFIERS:</h4>
-                    <div className="space-y-2">
-                      {addOnsProducts.map((addon: any) => {
-                        const isSelected = selectedAddons.some(a => a.id === addon.id)
-                        let addonParsedVars = []
-                        try {
-                          addonParsedVars = typeof addon.variants === 'string' ? JSON.parse(addon.variants) : (Array.isArray(addon.variants) ? addon.variants : [])
-                        } catch {
-                          addonParsedVars = []
-                        }
-                        const chosenAddonVar = addonVariants[addon.id]
-
-                        return (
-                          <div 
-                            key={addon.id} 
-                            onClick={() => {
-                              if (isSelected) {
-                                setSelectedAddons(selectedAddons.filter(a => a.id !== addon.id))
-                                const copy = { ...addonVariants }
-                                delete copy[addon.id]
-                                setAddonVariants(copy)
-                              } else {
-                                setSelectedAddons([...selectedAddons, addon])
-                                if (addonParsedVars.length > 0) {
-                                  setAddonVariants({ ...addonVariants, [addon.id]: addonParsedVars[0] })
-                                }
-                              }
-                            }}
-                            className={`p-3.5 rounded-2xl border transition flex flex-col justify-between cursor-pointer shadow-2xs ${
-                              isSelected ? 'bg-emerald-50/30 border-emerald-600' : 'bg-white border-gray-200 hover:border-gray-300'
-                            }`}
-                          >
-                            <div className="flex justify-between items-center w-full">
-                              <div className="flex items-center space-x-3">
-                                <div className={`w-5 h-5 rounded-md border flex items-center justify-center font-bold ${isSelected ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-gray-300 bg-white text-transparent'}`}>
-                                  ✓
-                                </div>
-                                <span className="font-bold text-gray-900 text-xs">{addon.name}</span>
-                              </div>
-                              <span className="font-mono text-emerald-700 font-extrabold text-xs">+Rs. {addon.price}</span>
-                            </div>
-
-                            {/* VERTICAL RADIO BUTTON LIST FOR ADD-ON VARIANTS */}
-                            {isSelected && addonParsedVars.length > 0 && (
-                              <div className="pl-8 pt-2.5 space-y-1.5 border-t border-emerald-100 mt-2.5" onClick={(e) => e.stopPropagation()}>
-                                <span className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Select Option:</span>
-                                {addonParsedVars.map((av: any, avIdx: number) => {
-                                  const isVarSelected = chosenAddonVar?.name === av.name
-                                  return (
-                                    <div
-                                      key={avIdx}
-                                      onClick={() => setAddonVariants({ ...addonVariants, [addon.id]: av })}
-                                      className={`flex items-center justify-between p-2 rounded-xl border text-xs transition cursor-pointer ${
-                                        isVarSelected ? 'bg-emerald-100/60 border-emerald-500 font-bold text-emerald-950' : 'bg-gray-50 border-gray-200 text-gray-700'
-                                      }`}
-                                    >
-                                      <div className="flex items-center space-x-2.5">
-                                        <span className={`w-4 h-4 rounded-full border flex items-center justify-center ${isVarSelected ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-gray-300 bg-white'}`}>
-                                          {isVarSelected && <span className="w-1.5 h-1.5 rounded-full bg-white"></span>}
-                                        </span>
-                                        <span>{av.name}</span>
-                                      </div>
-                                      <span className="font-mono text-emerald-700 font-bold">+Rs. {av.price}</span>
-                                    </div>
-                                  )
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
+                ))}
               </div>
+            </div>
 
-              {/* FOOTER BUTTON (EXACT YELLOW/AMBER THEME FROM TEMPLATE) */}
-              <div className="pt-2">
-                <button 
-                  type="button" 
-                  onClick={handleAddCustomizedToCart}
-                  className="w-full py-3.5 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black rounded-2xl text-sm transition uppercase tracking-wide cursor-pointer shadow-md flex items-center justify-center space-x-2"
-                >
-                  <span>Add to CART</span>
-                </button>
+            <div className="border-t-2 border-black pt-2 mb-4 space-y-1 font-mono">
+              <div className="flex justify-between text-sm font-black text-black">
+                <span>TOTAL REFUND DISBURSED:</span>
+                <span>{currencySymbol} {printSrrData.totalRefundAmount}</span>
               </div>
+            </div>
 
+            <div className="text-center font-bold text-[10px] pt-3 border-t border-dashed border-black uppercase tracking-wider">
+              --- OFFICIAL RETURN & REFUND RECORD ---
             </div>
           </div>
-        )
-      })()}
+        )}
+
+        {printOrderData && (
+          <div ref={printReceiptRef} className="print-receipt-wrapper">
+            <ThermalReceipt
+              business={{
+                name: business?.name || 'KRUNCHY BITE',
+                address: business?.address || 'Quaid Park, Shah Faisal Colony No.3, Karachi 75230 Pakistan',
+                phone: business?.phone || '0315 2147702',
+                email: business?.email || 'krunchybite.pk@gmail.com',
+                strn: business?.strn || '1000123456',
+                currency_symbol: currencySymbol,
+                slug: slug
+              }}
+              order={{
+                id: printOrderData.orderNo || 'POS-1001',
+                serial_number: printOrderData.serial_number || `SN-${Math.floor(100000 + Math.random() * 900000)}`,
+                created_at: new Date().toISOString(),
+                total_amount: printOrderData.grandTotal || 0,
+                subtotal: printOrderData.subtotal || 0,
+                tax_amount: printOrderData.calculatedTax || 0,
+                delivery_charges: printOrderData.deliveryCharges || 0,
+                discount: printOrderData.discountAmount || 0,
+                payment_breakdown: [{ method: printOrderData.primaryPaymentMethod || 'CASH', amount: printOrderData.grandTotal || 0 }],
+                order_type: printOrderData.serviceType?.toLowerCase() || 'dine-in',
+                table: (printOrderData.serviceType === 'DINE-IN' && selectedTable) ? (selectedTable.name || selectedTable.table_number) : undefined,
+                waiter: printOrderData.waiter || ((serviceType === 'DINE-IN' && selectedWaiter) ? (selectedWaiter?.full_name || selectedWaiter?.name || null) : undefined),
+                rider: undefined,
+                cashier_name: authenticatedStaff?.full_name || 'Staff',
+                customer_note: printOrderData.deliveryNote ? printOrderData.deliveryNote : undefined,
+                cash_received: printOrderData.cash_received,
+                change_returned: printOrderData.change_returned
+              }}
+              cart={(printOrderData.items || []).map((i: any) => ({
+                name: i.name,
+                finalUnitPrice: i.finalUnitPrice || i.price || 0,
+                quantity: i.qty || i.quantity || 1,
+                selectedModifiers: [
+                  ...(i.selectedVariant ? [{ groupName: 'Variant', optionName: i.selectedVariant.name, price: i.selectedVariant.price }] : []),
+                  ...(i.dealComponents || []).map((dc: any) => ({ groupName: 'Deal Item', optionName: `${dc.qty}x ${dc.name}`, price: 0 })),
+                  ...(i.selectedAddons || []).map((a: any) => ({ groupName: 'Addon', optionName: a.name, price: a.price }))
+                ]
+              }))}
+              customer={{
+                name: printOrderData.customerName || 'Walk-In Customer',
+                phone: printOrderData.customerPhone || '',
+                address: printOrderData.deliveryAddress || ''
+              }}
+            />
+          </div>
+        )}
+      </div>
 
     </div>
   )
