@@ -882,7 +882,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     }
 
     const hasVariants = item.variants && item.variants.length > 0
-    const hasModifiers = effectiveModules.hasKDS && item.has_modifiers && addOnsProducts.length > 0
+    const hasModifiers = item.has_modifiers && addOnsProducts.length > 0
 
     if (hasVariants || hasModifiers) {
       setCustomizingItem(item)
