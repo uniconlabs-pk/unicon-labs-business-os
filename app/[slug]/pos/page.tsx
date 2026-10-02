@@ -1683,8 +1683,19 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       {/* HEADER BAR */}
       <header className="bg-slate-900 text-white border-b border-slate-800 px-6 py-4 flex justify-between items-center shrink-0 shadow-sm">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center font-black text-lg shadow-inner">
-            {profile.modules.hasKDS ? '🍔' : '⚡'}
+          <div className="w-16 h-16 bg-slate-800 border border-slate-700 text-white rounded-xl flex items-center justify-center font-black text-lg shadow-inner overflow-hidden">
+            <img 
+              src={`/tenants/${slug}/logo.jpg`} 
+              alt={business?.name || 'Logo'} 
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                // Fallback to emoji if tenant logo asset is missing
+                e.currentTarget.style.display = 'none';
+                if (e.currentTarget.parentElement) {
+                  e.currentTarget.parentElement.innerText = profile.modules.hasKDS ? '🍔' : '⚡';
+                }
+              }}
+            />
           </div>
           <div>
             <h1 className="text-sm font-black tracking-wide uppercase text-white flex items-center space-x-1.5">
@@ -1918,55 +1929,72 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       ) : (
         <div className="flex-1 flex overflow-hidden">
         
-        {/* COLUMN 1: DINE-IN TABLES OR FAVORITE/FAST-MOVING ITEMS */}
-        {profile.modules.hasTables && serviceType === 'DINE-IN' ? (
-          <aside className="w-80 bg-white border-r border-gray-200 flex flex-col shrink-0 shadow-2xs">
-            <div className="p-3 border-b border-gray-200 space-y-2">
-              <div className="grid grid-cols-3 gap-1 bg-gray-100 p-1 rounded-xl text-[11px] font-bold">
-                {(['DINE-IN', 'TAKEAWAY', 'DELIVERY'] as const).map(type => (
-                  <button
-                    key={type}
-                    onClick={() => {
-                      setServiceType(type)
-                      if (type !== 'DINE-IN') {
-                        setSelectedTable(null)
-                      }
-                    }}
-                    className={`py-1.5 rounded-lg transition uppercase cursor-pointer ${serviceType === type ? 'bg-slate-900 text-white shadow-2xs' : 'text-gray-600 hover:text-black'}`}
-                  >
-                    {type}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex justify-between items-center text-[11px] pt-1">
-                <span className="font-extrabold uppercase text-gray-600">🪑 DINE-IN TABLES</span>
-                <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-[10px]">
-                  {freeTablesCount} Available
-                </span>
-              </div>
-
-              <div className="flex items-center space-x-1 overflow-x-auto pb-1">
-                <button 
-                  onClick={() => setActiveZone('ALL')}
-                  className={`px-3 py-1.5 rounded-lg transition text-[10px] font-bold uppercase whitespace-nowrap cursor-pointer ${activeZone === 'ALL' ? 'bg-black text-white shadow-2xs' : 'bg-gray-100 text-gray-600 hover:text-black'}`}
+        {/* COLUMN 1: DINE-IN TABLES OR FAVORITE/FAST-MOVING ITEMS WITH UNICON BADGE FOOTER */}
+        <aside className="w-80 bg-white border-r border-gray-200 flex flex-col shrink-0 shadow-2xs">
+          <div className="p-3 border-b border-gray-200 space-y-2">
+            <div className="grid grid-cols-3 gap-1 bg-gray-100 p-1 rounded-xl text-[11px] font-bold">
+              {(['DINE-IN', 'TAKEAWAY', 'DELIVERY'] as const).map(type => (
+                <button
+                  key={type}
+                  onClick={() => {
+                    setServiceType(type)
+                    if (type !== 'DINE-IN') {
+                      setSelectedTable(null)
+                    }
+                  }}
+                  className={`py-1.5 rounded-lg transition uppercase cursor-pointer ${serviceType === type ? 'bg-slate-900 text-white shadow-2xs' : 'text-gray-600 hover:text-black'}`}
                 >
-                  ALL
+                  {type}
                 </button>
-                {zones.map(z => (
-                  <button 
-                    key={z}
-                    onClick={() => setActiveZone(z)}
-                    className={`px-3 py-1.5 rounded-lg transition truncate px-2 uppercase text-[10px] font-bold whitespace-nowrap cursor-pointer ${activeZone === z ? 'bg-black text-white shadow-2xs' : 'bg-gray-100 text-gray-600 hover:text-black'}`}
-                  >
-                    📍 {z}
-                  </button>
-                ))}
-              </div>
+              ))}
             </div>
 
-            <div className="p-3 flex-1 overflow-y-auto space-y-4">
-              {posGroupedZones.map(group => (
+            {profile.modules.hasTables && serviceType === 'DINE-IN' ? (
+              <>
+                <div className="flex justify-between items-center text-[11px] pt-1">
+                  <span className="font-extrabold uppercase text-gray-600">🪑 DINE-IN TABLES</span>
+                  <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-[10px]">
+                    {freeTablesCount} Available
+                  </span>
+                </div>
+
+                <div className="flex items-center space-x-1 overflow-x-auto pb-1">
+                  <button 
+                    onClick={() => setActiveZone('ALL')}
+                    className={`px-3 py-1.5 rounded-lg transition text-[10px] font-bold uppercase whitespace-nowrap cursor-pointer ${activeZone === 'ALL' ? 'bg-black text-white shadow-2xs' : 'bg-gray-100 text-gray-600 hover:text-black'}`}
+                  >
+                    ALL
+                  </button>
+                  {zones.map(z => (
+                    <button 
+                      key={z}
+                      onClick={() => setActiveZone(z)}
+                      className={`px-3 py-1.5 rounded-lg transition truncate px-2 uppercase text-[10px] font-bold whitespace-nowrap cursor-pointer ${activeZone === z ? 'bg-black text-white shadow-2xs' : 'bg-gray-100 text-gray-600 hover:text-black'}`}
+                    >
+                      📍 {z}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="flex justify-between items-center pt-1 bg-gray-50 px-2 py-1.5 rounded-lg border border-gray-100">
+                <div>
+                  <span className="font-extrabold uppercase text-gray-800 text-[11px] block">★ FAVORITE / FAST MOVING</span>
+                  <span className="text-[9px] text-gray-400">Drag & drop to rearrange</span>
+                </div>
+                <button
+                  onClick={() => setIsFavoriteManagerOpen(!isFavoriteManagerOpen)}
+                  className="px-2.5 py-1 bg-slate-900 text-white rounded-lg text-[10px] font-bold cursor-pointer"
+                >
+                  {isFavoriteManagerOpen ? 'Done' : 'Manage'}
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="p-3 flex-1 overflow-y-auto space-y-4">
+            {profile.modules.hasTables && serviceType === 'DINE-IN' ? (
+              posGroupedZones.map(group => (
                 <div key={group.zoneName} className="space-y-2">
                   {activeZone !== 'ALL' && (
                     <div className="flex justify-between items-center bg-gray-50 border-y border-gray-200 px-2.5 py-1.5 sticky top-0 z-10">
@@ -2045,108 +2073,83 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                     })}
                   </div>
                 </div>
-              ))}
-            </div>
-          </aside>
-        ) : (serviceType === 'TAKEAWAY' || serviceType === 'DELIVERY') ? (
-          <aside className="w-80 bg-white border-r border-gray-200 flex flex-col shrink-0 shadow-2xs">
-            <div className="p-3 border-b border-gray-200 space-y-2">
-              <div className="grid grid-cols-3 gap-1 bg-gray-100 p-1 rounded-xl text-[11px] font-bold">
-                {(['DINE-IN', 'TAKEAWAY', 'DELIVERY'] as const).map(type => (
-                  <button
-                    key={type}
-                    onClick={() => {
-                      setServiceType(type)
-                      if (type !== 'DINE-IN') {
-                        setSelectedTable(null)
-                      }
-                    }}
-                    className={`py-1.5 rounded-lg transition uppercase cursor-pointer ${serviceType === type ? 'bg-slate-900 text-white shadow-2xs' : 'text-gray-600 hover:text-black'}`}
-                  >
-                    {type}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="p-3 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-              <div>
-                <span className="font-extrabold uppercase text-gray-800 text-[11px] block">★ FAVORITE / FAST MOVING</span>
-                <span className="text-[9px] text-gray-400">Drag & drop to rearrange permanently</span>
-              </div>
-              <button
-                onClick={() => setIsFavoriteManagerOpen(!isFavoriteManagerOpen)}
-                className="px-2.5 py-1 bg-slate-900 text-white rounded-lg text-[10px] font-bold cursor-pointer"
-              >
-                {isFavoriteManagerOpen ? 'Done' : 'Manage'}
-              </button>
-            </div>
-
-            <div className="p-3 flex-1 overflow-y-auto space-y-2">
-              {!isFavoriteManagerOpen ? (
-                <div className="grid grid-cols-2 gap-2">
-                  {favorites.length > 0 ? favorites.map((fav, idx) => (
-                    <div
-                      key={fav.id}
-                      draggable
-                      onDragStart={() => handleDragStart(idx)}
-                      onDragOver={(e) => handleDragOver(e, idx)}
-                      onDragEnd={handleDragEnd}
-                      onClick={() => handleProductClick(fav)}
-                      className="bg-white border border-gray-200 rounded-xl p-2.5 flex flex-col justify-between h-36 cursor-grab active:cursor-grabbing hover:border-slate-900 transition shadow-2xs relative group"
-                    >
-                      <div className="w-full h-16 bg-gray-50 rounded-lg border border-gray-100 flex items-center justify-center overflow-hidden p-1 shrink-0">
-                        {fav.image_url ? (
-                          <img src={fav.image_url} alt={fav.name} className="w-full h-full object-contain drop-shadow-sm" />
-                        ) : (
-                          <span className="text-lg">📦</span>
-                        )}
+              ))
+            ) : (
+              <div className="space-y-2">
+                {!isFavoriteManagerOpen ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    {favorites.length > 0 ? favorites.map((fav, idx) => (
+                      <div
+                        key={fav.id}
+                        draggable
+                        onDragStart={() => handleDragStart(idx)}
+                        onDragOver={(e) => handleDragOver(e, idx)}
+                        onDragEnd={handleDragEnd}
+                        onClick={() => handleProductClick(fav)}
+                        className="bg-white border border-gray-200 rounded-xl p-2.5 flex flex-col justify-between h-36 cursor-grab active:cursor-grabbing hover:border-slate-900 transition shadow-2xs relative group"
+                      >
+                        <div className="w-full h-16 bg-gray-50 rounded-lg border border-gray-100 flex items-center justify-center overflow-hidden p-1 shrink-0">
+                          {fav.image_url ? (
+                            <img src={fav.image_url} alt={fav.name} className="w-full h-full object-contain drop-shadow-sm" />
+                          ) : (
+                            <span className="text-lg">📦</span>
+                          )}
+                        </div>
+                        <span className="font-bold text-gray-900 text-[11px] truncate mt-1">{fav.name}</span>
+                        <div className="flex justify-between items-center text-[10px]">
+                          <span className="font-mono text-emerald-700 font-extrabold">{currencySymbol} {fav.price}</span>
+                          <span className="text-gray-400">⋮⋮</span>
+                        </div>
                       </div>
-                      <span className="font-bold text-gray-900 text-[11px] truncate mt-1">{fav.name}</span>
-                      <div className="flex justify-between items-center text-[10px]">
-                        <span className="font-mono text-emerald-700 font-extrabold">{currencySymbol} {fav.price}</span>
-                        <span className="text-gray-400">⋮⋮</span>
+                    )) : (
+                      <div className="col-span-2 text-center py-10 text-gray-400 text-xs">
+                        No favorites set. Click "Manage" above to pin items.
                       </div>
-                    </div>
-                  )) : (
-                    <div className="col-span-2 text-center py-10 text-gray-400 text-xs">
-                      No favorites set. Click "Manage" above to pin items.
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="text-[10px] font-bold text-gray-500 uppercase px-1">Toggle products to add/remove favorites:</div>
-                  <input
-                    type="text"
-                    placeholder="Search product to pin..."
-                    value={favSearchQuery}
-                    onChange={(e) => setFavSearchQuery(e.target.value)}
-                    className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-900 focus:outline-none focus:border-slate-900 font-medium"
-                  />
-                  <div className="max-h-[50vh] overflow-y-auto space-y-1">
-                    {products
-                      .filter(p => p.name.toLowerCase().includes(favSearchQuery.toLowerCase()))
-                      .map(p => {
-                        const isFav = favorites.some(f => f.id === p.id)
-                        return (
-                          <div key={p.id} className="flex justify-between items-center p-2 rounded-lg bg-gray-50 border border-gray-200">
-                            <span className="text-xs font-semibold truncate pr-2">{p.name}</span>
-                            <button
-                              onClick={() => toggleProductFavorite(p)}
-                              className={`px-2.5 py-1 rounded-md text-[10px] font-bold cursor-pointer ${isFav ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-800'}`}
-                            >
-                              {isFav ? 'Remove' : '+ Pin'}
-                            </button>
-                          </div>
-                        )
-                      })}
+                    )}
                   </div>
-                </div>
-              )}
-            </div>
-          </aside>
-        ) : null}
+                ) : (
+                  <div className="space-y-2">
+                    <div className="text-[10px] font-bold text-gray-500 uppercase px-1">Toggle products to add/remove favorites:</div>
+                    <input
+                      type="text"
+                      placeholder="Search product to pin..."
+                      value={favSearchQuery}
+                      onChange={(e) => setFavSearchQuery(e.target.value)}
+                      className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-900 focus:outline-none focus:border-slate-900 font-medium"
+                    />
+                    <div className="max-h-[50vh] overflow-y-auto space-y-1">
+                      {products
+                        .filter(p => p.name.toLowerCase().includes(favSearchQuery.toLowerCase()))
+                        .map(p => {
+                          const isFav = favorites.some(f => f.id === p.id)
+                          return (
+                            <div key={p.id} className="flex justify-between items-center p-2 rounded-lg bg-gray-50 border border-gray-200">
+                              <span className="text-xs font-semibold truncate pr-2">{p.name}</span>
+                              <button
+                                onClick={() => toggleProductFavorite(p)}
+                                className={`px-2.5 py-1 rounded-md text-[10px] font-bold cursor-pointer ${isFav ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-800'}`}
+                              >
+                                {isFav ? 'Remove' : '+ Pin'}
+                              </button>
+                            </div>
+                          )
+                        })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* PERMANENT UNICON LABS BRANDING BADGE FOOTER */}
+          <div className="p-3 border-t border-gray-200 bg-white shrink-0 flex justify-center items-center">
+            <img 
+              src="/unicon_badge.jpg" 
+              alt="UNICON LABS Digital Ecosystem Software & Web Development" 
+              className="w-full h-auto object-contain rounded-lg shadow-2xs"
+            />
+          </div>
+        </aside>
 
         {/* COLUMN 2: PRODUCT CATALOG */}
         <section className="flex-1 flex flex-col bg-gray-100 overflow-hidden">
