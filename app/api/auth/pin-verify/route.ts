@@ -62,28 +62,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Staff member lacks KDS module permission' }, { status: 403 })
     }
 
-    // --- CONCERN NO. 1: Single Active Session Per User Check ---
-    const { data: existingUserSession, error: fetchSessionErr } = await supabase
-      .from('active_pos_sessions')
-      .select('*')
-      .eq('business_id', resolvedBusinessId)
-      .eq('staff_id', staff.id)
-      .maybeSingle()
+    // --- CONCERN NO. 1: Strict Single Active Session Per User Check ---
+  const { data: existingUserSession, error: fetchSessionErr } = await supabase
+    .from('active_pos_sessions')
+    .select('*')
+    .eq('business_id', resolvedBusinessId)
+    .eq('staff_id', staff.id)
+    .maybeSingle()
 
-    if (existingUserSession) {
-      const lastActive = new Date(existingUserSession.last_heartbeat_at).getTime()
-      const now = Date.now()
-      const isStale = (now - lastActive) > 3 * 60 * 1000 // 3 minutes TTL
-
-      if (!isStale) {
-        return NextResponse.json({
-          error: 'This user is already logged in or using the POS Terminal and right now you are not allowed to log in or first close the existing session and try again.'
-        }, { status: 409 })
-      } else {
-        // Clear stale session
-        await supabase.from('active_pos_sessions').delete().eq('id', existingUserSession.id)
-      }
-    }
+  if (existingUserSession) {
+    return NextResponse.json({
+      error: 'This user is already logged in or using the POS Terminal, right now you are not allowed to log-in. Please close the existing session and try again.'
+    }, { status: 409 })
+  }
 
     // --- CONCERN NO. 2: POS Seat Limit Licensing Check ---
     const { count: activeSessionsCount, error: countErr } = await supabase
@@ -97,7 +88,7 @@ export async function POST(req: Request) {
 
     if ((activeSessionsCount || 0) >= seatLimit) {
       return NextResponse.json({
-        error: `POS Terminal seat limit reached (${activeSessionsCount}/${seatLimit} active seats). Please log out an existing terminal or contact Unicon Labs to assign additional seats.`
+        error: `POS Terminal seat limit reached (${activeSessionsCount}/${seatLimit} active seats). Please log out an existing terminal or contact UNICON LABS to assign additional seats.`
       }, { status: 403 })
     }
 

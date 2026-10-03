@@ -78,6 +78,10 @@ export default function TenantDashboard({ params }: PageProps) {
   const [savingStaff, setSavingStaff] = useState(false)
   const [badgePreviewStaff, setBadgePreviewStaff] = useState<any | null>(null)
 
+  // Active POS Sessions Management State (Step 2)
+  const [activeSessionsList, setActiveSessionsList] = useState<any[]>([])
+  const [loadingSessions, setLoadingSessions] = useState(false)
+
   // Extended Staff Profile Fields & Dynamic Management States
   const [newStaffCode, setNewStaffCode] = useState('')
   const [newStaffDept, setNewStaffDept] = useState('General')
@@ -108,6 +112,59 @@ export default function TenantDashboard({ params }: PageProps) {
   const [editNextOrderSeq, setEditNextOrderSeq] = useState<string>('100000')
   const [editNextSerialSeq, setEditNextSerialSeq] = useState<string>('100000')
   const [editNextKotSeq, setEditNextKotSeq] = useState<string>('100000')
+
+  // Fetch Active Sessions with direct staff profile join for instant, accurate details
+  const fetchActiveSessions = async (businessId: string) => {
+    if (!businessId) return
+    setLoadingSessions(true)
+
+    const { data, error } = await supabase
+      .from('active_pos_sessions')
+      .select(`
+        id,
+        staff_id,
+        last_heartbeat_at,
+        business_id,
+        staff_profiles (
+          id,
+          full_name,
+          role,
+          department,
+          staff_code
+        )
+      `)
+      .eq('business_id', businessId)
+
+    if (error) {
+      console.error('Error fetching active sessions:', error.message)
+    } else {
+      const mappedSessions = (data || []).map(sess => ({
+        ...sess,
+        staff_profiles: Array.isArray(sess.staff_profiles) ? sess.staff_profiles[0] || {} : sess.staff_profiles || {}
+      }))
+      setActiveSessionsList(mappedSessions)
+    }
+    setLoadingSessions(false)
+  }
+
+  // Force Logout Active Session Handler (Step 2)
+  const handleForceLogoutSession = async (sessionId: string, staffName: string) => {
+    if (!confirm(`Are you sure you want to force logout ${staffName || 'this staff member'}? This will immediately terminate their active POS session and release the device lock.`)) return
+    
+    const { error } = await supabase
+      .from('active_pos_sessions')
+      .delete()
+      .eq('id', sessionId)
+
+    if (error) {
+      alert(`Failed to terminate session: ${error.message}`)
+    } else {
+      alert(`Session terminated successfully for ${staffName}.`)
+      if (business?.id) {
+        fetchActiveSessions(business.id)
+      }
+    }
+  }
 
   useEffect(() => {
     const rawSession = localStorage.getItem(`tenant_session_${slug}`)
@@ -142,7 +199,7 @@ export default function TenantDashboard({ params }: PageProps) {
       setEditNextSerialSeq(String(biz.next_serial_seq ?? 100000))
       setEditNextKotSeq(String(biz.next_kot_seq ?? 100000))
 
-      // Dynamically update browser tab title to Tenant Name (e.g., "Krunchy Bite")
+      // Dynamically update browser tab title to Tenant Name
       if (biz.name) {
         document.title = biz.name
       }
@@ -170,6 +227,10 @@ export default function TenantDashboard({ params }: PageProps) {
       })
 
       if (sData) setStaffList(sData)
+      
+      // Fetch active sessions on load
+      fetchActiveSessions(biz.id)
+
       setLoading(false)
     }
 
@@ -289,7 +350,7 @@ export default function TenantDashboard({ params }: PageProps) {
     })
   }, [staffList, staffFilterId, staffFilterName, staffFilterRole, staffFilterDept])
 
-  // REAL-TIME WEBSOCKET SUBSCRIPTION FOR TENANT DASHBOARD SYNC
+  // REAL-TIME WEBSOCKET SUBSCRIPTION FOR TENANT DASHBOARD & ACTIVE SESSIONS SYNC
   useEffect(() => {
     if (!business?.id) return
 
@@ -324,6 +385,18 @@ export default function TenantDashboard({ params }: PageProps) {
           if (updatedBiz.name) {
             document.title = updatedBiz.name
           }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'active_pos_sessions',
+        },
+        () => {
+          // Automatically refresh active sessions on any insert, update, or delete event across active sessions
+          fetchActiveSessions(business.id)
         }
       )
       .subscribe()
@@ -831,7 +904,7 @@ export default function TenantDashboard({ params }: PageProps) {
                 href={`/${slug}/storefront`} 
                 className="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-gray-300 hover:bg-slate-800 hover:text-white font-semibold text-xs transition"
               >
-                <span>🛍️️</span>
+                <span>🛍</span>
                 <span>STOREFRONT Controls</span>
               </a>
             )}
@@ -896,7 +969,7 @@ export default function TenantDashboard({ params }: PageProps) {
               onClick={() => setShowSettingsDrawer(true)}
               className="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-gray-300 hover:bg-slate-800 hover:text-white font-semibold text-xs transition text-left cursor-pointer mt-1"
             >
-              <span>⚙️</span>
+              <span>⚙</span>
               <span>General Settings</span>
             </button>
           </nav>
@@ -981,7 +1054,7 @@ export default function TenantDashboard({ params }: PageProps) {
                     <span className="text-[10px] font-extrabold uppercase text-gray-400">Active Categories</span>
                     <div className="text-2xl font-black font-mono text-gray-900 mt-0.5">{stats.categoriesCount}</div>
                   </div>
-                  <div className="w-10 h-10 bg-blue-50 text-blue-700 rounded-xl flex items-center justify-center font-bold">🏷️️</div>
+                  <div className="w-10 h-10 bg-blue-50 text-blue-700 rounded-xl flex items-center justify-center font-bold">🏷</div>
                 </div>
 
                 <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
@@ -1025,7 +1098,7 @@ export default function TenantDashboard({ params }: PageProps) {
                   {effectiveModules.hasPOS && (
                     <a href={`/${slug}/pos`} className="bg-gray-900 text-white p-5 rounded-2xl shadow-md hover:bg-black transition group space-y-2.5 border border-yellow-500/40">
                       <div className="flex justify-between items-center">
-                        <div className="w-9 h-9 rounded-xl bg-yellow-500 text-black flex items-center justify-center font-bold text-base shadow-inner">🖥️</div>
+                        <div className="w-9 h-9 rounded-xl bg-yellow-500 text-black flex items-center justify-center font-bold text-base shadow-inner">🖥️️</div>
                         <span className="text-[9px] font-mono bg-yellow-400/20 text-yellow-300 px-2 py-0.5 rounded font-bold uppercase">POS Live</span>
                       </div>
                       <h4 className="font-extrabold text-xs tracking-wide group-hover:underline">{profile.terminology.posTitle}</h4>
@@ -1079,11 +1152,87 @@ export default function TenantDashboard({ params }: PageProps) {
                 </div>
               </div>
 
+              {/* ACTIVE POS SESSIONS & DEVICE LOCK CONTROL (MAIN SCREEN) */}
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-gray-900 flex items-center space-x-2">
+                    <span>🟢 Active POS Sessions & Device Locks ({activeSessionsList.length})</span>
+                    <span className="bg-emerald-100 text-emerald-800 text-[9px] font-extrabold px-2 py-0.5 rounded-full">Live Monitor</span>
+                  </h3>
+                  <button 
+                    type="button" 
+                    onClick={() => business?.id && fetchActiveSessions(business.id)}
+                    className="px-3 py-1 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl text-[10px] font-bold shadow-2xs transition cursor-pointer flex items-center space-x-1"
+                  >
+                    <span>🔄</span>
+                    <span>Refresh Sessions</span>
+                  </button>
+                </div>
+
+                <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-2xs">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-gray-100 text-gray-500 uppercase text-[10px] font-bold">
+                      <tr>
+                        <th className="p-3">Staff Member & Role</th>
+                        <th className="p-3">Department / Code</th>
+                        <th className="p-3">Session Active Since</th>
+                        <th className="p-3 text-right">Security Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {loadingSessions ? (
+                        <tr><td colSpan={4} className="text-center py-8 text-gray-400 font-bold">Querying active terminal sessions...</td></tr>
+                      ) : activeSessionsList.length > 0 ? (
+                        activeSessionsList.map(sess => {
+                          const staffInfo = sess.staff_profiles || {}
+                          const staffName = staffInfo.full_name || 'Staff Member'
+                          const staffRole = staffInfo.role || 'Cashier'
+                          const staffDept = staffInfo.department || 'General'
+                          const staffCode = staffInfo.staff_code || 'N/A'
+                          const loginTime = sess.last_heartbeat_at ? new Date(sess.last_heartbeat_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent'
+                          
+                          return (
+                            <tr key={sess.id} className="hover:bg-gray-50 transition">
+                              <td className="p-3">
+                                <div className="font-bold text-gray-900">{staffName}</div>
+                                <div className="text-[10px] text-indigo-700 font-semibold">{staffRole}</div>
+                              </td>
+                              <td className="p-3">
+                                <div className="font-semibold text-gray-800">{staffDept}</div>
+                                <div className="text-[10px] text-gray-400 font-mono">{staffCode}</div>
+                              </td>
+                              <td className="p-3 font-mono text-[11px] text-gray-600">
+                                {loginTime}
+                              </td>
+                              <td className="p-3 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => handleForceLogoutSession(sess.id, staffName)}
+                                  className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-[10px] font-bold shadow-2xs transition cursor-pointer"
+                                >
+                                  Force Logout 🚫
+                                </button>
+                              </td>
+                            </tr>
+                          )
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={4} className="text-center py-10 text-gray-400 font-medium">
+                            No active POS sessions currently running. All terminal seats are fully available.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
               {/* INVENTORY & MANAGEMENT MODULES */}
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-black uppercase tracking-wider text-gray-900">
-                    🛠️️ Inventory & Administrative Management
+                    🛠 Inventory & Administrative Management
                   </h3>
                   <span className="text-[11px] text-gray-400 font-medium">Configuration & auditing</span>
                 </div>
@@ -1100,7 +1249,7 @@ export default function TenantDashboard({ params }: PageProps) {
 
                   {/* Staff & QR Security Management Trigger */}
                   <button 
-                    onClick={() => { resetStaffForm(); setShowStaffDrawer(true); }}
+                    onClick={() => { resetStaffForm(); fetchActiveSessions(business.id); setShowStaffDrawer(true); }}
                     className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:border-black transition group space-y-2 text-left w-full cursor-pointer"
                   >
                     <div className="flex justify-between items-center">
@@ -1108,7 +1257,7 @@ export default function TenantDashboard({ params }: PageProps) {
                       <span className="text-[9px] font-mono bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded font-bold uppercase">Security & PINs</span>
                     </div>
                     <h4 className="font-bold text-xs text-gray-900 group-hover:underline">Staff & QR ID Badges</h4>
-                    <p className="text-[11px] text-gray-500">Manage staff PINs, QR badges & module permissions.</p>
+                    <p className="text-[11px] text-gray-500">Manage staff PINs, QR badges & active session locks.</p>
                   </button>
 
                   {effectiveModules.hasTables && (
@@ -1635,7 +1784,7 @@ export default function TenantDashboard({ params }: PageProps) {
 
                 <div className="space-y-3">
                   <h3 className="font-black text-gray-900 uppercase tracking-wider text-xs">Registered Staff Directory ({staffList.length})</h3>
-                  
+                    
                   <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-2xs">
                     <table className="w-full text-left text-xs">
                       <thead className="bg-gray-100 text-gray-500 uppercase text-[10px] font-bold">
@@ -1718,7 +1867,7 @@ export default function TenantDashboard({ params }: PageProps) {
                 {badgePreviewStaff.role} • Dept: {badgePreviewStaff.department || 'General'} • PIN: {badgePreviewStaff.pin_code}
               </p>
             </div>
-            
+              
             <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 flex flex-col items-center justify-center">
               <div id="staff-qr-badge-svg">
                 <QRCodeSVG value={badgePreviewStaff.qr_token || 'N/A'} size={144} level="H" includeMargin={true} />
@@ -1755,7 +1904,7 @@ export default function TenantDashboard({ params }: PageProps) {
 
           <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
             <div className="w-screen max-w-md bg-white border-l border-gray-200 shadow-2xl flex flex-col text-gray-800">
-              
+                
               <div className="px-6 py-5 border-b border-gray-200 flex justify-between items-center bg-gray-50">
                 <div className="flex items-center space-x-2">
                   <span className="text-lg">⚙️</span>

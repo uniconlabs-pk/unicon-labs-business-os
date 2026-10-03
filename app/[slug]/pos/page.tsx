@@ -99,6 +99,10 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
   const [addOnsProducts, setAddOnsProducts] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState('')
 
+  // Catalog View Switcher States
+  const [catalogViewMode, setCatalogViewMode] = useState<'grid' | 'list'>('grid')
+  const [selectedListItem, setSelectedListItem] = useState<any>(null)
+
   // Mirroring Dashboard Category Filter / Drilldown States
   const [selectedMotherCategoryFilter, setSelectedMotherCategoryFilter] = useState('ALL')
   const [selectedSubCategoryFilter, setSelectedSubCategoryFilter] = useState<string | null>(null)
@@ -336,6 +340,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     return () => clearInterval(timer)
   }, [])
 
+  // 1. Existing Session Hydration Effect
   useEffect(() => {
     const storedStaff = sessionStorage.getItem(`unicon_staff_session_${slug}`)
     if (storedStaff) {
@@ -348,6 +353,58 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       }
     }
   }, [slug])
+
+  // 2. New Strict Single-Session Lock Registration Effect
+  useEffect(() => {
+    if (!business?.id || !authenticatedStaff?.id) return
+
+    const registerStrictSession = async () => {
+      await supabase.from('active_pos_sessions').upsert({
+        business_id: business.id,
+        staff_id: authenticatedStaff.id,
+        last_heartbeat_at: new Date().toISOString()
+      }, {
+        onConflict: 'business_id,staff_id'
+      })
+    }
+    registerStrictSession()
+  }, [business?.id, authenticatedStaff?.id])
+
+  // 3. Real-Time Force Logout Listener: Instantly lock POS terminal if admin force-logs out this staff member
+  useEffect(() => {
+    if (!business?.id || !authenticatedStaff?.id) return
+
+    const channel = supabase
+      .channel(`pos-force-logout-listener-${business.id}-${authenticatedStaff.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'active_pos_sessions',
+        },
+        async () => {
+          const { data, error } = await supabase
+            .from('active_pos_sessions')
+            .select('id')
+            .eq('business_id', business.id)
+            .eq('staff_id', authenticatedStaff.id)
+            .maybeSingle()
+
+          if (!error && !data) {
+            alert('Your active POS session has been terminated by an administrator.')
+            sessionStorage.removeItem(`unicon_staff_session_${slug}`)
+            setAuthenticatedStaff(null)
+            setShowSecurityGate(true)
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [business?.id, authenticatedStaff?.id, slug])
 
   // Beacon unload cleanup listener so closing tab or exiting releases session instantly
   useEffect(() => {
@@ -1831,7 +1888,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                   placeholder="Search name..."
                   value={recallSearchCustName}
                   onChange={e => setRecallSearchCustName(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 font-medium"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-medium"
                 />
               </div>
 
@@ -1842,7 +1899,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                   placeholder="Search phone..."
                   value={recallSearchPhone}
                   onChange={e => setRecallSearchPhone(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 font-mono"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-mono"
                 />
               </div>
 
@@ -1853,7 +1910,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                   placeholder="ID..."
                   value={recallSearchOrderNo}
                   onChange={e => setRecallSearchOrderNo(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 font-mono"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-mono"
                 />
               </div>
 
@@ -1864,7 +1921,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                   placeholder="SN-..."
                   value={recallSearchSerial}
                   onChange={e => setRecallSearchSerial(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 font-mono uppercase"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-mono uppercase"
                 />
               </div>
             </div>
@@ -2155,13 +2212,63 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         <section className="flex-1 flex flex-col bg-gray-100 overflow-hidden">
           
           <div className="p-3 border-b border-gray-200 bg-white flex flex-col gap-2 shadow-2xs">
-            <input 
-              type="text" 
-              placeholder={`Search ${profile.terminology.productsLabel.toLowerCase()}...`} 
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 text-xs text-gray-900 focus:outline-none focus:border-emerald-600 font-medium" 
-            />
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 flex items-center">
+                <input 
+                  type="text" 
+                  placeholder={`Search ${profile.terminology.productsLabel.toLowerCase()}...`} 
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Escape') {
+                      setSearchQuery('')
+                    }
+                  }}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 pr-8 text-xs text-gray-900 focus:outline-none focus:border-emerald-600 font-medium" 
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 text-gray-400 hover:text-gray-700 font-bold text-xs cursor-pointer"
+                    title="Clear Search"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              <div className="flex bg-gray-100 p-1 rounded-xl shrink-0 space-x-1">
+                <button
+                  type="button"
+                  onClick={() => setCatalogViewMode('grid')}
+                  className={`p-2 rounded-lg transition cursor-pointer flex items-center justify-center ${
+                    catalogViewMode === 'grid' ? 'bg-slate-900 text-white shadow-2xs' : 'text-gray-600 hover:text-black bg-white border border-gray-200'
+                  }`}
+                  title="Card / Block View"
+                >
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                    <path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z"/>
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCatalogViewMode('list')
+                    if (!selectedListItem && filteredProducts.length > 0) {
+                      setSelectedListItem(filteredProducts[0])
+                    }
+                  }}
+                  className={`p-2 rounded-lg transition cursor-pointer flex items-center justify-center ${
+                    catalogViewMode === 'list' ? 'bg-slate-900 text-white shadow-2xs' : 'text-gray-600 hover:text-black bg-white border border-gray-200'
+                  }`}
+                  title="List View"
+                >
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                    <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
 
             <div className="flex space-x-1.5 overflow-x-auto w-full pb-1 pt-1">
               <button
@@ -2220,7 +2327,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
             )}
           </div>
 
-          <div className="flex-1 p-4 overflow-y-auto">
+          <div className="flex-1 p-4 overflow-hidden flex flex-col">
             {isTableLockedByReservation ? (
               <div className="flex flex-col items-center justify-center h-full space-y-3 bg-amber-50/50 border border-amber-200 rounded-3xl p-8 text-center">
                 <span className="text-3xl">⚠️</span>
@@ -2229,8 +2336,8 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                   This table is booked for a pre-scheduled reservation. Order entry is locked until the customer arrives and you click **"Attended"** on the table tile on the left sidebar.
                 </p>
               </div>
-            ) : (
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+            ) : catalogViewMode === 'grid' ? (
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 overflow-y-auto flex-1 content-start">
                 {filteredProducts.length > 0 ? filteredProducts.map(item => {
                   const dealSummary = getDealItemsSummary(item)
                   return (
@@ -2282,6 +2389,93 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                     No {profile.terminology.productsLabel.toLowerCase()} found in database for this tenant. Add items via your inventory manager.
                   </div>
                 )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-10 gap-4 flex-1 overflow-hidden">
+                {/* Column A: Left Side (60% width = md:col-span-6) - Scrollable list only */}
+                <div className="md:col-span-6 bg-white border border-gray-200 rounded-2xl overflow-y-auto divide-y divide-gray-100 shadow-2xs h-full">
+                  {filteredProducts.length > 0 ? filteredProducts.map(item => {
+                    const isSelected = selectedListItem?.id === item.id
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => setSelectedListItem(item)}
+                        className={`p-3 flex items-center justify-between cursor-pointer transition ${
+                          isSelected ? 'bg-slate-900 text-white' : 'hover:bg-gray-50 text-gray-900'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3 overflow-hidden pr-2">
+                          <div className="w-12 h-12 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-center overflow-hidden shrink-0 p-1">
+                            {item.image_url ? (
+                              <img src={item.image_url} alt={item.name} className="w-full h-full object-contain" />
+                            ) : (
+                              <span>📦</span>
+                            )}
+                          </div>
+                          <div className="overflow-hidden">
+                            <h4 className={`font-bold text-xs truncate ${isSelected ? 'text-white' : 'text-gray-900'}`}>{item.name}</h4>
+                            <p className={`text-[10px] truncate ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>{item.category || 'General'}</p>
+                          </div>
+                        </div>
+                        <div className="font-mono font-black text-xs shrink-0">
+                          {currencySymbol} {item.price}
+                        </div>
+                      </div>
+                    )
+                  }) : (
+                    <div className="text-center py-12 text-gray-400 text-xs">No items found.</div>
+                  )}
+                </div>
+
+                {/* Column B: Right Side (40% width = md:col-span-4) - Fixed, Scrollbar-free */}
+                <div className="md:col-span-4 bg-white border border-gray-200 rounded-2xl p-5 flex flex-col justify-between shadow-2xs h-full overflow-hidden">
+                  {selectedListItem ? (
+                    <div className="space-y-3 overflow-y-auto pr-1 flex-1">
+                      <div className="w-full h-36 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-center overflow-hidden p-2 shrink-0">
+                        {selectedListItem.image_url ? (
+                          <img src={selectedListItem.image_url} alt={selectedListItem.name} className="w-full h-full object-contain drop-shadow-sm" />
+                        ) : (
+                          <span className="text-4xl">📦</span>
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-start">
+                          <h3 className="font-black text-sm uppercase text-gray-900">{selectedListItem.name}</h3>
+                          <span className="font-mono font-black text-emerald-700 text-base">{currencySymbol} {selectedListItem.price}</span>
+                        </div>
+                        <p className="text-[10px] uppercase font-bold text-gray-400">{selectedListItem.category || 'General'}</p>
+                        <p className="text-xs text-gray-600 pt-1 leading-relaxed">{selectedListItem.description || 'No detailed description available for this item.'}</p>
+                        
+                        {/* Expanded Includes Box without height restriction */}
+                        {getDealItemsSummary(selectedListItem) && (
+                          <div className="text-[11px] text-emerald-800 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 space-y-1 mt-2">
+                            <span className="font-black uppercase block">🍔 Includes in Deal/Combo:</span>
+                            <ul className="list-disc pl-4 space-y-0.5 font-medium">
+                              {getDealItemsSummary(selectedListItem)?.map((diStr: string, diK: number) => (
+                                <li key={diK}>{diStr}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center text-gray-400 text-xs text-center">
+                      Select an item from the left list to view details and add to order.
+                    </div>
+                  )}
+
+                  <div className="pt-3 border-t border-gray-100 shrink-0 mt-2">
+                    <button
+                      type="button"
+                      disabled={!selectedListItem || selectedListItem.in_stock === false}
+                      onClick={() => selectedListItem && handleProductClick(selectedListItem)}
+                      className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-sm cursor-pointer transition"
+                    >
+                      {selectedListItem?.in_stock === false ? 'Item Out of Stock 🚫' : 'Add to Cart 🛒'}
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>
