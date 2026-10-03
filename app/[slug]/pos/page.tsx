@@ -32,6 +32,9 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
   const [loading, setLoading] = useState(true)
   const [serviceType, setServiceType] = useState<'DINE-IN' | 'TAKEAWAY' | 'DELIVERY' | 'COUNTER'>('TAKEAWAY')
   
+  // Interface Theme State (Light Mode / Dark Mode Switcher)
+  const [isDarkMode, setIsDarkMode] = useState(false)
+  
   // Waiter Attribution State
   const [waiters, setWaiters] = useState<any[]>([])
   const [selectedWaiter, setSelectedWaiter] = useState<any>(null)
@@ -1722,7 +1725,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 text-gray-800 flex flex-col font-sans select-none overflow-hidden h-screen text-xs">
+    <div className={`min-h-screen flex flex-col font-sans select-none overflow-hidden h-screen text-xs transition-colors duration-300 ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-gray-100 text-gray-800'}`}>
       
       {showSecurityGate && business && (
         <SecurityGateModal 
@@ -1826,7 +1829,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
       {/* MAIN WORKSPACE OR FULL-SCREEN RECALL VIEW */}
       {isRecallViewActive ? (
-        <div className="flex-1 flex flex-col bg-gray-50 overflow-hidden">
+        <div className="flex-1 flex flex-col bg-gray-50 dark:bg-slate-900 overflow-hidden">
           <div className="p-4 bg-slate-900 text-white flex justify-between items-center shrink-0">
             <div className="flex items-center space-x-2">
               <span className="text-base">📜</span>
@@ -1840,8 +1843,8 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
             </button>
           </div>
 
-          <div className="p-4 bg-white border-b space-y-3 shrink-0 text-xs shadow-2xs">
-            <div className="font-black text-slate-900 uppercase tracking-wide text-[11px] flex justify-between items-center">
+          <div className="p-4 bg-white dark:bg-slate-900 border-b dark:border-slate-800 space-y-3 shrink-0 text-xs shadow-2xs">
+            <div className="font-black text-slate-900 dark:text-slate-100 uppercase tracking-wide text-[11px] flex justify-between items-center">
               <span>🔍 Search & Filter Criteria</span>
               {(recallSearchOrderNo || recallSearchSerial || recallSearchCustName || recallSearchPhone || recallDateFrom || recallDateTo) && (
                 <button 
@@ -1862,66 +1865,66 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-2">
               <div>
-                <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Date From</label>
+                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-0.5">Date From</label>
                 <input 
                   type="date"
                   value={recallDateFrom}
                   onChange={e => setRecallDateFrom(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-[11px]"
+                  className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg px-2 py-1.5 font-mono text-[11px]"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Date To</label>
+                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-0.5">Date To</label>
                 <input 
                   type="date"
                   value={recallDateTo}
                   onChange={e => setRecallDateTo(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-[11px]"
+                  className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg px-2 py-1.5 font-mono text-[11px]"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Customer Name</label>
+                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-0.5">Customer Name</label>
                 <input 
                   type="text"
                   placeholder="Search name..."
                   value={recallSearchCustName}
                   onChange={e => setRecallSearchCustName(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-medium"
+                  className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg px-2 py-1.5 font-medium"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Mobile Number</label>
+                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-0.5">Mobile Number</label>
                 <input 
                   type="text"
                   placeholder="Search phone..."
                   value={recallSearchPhone}
                   onChange={e => setRecallSearchPhone(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-mono"
+                  className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg px-2.5 py-1.5 font-mono"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Order ID</label>
+                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-0.5">Order ID</label>
                 <input 
                   type="text"
                   placeholder="ID..."
                   value={recallSearchOrderNo}
                   onChange={e => setRecallSearchOrderNo(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-mono"
+                  className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg px-2.5 py-1.5 font-mono"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Serial</label>
+                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-0.5">Serial</label>
                 <input 
                   type="text"
                   placeholder="SN-..."
                   value={recallSearchSerial}
                   onChange={e => setRecallSearchSerial(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-mono uppercase"
+                  className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg px-2 py-1.5 font-mono uppercase"
                 />
               </div>
             </div>
@@ -1929,18 +1932,18 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
           <div className="flex-1 p-6 overflow-y-auto space-y-3">
             {loadingRecall ? (
-              <div className="text-center py-20 text-gray-500 font-bold">Querying order archives from database...</div>
+              <div className="text-center py-20 text-gray-400 font-bold">Querying order archives from database...</div>
             ) : filteredRecallOrders.length > 0 ? (
               <div className="space-y-2">
                 <div className="text-[10px] font-bold text-gray-400 uppercase px-1">
                   Showing {filteredRecallOrders.length} matching invoice records (Audit, Reprint & Refund):
                 </div>
                 {filteredRecallOrders.map((ord: any) => (
-                  <div key={ord.id} className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between shadow-2xs hover:border-slate-900 transition">
+                  <div key={ord.id} className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl p-4 flex items-center justify-between shadow-2xs hover:border-slate-900 transition">
                     <div className="space-y-1">
                       <div className="flex items-center space-x-2">
-                        <span className="font-mono font-black text-slate-900 text-xs">{ord.order_number ? `KB-${String(ord.order_number).padStart(6, '0')}` : (ord.serial_number || `SN-${Math.floor(100000 + Math.random() * 900000)}`)}</span>
-                        <span className="bg-slate-100 text-slate-700 text-[9px] font-bold px-2 py-0.5 rounded uppercase">{ord.service_type || 'COUNTER'}</span>
+                        <span className="font-mono font-black text-slate-900 dark:text-white text-xs">{ord.order_number ? `KB-${String(ord.order_number).padStart(6, '0')}` : (ord.serial_number || `SN-${Math.floor(100000 + Math.random() * 900000)}`)}</span>
+                        <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[9px] font-bold px-2 py-0.5 rounded uppercase">{ord.service_type || 'COUNTER'}</span>
                         {ord.fiscal_status && (
                           <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase ${
                             ord.fiscal_status.includes('refund') ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'
@@ -1949,13 +1952,13 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                           </span>
                         )}
                       </div>
-                      <div className="text-[11px] text-gray-500 font-medium">
-                        Customer: <span className="text-gray-900 font-bold">{ord.customer_name || 'Walk-In'}</span> ({ord.customer_phone || 'No Phone'}) • {new Date(ord.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                      <div className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">
+                        Customer: <span className="text-gray-900 dark:text-gray-200 font-bold">{ord.customer_name || 'Walk-In'}</span> ({ord.customer_phone || 'No Phone'}) • {new Date(ord.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                       </div>
                     </div>
                     <div className="flex items-center space-x-4">
                       <div className="text-right font-mono">
-                        <div className="text-sm font-black text-emerald-700">{currencySymbol} {ord.total_amount}</div>
+                        <div className="text-sm font-black text-emerald-700 dark:text-emerald-400">{currencySymbol} {ord.total_amount}</div>
                         <div className="text-[10px] text-gray-400 uppercase">{ord.payment_method || 'CASH'}</div>
                       </div>
                       <div className="flex items-center space-x-2">
@@ -1987,9 +1990,9 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         <div className="flex-1 flex overflow-hidden">
         
         {/* COLUMN 1: DINE-IN TABLES OR FAVORITE/FAST-MOVING ITEMS WITH UNICON BADGE FOOTER */}
-        <aside className="w-80 bg-white border-r border-gray-200 flex flex-col shrink-0 shadow-2xs">
-          <div className="p-3 border-b border-gray-200 space-y-2">
-            <div className="grid grid-cols-3 gap-1 bg-gray-100 p-1 rounded-xl text-[11px] font-bold">
+        <aside className={`w-80 border-r flex flex-col shrink-0 shadow-2xs transition-colors duration-300 ${isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-gray-200 text-gray-800'}`}>
+          <div className={`p-3 border-b space-y-2 transition-colors ${isDarkMode ? 'border-slate-800' : 'border-gray-200'}`}>
+            <div className={`grid grid-cols-3 gap-1 p-1 rounded-xl text-[11px] font-bold ${isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-gray-100 text-gray-600'}`}>
               {(['DINE-IN', 'TAKEAWAY', 'DELIVERY'] as const).map(type => (
                 <button
                   key={type}
@@ -1999,7 +2002,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                       setSelectedTable(null)
                     }
                   }}
-                  className={`py-1.5 rounded-lg transition uppercase cursor-pointer ${serviceType === type ? 'bg-slate-900 text-white shadow-2xs' : 'text-gray-600 hover:text-black'}`}
+                  className={`py-1.5 rounded-lg transition uppercase cursor-pointer ${serviceType === type ? 'bg-slate-900 text-white shadow-2xs' : 'hover:text-black dark:hover:text-white'}`}
                 >
                   {type}
                 </button>
@@ -2009,7 +2012,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
             {profile.modules.hasTables && serviceType === 'DINE-IN' ? (
               <>
                 <div className="flex justify-between items-center text-[11px] pt-1">
-                  <span className="font-extrabold uppercase text-gray-600">🪑 DINE-IN TABLES</span>
+                  <span className={`font-extrabold uppercase ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>🪑 DINE-IN TABLES</span>
                   <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-[10px]">
                     {freeTablesCount} Available
                   </span>
@@ -2018,7 +2021,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                 <div className="flex items-center space-x-1 overflow-x-auto pb-1">
                   <button 
                     onClick={() => setActiveZone('ALL')}
-                    className={`px-3 py-1.5 rounded-lg transition text-[10px] font-bold uppercase whitespace-nowrap cursor-pointer ${activeZone === 'ALL' ? 'bg-black text-white shadow-2xs' : 'bg-gray-100 text-gray-600 hover:text-black'}`}
+                    className={`px-3 py-1.5 rounded-lg transition text-[10px] font-bold uppercase whitespace-nowrap cursor-pointer ${activeZone === 'ALL' ? 'bg-black text-white shadow-2xs' : isDarkMode ? 'bg-slate-800 text-slate-400 hover:text-white' : 'bg-gray-100 text-gray-600 hover:text-black'}`}
                   >
                     ALL
                   </button>
@@ -2026,7 +2029,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                     <button 
                       key={z}
                       onClick={() => setActiveZone(z)}
-                      className={`px-3 py-1.5 rounded-lg transition truncate px-2 uppercase text-[10px] font-bold whitespace-nowrap cursor-pointer ${activeZone === z ? 'bg-black text-white shadow-2xs' : 'bg-gray-100 text-gray-600 hover:text-black'}`}
+                      className={`px-3 py-1.5 rounded-lg transition truncate px-2 uppercase text-[10px] font-bold whitespace-nowrap cursor-pointer ${activeZone === z ? 'bg-black text-white shadow-2xs' : isDarkMode ? 'bg-slate-800 text-slate-400 hover:text-white' : 'bg-gray-100 text-gray-600 hover:text-black'}`}
                     >
                       📍 {z}
                     </button>
@@ -2034,9 +2037,9 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                 </div>
               </>
             ) : (
-              <div className="flex justify-between items-center pt-1 bg-gray-50 px-2 py-1.5 rounded-lg border border-gray-100">
+              <div className={`flex justify-between items-center pt-1 px-2 py-1.5 rounded-lg border ${isDarkMode ? 'bg-slate-800/60 border-slate-700/60 text-slate-200' : 'bg-gray-50 border-gray-100 text-gray-800'}`}>
                 <div>
-                  <span className="font-extrabold uppercase text-gray-800 text-[11px] block">★ FAVORITE / FAST MOVING</span>
+                  <span className="font-extrabold uppercase text-[11px] block">★ FAVORITE / FAST MOVING</span>
                   <span className="text-[9px] text-gray-400">Drag & drop to rearrange</span>
                 </div>
                 <button
@@ -2054,9 +2057,9 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
               posGroupedZones.map(group => (
                 <div key={group.zoneName} className="space-y-2">
                   {activeZone !== 'ALL' && (
-                    <div className="flex justify-between items-center bg-gray-50 border-y border-gray-200 px-2.5 py-1.5 sticky top-0 z-10">
-                      <span className="text-[10px] font-black uppercase text-gray-700">📍 Zone: {group.zoneName}</span>
-                      <span className="text-[9px] font-mono font-bold bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded">
+                    <div className={`flex justify-between items-center px-2.5 py-1.5 sticky top-0 z-10 border-y ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-gray-50 border-gray-200 text-gray-700'}`}>
+                      <span className="text-[10px] font-black uppercase">📍 Zone: {group.zoneName}</span>
+                      <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded ${isDarkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-200 text-gray-700'}`}>
                         {group.tables.length}
                       </span>
                     </div>
@@ -2081,7 +2084,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                       }
 
                       const statusText = isOccupied ? 'OCCUPIED' : isReserved ? 'RESERVED' : 'AVAILABLE'
-                      const statusColor = isOccupied ? 'text-red-600 font-black' : isReserved ? 'text-amber-600 font-black' : 'text-emerald-600 font-bold'
+                      const statusColor = isOccupied ? 'text-red-500 font-black' : isReserved ? 'text-amber-500 font-black' : 'text-emerald-500 font-bold'
                       const dotColor = isOccupied ? 'bg-red-500' : isReserved ? 'bg-amber-400' : 'bg-emerald-500'
 
                       return (
@@ -2090,19 +2093,19 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                           onClick={() => handleTableSelect(t)}
                           className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between h-24 relative cursor-pointer ${
                             isSelected 
-                              ? 'bg-slate-50 border-slate-900 shadow-xs ring-1 ring-slate-900' 
+                              ? isDarkMode ? 'bg-slate-800 border-emerald-500 ring-1 ring-emerald-500 text-white' : 'bg-slate-50 border-slate-900 shadow-xs ring-1 ring-slate-900 text-gray-900' 
                               : isOccupied 
-                              ? 'bg-red-50/40 border-red-200 hover:border-red-300' 
+                              ? isDarkMode ? 'bg-red-950/30 border-red-900/50 text-slate-200' : 'bg-red-50/40 border-red-200 hover:border-red-300 text-gray-900' 
                               : isReserved
-                              ? 'bg-amber-50/40 border-amber-200 hover:border-amber-300'
-                              : 'bg-gray-50 border-gray-200 hover:border-gray-300'
+                              ? isDarkMode ? 'bg-amber-950/30 border-amber-900/50 text-slate-200' : 'bg-amber-50/40 border-amber-200 hover:border-amber-300 text-gray-900'
+                              : isDarkMode ? 'bg-slate-800/40 border-slate-700 text-slate-200' : 'bg-gray-50 border-gray-200 hover:border-gray-300 text-gray-900'
                           }`}
                         >
                           <div className="flex justify-between items-center w-full">
-                            <span className="font-extrabold uppercase text-[9px] text-gray-500 truncate">{t.zone || t.zone_name || 'Table'}</span>
+                            <span className="font-extrabold uppercase text-[9px] text-gray-400 truncate">{t.zone || t.zone_name || 'Table'}</span>
                             <span className={`w-2 h-2 rounded-full ${dotColor} ${isOccupied ? 'animate-ping' : ''}`}></span>
                           </div>
-                          <div className="font-mono font-black text-sm text-gray-900">{t.name || t.table_number}</div>
+                          <div className="font-mono font-black text-sm">{t.name || t.table_number}</div>
 
                           {isReserved && timeLeftStr && (
                             <div className="text-[9px] font-mono font-bold text-amber-800 bg-amber-100/80 px-1.5 py-0.5 rounded text-center">
@@ -2111,7 +2114,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                           )}
 
                           <div className="flex justify-between items-center text-[10px] font-medium pt-0.5">
-                            <span className="text-gray-500">{t.seats || t.capacity || 4} Seats</span>
+                            <span className="text-gray-400">{t.seats || t.capacity || 4} Seats</span>
                             <span className={`uppercase text-[9px] ${statusColor}`}>
                               {statusText}
                             </span>
@@ -2143,18 +2146,20 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                         onDragOver={(e) => handleDragOver(e, idx)}
                         onDragEnd={handleDragEnd}
                         onClick={() => handleProductClick(fav)}
-                        className="bg-white border border-gray-200 rounded-xl p-2.5 flex flex-col justify-between h-36 cursor-grab active:cursor-grabbing hover:border-slate-900 transition shadow-2xs relative group"
+                        className={`border rounded-xl p-2.5 flex flex-col justify-between h-36 cursor-grab active:cursor-grabbing transition shadow-2xs relative group ${
+                          isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-100 hover:border-emerald-500' : 'bg-white border-gray-200 text-gray-900 hover:border-slate-900'
+                        }`}
                       >
-                        <div className="w-full h-16 bg-gray-50 rounded-lg border border-gray-100 flex items-center justify-center overflow-hidden p-1 shrink-0">
+                        <div className={`w-full h-16 rounded-lg border flex items-center justify-center overflow-hidden p-1 shrink-0 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-gray-50 border-gray-100'}`}>
                           {fav.image_url ? (
                             <img src={fav.image_url} alt={fav.name} className="w-full h-full object-contain drop-shadow-sm" />
                           ) : (
                             <span className="text-lg">📦</span>
                           )}
                         </div>
-                        <span className="font-bold text-gray-900 text-[11px] truncate mt-1">{fav.name}</span>
+                        <span className="font-bold text-[11px] truncate mt-1">{fav.name}</span>
                         <div className="flex justify-between items-center text-[10px]">
-                          <span className="font-mono text-emerald-700 font-extrabold">{currencySymbol} {fav.price}</span>
+                          <span className="font-mono text-emerald-400 font-extrabold">{currencySymbol} {fav.price}</span>
                           <span className="text-gray-400">⋮⋮</span>
                         </div>
                       </div>
@@ -2166,13 +2171,13 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <div className="text-[10px] font-bold text-gray-500 uppercase px-1">Toggle products to add/remove favorites:</div>
+                    <div className="text-[10px] font-bold text-gray-400 uppercase px-1">Toggle products to add/remove favorites:</div>
                     <input
                       type="text"
                       placeholder="Search product to pin..."
                       value={favSearchQuery}
                       onChange={(e) => setFavSearchQuery(e.target.value)}
-                      className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-900 focus:outline-none focus:border-slate-900 font-medium"
+                      className={`w-full border rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white focus:border-emerald-500' : 'bg-white border-gray-200 text-gray-900 focus:border-slate-900'}`}
                     />
                     <div className="max-h-[50vh] overflow-y-auto space-y-1">
                       {products
@@ -2180,11 +2185,11 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                         .map(p => {
                           const isFav = favorites.some(f => f.id === p.id)
                           return (
-                            <div key={p.id} className="flex justify-between items-center p-2 rounded-lg bg-gray-50 border border-gray-200">
+                            <div key={p.id} className={`flex justify-between items-center p-2 rounded-lg border ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-gray-50 border-gray-200 text-gray-900'}`}>
                               <span className="text-xs font-semibold truncate pr-2">{p.name}</span>
                               <button
                                 onClick={() => toggleProductFavorite(p)}
-                                className={`px-2.5 py-1 rounded-md text-[10px] font-bold cursor-pointer ${isFav ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-800'}`}
+                                className={`px-2.5 py-1 rounded-md text-[10px] font-bold cursor-pointer ${isFav ? 'bg-red-950/60 text-red-400' : 'bg-emerald-950/60 text-emerald-400'}`}
                               >
                                 {isFav ? 'Remove' : '+ Pin'}
                               </button>
@@ -2199,7 +2204,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
           </div>
 
           {/* PERMANENT UNICON LABS BRANDING BADGE FOOTER */}
-          <div className="p-3 border-t border-gray-200 bg-white shrink-0 flex justify-center items-center">
+          <div className={`p-3 border-t shrink-0 flex justify-center items-center ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
             <img 
               src="/unicon_badge.jpg" 
               alt="UNICON LABS Digital Ecosystem Software & Web Development" 
@@ -2209,9 +2214,9 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         </aside>
 
         {/* COLUMN 2: PRODUCT CATALOG */}
-        <section className="flex-1 flex flex-col bg-gray-100 overflow-hidden">
+        <section className={`flex-1 flex flex-col overflow-hidden transition-colors duration-300 ${isDarkMode ? 'bg-slate-950' : 'bg-gray-100'}`}>
           
-          <div className="p-3 border-b border-gray-200 bg-white flex flex-col gap-2 shadow-2xs">
+          <div className={`p-3 border-b flex flex-col gap-2 shadow-2xs transition-colors ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
             <div className="flex items-center gap-2">
               <div className="relative flex-1 flex items-center">
                 <input 
@@ -2224,25 +2229,50 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                       setSearchQuery('')
                     }
                   }}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 pr-8 text-xs text-gray-900 focus:outline-none focus:border-emerald-600 font-medium" 
+                  className={`w-full border rounded-xl px-4 py-2 pr-8 text-xs font-medium focus:outline-none transition-colors ${
+                    isDarkMode 
+                      ? 'bg-slate-800 border-slate-700 text-slate-100 focus:border-emerald-500 placeholder-slate-400' 
+                      : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-emerald-600 placeholder-gray-400'
+                  }`} 
                 />
                 {searchQuery && (
                   <button
                     type="button"
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-2.5 text-gray-400 hover:text-gray-700 font-bold text-xs cursor-pointer"
+                    className="absolute right-2.5 text-gray-400 hover:text-gray-200 font-bold text-xs cursor-pointer"
                     title="Clear Search"
                   >
                     ✕
                   </button>
                 )}
               </div>
-              <div className="flex bg-gray-100 p-1 rounded-xl shrink-0 space-x-1">
+
+              {/* Light/Dark Mode Toggle Switch */}
+              <button
+                type="button"
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className={`w-14 h-7 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-300 shrink-0 ${
+                  isDarkMode ? 'bg-slate-700' : 'bg-slate-800'
+                }`}
+                title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              >
+                <div
+                  className={`bg-white w-5 h-5 rounded-full shadow-md transform transition-transform duration-300 flex items-center justify-center text-[10px] ${
+                    isDarkMode ? 'translate-x-0' : 'translate-x-7'
+                  }`}
+                >
+                  {isDarkMode ? '🌙' : '☀️'}
+                </div>
+              </button>
+
+              <div className={`flex p-1 rounded-xl shrink-0 space-x-1 border transition-colors ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-gray-100 border-gray-200'}`}>
                 <button
                   type="button"
                   onClick={() => setCatalogViewMode('grid')}
                   className={`p-2 rounded-lg transition cursor-pointer flex items-center justify-center ${
-                    catalogViewMode === 'grid' ? 'bg-slate-900 text-white shadow-2xs' : 'text-gray-600 hover:text-black bg-white border border-gray-200'
+                    catalogViewMode === 'grid' 
+                      ? (isDarkMode ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-slate-900 text-white shadow-2xs') 
+                      : (isDarkMode ? 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white' : 'bg-white border-gray-200 text-gray-600 hover:text-black')
                   }`}
                   title="Card / Block View"
                 >
@@ -2259,7 +2289,9 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                     }
                   }}
                   className={`p-2 rounded-lg transition cursor-pointer flex items-center justify-center ${
-                    catalogViewMode === 'list' ? 'bg-slate-900 text-white shadow-2xs' : 'text-gray-600 hover:text-black bg-white border border-gray-200'
+                    catalogViewMode === 'list' 
+                      ? (isDarkMode ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-slate-900 text-white shadow-2xs') 
+                      : (isDarkMode ? 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white' : 'bg-white border-gray-200 text-gray-600 hover:text-black')
                   }`}
                   title="List View"
                 >
@@ -2275,7 +2307,9 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                 key="ALL"
                 onClick={() => { setSelectedMotherCategoryFilter('ALL'); setSelectedSubCategoryFilter(null); }}
                 className={`px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap uppercase cursor-pointer ${
-                  selectedMotherCategoryFilter === 'ALL' ? 'bg-slate-900 text-white shadow-2xs' : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
+                  selectedMotherCategoryFilter === 'ALL' 
+                    ? (isDarkMode ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-slate-900 text-white shadow-2xs') 
+                    : (isDarkMode ? 'bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700' : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200')
                 }`}
               >
                 ALL ({products.length})
@@ -2292,7 +2326,9 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                     key={mother.id}
                     onClick={() => { setSelectedMotherCategoryFilter(mother.name); setSelectedSubCategoryFilter(null); }}
                     className={`px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap uppercase cursor-pointer ${
-                      selectedMotherCategoryFilter === mother.name ? 'bg-slate-900 text-white shadow-2xs' : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
+                      selectedMotherCategoryFilter === mother.name 
+                        ? (isDarkMode ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-slate-900 text-white shadow-2xs') 
+                        : (isDarkMode ? 'bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700' : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200')
                     }`}
                   >
                     📁 {mother.name} ({count})
@@ -2302,12 +2338,12 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
             </div>
 
             {selectedMotherCategoryFilter !== 'ALL' && activeSubcategories.length > 0 && (
-              <div className="flex items-center space-x-2 pt-2 border-t border-gray-100 overflow-x-auto">
+              <div className={`flex items-center space-x-2 pt-2 border-t overflow-x-auto ${isDarkMode ? 'border-slate-800' : 'border-gray-100'}`}>
                 <span className="text-[10px] font-bold uppercase text-gray-400 whitespace-nowrap">Subcategory Filter:</span>
                 <button
                   onClick={() => setSelectedSubCategoryFilter(null)}
                   className={`px-3 py-1 rounded-lg text-[11px] font-bold transition whitespace-nowrap cursor-pointer ${
-                    selectedSubCategoryFilter === null ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-700'
+                    selectedSubCategoryFilter === null ? 'bg-emerald-600 text-white' : isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-gray-100 text-gray-700'
                   }`}
                 >
                   All in {selectedMotherCategoryFilter}
@@ -2317,7 +2353,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                     key={sub.id}
                     onClick={() => setSelectedSubCategoryFilter(sub.name)}
                     className={`px-3 py-1 rounded-lg text-[11px] font-bold transition whitespace-nowrap cursor-pointer ${
-                      selectedSubCategoryFilter === sub.name ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-700'
+                      selectedSubCategoryFilter === sub.name ? 'bg-emerald-600 text-white' : isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-gray-100 text-gray-700'
                     }`}
                   >
                     ↳ {sub.name}
@@ -2329,10 +2365,10 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
           <div className="flex-1 p-4 overflow-hidden flex flex-col">
             {isTableLockedByReservation ? (
-              <div className="flex flex-col items-center justify-center h-full space-y-3 bg-amber-50/50 border border-amber-200 rounded-3xl p-8 text-center">
+              <div className={`flex flex-col items-center justify-center h-full space-y-3 border rounded-3xl p-8 text-center ${isDarkMode ? 'bg-amber-950/20 border-amber-900/50 text-amber-200' : 'bg-amber-50/50 border-amber-200 text-amber-900'}`}>
                 <span className="text-3xl">⚠️</span>
-                <h3 className="font-black text-sm uppercase text-amber-900">Table is Currently Reserved</h3>
-                <p className="text-xs text-amber-700 max-w-md">
+                <h3 className="font-black text-sm uppercase">Table is Currently Reserved</h3>
+                <p className="text-xs max-w-md">
                   This table is booked for a pre-scheduled reservation. Order entry is locked until the customer arrives and you click **"Attended"** on the table tile on the left sidebar.
                 </p>
               </div>
@@ -2345,8 +2381,12 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                       key={item.id}
                       onClick={() => handleProductClick(item)}
                       disabled={item.in_stock === false}
-                      className={`bg-white border rounded-2xl p-3 text-left flex flex-col justify-between transition group shadow-2xs relative overflow-hidden h-52 cursor-pointer ${
-                        item.in_stock === false ? 'opacity-50 cursor-not-allowed border-red-200' : 'border-gray-200 hover:border-slate-900 hover:shadow-md'
+                      className={`border rounded-2xl p-3 text-left flex flex-col justify-between transition group shadow-2xs relative overflow-hidden h-52 cursor-pointer ${
+                        item.in_stock === false 
+                          ? 'opacity-50 cursor-not-allowed border-red-800 bg-red-950/20' 
+                          : isDarkMode 
+                          ? 'bg-slate-900 border-slate-800 hover:border-emerald-500 text-slate-100 hover:shadow-md' 
+                          : 'bg-white border-gray-200 hover:border-slate-900 text-gray-900 hover:shadow-md'
                       }`}
                     >
                       {item.badge_enabled && item.badge_text && (
@@ -2355,7 +2395,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                         </span>
                       )}
                       
-                      <div className="w-full h-24 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-center overflow-hidden p-1 shrink-0">
+                      <div className={`w-full h-24 rounded-xl border flex items-center justify-center overflow-hidden p-1 shrink-0 ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-gray-50 border-gray-100'}`}>
                         {item.image_url ? (
                           <img src={item.image_url} alt={item.name} className="w-full h-full object-contain drop-shadow-sm transition duration-200" />
                         ) : (
@@ -2365,10 +2405,10 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
                       <div className="space-y-1 flex-1 flex flex-col justify-between pt-1 overflow-hidden">
                         <div>
-                          <h4 className="font-bold text-xs text-gray-900 truncate">{item.name}</h4>
+                          <h4 className="font-bold text-xs truncate">{item.name}</h4>
                           {dealSummary ? (
-                            <div className="text-[9px] text-gray-500 line-clamp-2 leading-tight mt-0.5 bg-gray-50 p-1 rounded border border-gray-100 overflow-y-auto max-h-7">
-                              <span className="font-bold text-emerald-700">Includes:</span> {dealSummary.join(', ')}
+                            <div className={`text-[9px] line-clamp-2 leading-tight mt-0.5 p-1 rounded border overflow-y-auto max-h-7 ${isDarkMode ? 'bg-slate-950 border-slate-800 text-slate-400' : 'bg-gray-50 border-gray-100 text-gray-500'}`}>
+                              <span className="font-bold text-emerald-500">Includes:</span> {dealSummary.join(', ')}
                             </div>
                           ) : (
                             <p className="text-[9px] text-gray-400 truncate">{item.category || 'General'}</p>
@@ -2376,8 +2416,8 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                         </div>
                         
                         <div className="flex justify-between items-center pt-1 shrink-0">
-                          <span className="font-mono text-emerald-700 font-extrabold text-xs">{currencySymbol} {item.price}</span>
-                          <span className="w-6 h-6 rounded-lg bg-gray-100 group-hover:bg-slate-900 group-hover:text-white flex items-center justify-center font-bold text-xs transition">
+                          <span className="font-mono text-emerald-400 font-extrabold text-xs">{currencySymbol} {item.price}</span>
+                          <span className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs transition ${isDarkMode ? 'bg-slate-800 group-hover:bg-emerald-600 text-white' : 'bg-gray-100 group-hover:bg-slate-900 group-hover:text-white'}`}>
                             +
                           </span>
                         </div>
@@ -2393,7 +2433,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-10 gap-4 flex-1 overflow-hidden">
                 {/* Column A: Left Side (60% width = md:col-span-6) - Scrollable list only */}
-                <div className="md:col-span-6 bg-white border border-gray-200 rounded-2xl overflow-y-auto divide-y divide-gray-100 shadow-2xs h-full">
+                <div className={`md:col-span-6 border rounded-2xl overflow-y-auto divide-y shadow-2xs h-full ${isDarkMode ? 'bg-slate-900 border-slate-800 divide-slate-800 text-slate-100' : 'bg-white border-gray-200 divide-gray-100 text-gray-900'}`}>
                   {filteredProducts.length > 0 ? filteredProducts.map(item => {
                     const isSelected = selectedListItem?.id === item.id
                     return (
@@ -2401,11 +2441,13 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                         key={item.id}
                         onClick={() => setSelectedListItem(item)}
                         className={`p-3 flex items-center justify-between cursor-pointer transition ${
-                          isSelected ? 'bg-slate-900 text-white' : 'hover:bg-gray-50 text-gray-900'
+                          isSelected 
+                            ? (isDarkMode ? 'bg-emerald-700 text-white' : 'bg-slate-900 text-white') 
+                            : (isDarkMode ? 'hover:bg-slate-800 text-slate-200' : 'hover:bg-gray-50 text-gray-900')
                         }`}
                       >
                         <div className="flex items-center space-x-3 overflow-hidden pr-2">
-                          <div className="w-12 h-12 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-center overflow-hidden shrink-0 p-1">
+                          <div className={`w-12 h-12 rounded-xl border flex items-center justify-center overflow-hidden shrink-0 p-1 ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-gray-50 border-gray-200'}`}>
                             {item.image_url ? (
                               <img src={item.image_url} alt={item.name} className="w-full h-full object-contain" />
                             ) : (
@@ -2413,8 +2455,8 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                             )}
                           </div>
                           <div className="overflow-hidden">
-                            <h4 className={`font-bold text-xs truncate ${isSelected ? 'text-white' : 'text-gray-900'}`}>{item.name}</h4>
-                            <p className={`text-[10px] truncate ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>{item.category || 'General'}</p>
+                            <h4 className={`font-bold text-xs truncate ${isSelected ? 'text-white' : ''}`}>{item.name}</h4>
+                            <p className={`text-[10px] truncate ${isSelected ? 'text-slate-300' : 'text-gray-400'}`}>{item.category || 'General'}</p>
                           </div>
                         </div>
                         <div className="font-mono font-black text-xs shrink-0">
@@ -2428,10 +2470,10 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                 </div>
 
                 {/* Column B: Right Side (40% width = md:col-span-4) - Fixed, Scrollbar-free */}
-                <div className="md:col-span-4 bg-white border border-gray-200 rounded-2xl p-5 flex flex-col justify-between shadow-2xs h-full overflow-hidden">
+                <div className={`md:col-span-4 border rounded-2xl p-5 flex flex-col justify-between shadow-2xs h-full overflow-hidden ${isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-gray-200 text-gray-900'}`}>
                   {selectedListItem ? (
                     <div className="space-y-3 overflow-y-auto pr-1 flex-1">
-                      <div className="w-full h-36 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-center overflow-hidden p-2 shrink-0">
+                      <div className={`w-full h-36 rounded-xl border flex items-center justify-center overflow-hidden p-2 shrink-0 ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-gray-50 border-gray-100'}`}>
                         {selectedListItem.image_url ? (
                           <img src={selectedListItem.image_url} alt={selectedListItem.name} className="w-full h-full object-contain drop-shadow-sm" />
                         ) : (
@@ -2440,15 +2482,15 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                       </div>
                       <div className="space-y-1">
                         <div className="flex justify-between items-start">
-                          <h3 className="font-black text-sm uppercase text-gray-900">{selectedListItem.name}</h3>
-                          <span className="font-mono font-black text-emerald-700 text-base">{currencySymbol} {selectedListItem.price}</span>
+                          <h3 className="font-black text-sm uppercase">{selectedListItem.name}</h3>
+                          <span className="font-mono font-black text-emerald-400 text-base">{currencySymbol} {selectedListItem.price}</span>
                         </div>
                         <p className="text-[10px] uppercase font-bold text-gray-400">{selectedListItem.category || 'General'}</p>
-                        <p className="text-xs text-gray-600 pt-1 leading-relaxed">{selectedListItem.description || 'No detailed description available for this item.'}</p>
+                        <p className={`text-xs pt-1 leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>{selectedListItem.description || 'No detailed description available for this item.'}</p>
                         
                         {/* Expanded Includes Box without height restriction */}
                         {getDealItemsSummary(selectedListItem) && (
-                          <div className="text-[11px] text-emerald-800 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 space-y-1 mt-2">
+                          <div className={`text-[11px] p-2.5 rounded-xl border space-y-1 mt-2 ${isDarkMode ? 'text-emerald-300 bg-emerald-950/40 border-emerald-900/60' : 'text-emerald-800 bg-emerald-50 border-emerald-200'}`}>
                             <span className="font-black uppercase block">🍔 Includes in Deal/Combo:</span>
                             <ul className="list-disc pl-4 space-y-0.5 font-medium">
                               {getDealItemsSummary(selectedListItem)?.map((diStr: string, diK: number) => (
@@ -2465,7 +2507,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                     </div>
                   )}
 
-                  <div className="pt-3 border-t border-gray-100 shrink-0 mt-2">
+                  <div className={`pt-3 border-t shrink-0 mt-2 ${isDarkMode ? 'border-slate-800' : 'border-gray-100'}`}>
                     <button
                       type="button"
                       disabled={!selectedListItem || selectedListItem.in_stock === false}
@@ -2482,19 +2524,19 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         </section>
 
         {/* COLUMN 3: ACTIVE CART & CHECKOUT */}
-        <aside className="w-96 bg-white border-l border-gray-200 flex flex-col shrink-0 shadow-2xs">
+        <aside className={`w-96 border-l flex flex-col shrink-0 shadow-2xs transition-colors duration-300 ${isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-gray-200 text-gray-800'}`}>
           {!profile.modules.hasTables && (
-            <div className="px-4 py-3 bg-slate-50 border-b border-gray-200 flex justify-between items-center text-[11px]">
-              <span className="font-black text-slate-900 uppercase">⚡ Counter Sale Mode</span>
+            <div className={`px-4 py-3 border-b flex justify-between items-center text-[11px] ${isDarkMode ? 'bg-slate-800/80 border-slate-800 text-slate-200' : 'bg-slate-50 border-gray-200 text-slate-900'}`}>
+              <span className="font-black uppercase">⚡ Counter Sale Mode</span>
               <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">Direct Dispatch</span>
             </div>
           )}
 
           {/* CUSTOMER DETAILS & ASSIGN WAITER BLOCK */}
-          <div className="p-3 border-b border-gray-200 bg-gray-50/80 space-y-2 text-xs">
+          <div className={`p-3 border-b space-y-2 text-xs transition-colors ${isDarkMode ? 'border-slate-800 bg-slate-800/40' : 'border-gray-200 bg-gray-50/80'}`}>
             <div className="flex justify-between items-center">
               <div className="flex items-center space-x-1.5">
-                <span className="font-extrabold uppercase text-gray-500 text-[10px]">Customer Details</span>
+                <span className="font-extrabold uppercase text-gray-400 text-[10px]">Customer Details</span>
                 {crmStatus === 'found' && <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-bold">✨ CRM Match</span>}
                 {crmStatus === 'searching' && <span className="text-[9px] text-gray-400 animate-pulse">🔍...</span>}
                 {crmStatus === 'new' && (
@@ -2515,7 +2557,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
               <button 
                 type="button" 
                 onClick={() => { setCustomerName('Walk-In Customer'); setCustomerPhone(''); setDeliveryAddress(''); setDeliveryNote(''); setCrmStatus('idle'); }}
-                className="text-[9px] text-gray-400 hover:text-gray-600 font-bold cursor-pointer"
+                className="text-[9px] text-gray-400 hover:text-gray-200 font-bold cursor-pointer"
               >
                 Reset
               </button>
@@ -2526,21 +2568,21 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                 placeholder="Name (Walk-In)"
                 value={customerName}
                 onChange={e => setCustomerName(e.target.value)}
-                className="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 font-medium text-gray-900"
+                className={`border rounded-lg px-2.5 py-1.5 font-medium ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-white border-gray-200 text-gray-900'}`}
               />
               <input
                 type="text"
                 placeholder="Phone (Auto-lookup)"
                 value={customerPhone}
                 onChange={e => setCustomerPhone(e.target.value)}
-                className="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 font-mono text-gray-900"
+                className={`border rounded-lg px-2.5 py-1.5 font-mono ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-white border-gray-200 text-gray-900'}`}
               />
             </div>
 
             {/* ASSIGN WAITER FIELD */}
             {profile.modules.hasTables && serviceType === 'DINE-IN' && (
               <div className="relative">
-                <label className="block text-[10px] font-bold text-gray-500 mb-0.5 uppercase">Assign Waiter</label>
+                <label className="block text-[10px] font-bold text-gray-400 mb-0.5 uppercase">Assign Waiter</label>
                 <input
                   type="text"
                   placeholder="Select or type waiter name..."
@@ -2559,19 +2601,19 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                       }
                     }
                   }}
-                  className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 font-medium text-gray-900 focus:outline-none focus:border-purple-600"
+                  className={`w-full border rounded-lg px-2.5 py-1.5 font-medium focus:outline-none focus:border-purple-600 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-white border-gray-200 text-gray-900'}`}
                 />
                 
                 {/* Waiter Dropdown Selection Menu */}
                 {showWaiterDropdown && matchingWaiters.length > 0 && (
-                  <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-30 max-h-40 overflow-y-auto">
+                  <div className={`absolute left-0 right-0 top-full mt-1 border rounded-xl shadow-lg z-30 max-h-40 overflow-y-auto ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
                     <div
                       onClick={() => {
                         setSelectedWaiter(null)
                         setWaiterSearchInput('')
                         setShowWaiterDropdown(false)
                       }}
-                      className="px-3 py-2 text-xs font-bold text-gray-500 hover:bg-gray-100 cursor-pointer border-b border-gray-100"
+                      className={`px-3 py-2 text-xs font-bold cursor-pointer border-b ${isDarkMode ? 'text-slate-400 hover:bg-slate-800 border-slate-800' : 'text-gray-500 hover:bg-gray-100 border-gray-100'}`}
                     >
                       -- No Waiter Assigned --
                     </div>
@@ -2583,8 +2625,10 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                           setWaiterSearchInput(w.full_name || w.name)
                           setShowWaiterDropdown(false)
                         }}
-                        className={`px-3 py-2 text-xs font-bold cursor-pointer flex justify-between items-center hover:bg-purple-50 ${
-                          selectedWaiter?.id === w.id ? 'bg-purple-100 text-purple-900' : 'text-gray-800'
+                        className={`px-3 py-2 text-xs font-bold cursor-pointer flex justify-between items-center ${
+                          selectedWaiter?.id === w.id 
+                            ? (isDarkMode ? 'bg-purple-950/60 text-purple-300' : 'bg-purple-100 text-purple-900') 
+                            : (isDarkMode ? 'text-slate-200 hover:bg-slate-800' : 'text-gray-800 hover:bg-purple-50')
                         }`}
                       >
                         <span>{w.full_name || w.name}</span>
@@ -2603,7 +2647,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                   placeholder="Delivery Address * (Mandatory for Delivery)"
                   value={deliveryAddress}
                   onChange={e => setDeliveryAddress(e.target.value)}
-                  className="w-full bg-white border border-rose-300 rounded-lg px-2.5 py-1.5 font-medium text-gray-900 focus:outline-none focus:border-rose-500"
+                  className={`w-full border rounded-lg px-2.5 py-1.5 font-medium focus:outline-none ${isDarkMode ? 'bg-slate-800 border-rose-900 text-white placeholder-slate-400' : 'bg-white border-rose-300 text-gray-900'}`}
                   required
                 />
                 <input
@@ -2611,51 +2655,51 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                   placeholder="Special Instruction Note (e.g. Ring bell twice)"
                   value={deliveryNote}
                   onChange={e => setDeliveryNote(e.target.value)}
-                  className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 font-medium text-gray-900 focus:outline-none focus:border-blue-500"
+                  className={`w-full border rounded-lg px-2.5 py-1.5 font-medium focus:outline-none ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-white border-gray-200 text-gray-900'}`}
                 />
               </div>
             )}
           </div>
 
-          <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex justify-between items-center text-[11px]">
+          <div className={`px-4 py-2 border-b flex justify-between items-center text-[11px] ${isDarkMode ? 'bg-slate-800/40 border-slate-800 text-slate-200' : 'bg-gray-50 border-gray-200 text-gray-900'}`}>
             <div>
-              <span className="font-black text-gray-900">Active Order {activeOrderNumber !== 'PENDING' ? `(${activeOrderNumber})` : '(Not Started)'}</span>
+              <span className="font-black">Active Order {activeOrderNumber !== 'PENDING' ? `(${activeOrderNumber})` : '(Not Started)'}</span>
               {profile.modules.hasTables && serviceType === 'DINE-IN' && selectedTable && (
                 <span className="ml-1.5 font-mono font-bold text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded">
                   Table {selectedTable.name || selectedTable.table_number}
                 </span>
               )}
             </div>
-            <button onClick={handleClearCartAndCustomer} className="text-red-600 font-bold hover:underline text-[10px] cursor-pointer">
+            <button onClick={handleClearCartAndCustomer} className="text-red-500 font-bold hover:underline text-[10px] cursor-pointer">
               🗑️ CLEAR
             </button>
           </div>
 
-          <div className="flex-1 p-3 overflow-y-auto space-y-2.5 divide-y divide-gray-100">
+          <div className={`flex-1 p-3 overflow-y-auto space-y-2.5 divide-y ${isDarkMode ? 'divide-slate-800' : 'divide-gray-100'}`}>
             {currentCart.length > 0 ? (
               currentCart.map((ci, idx) => (
                 <div key={idx} className="pt-2.5 first:pt-0 flex justify-between items-start text-xs">
                   <div className="space-y-0.5 flex-1 pr-2">
                     <div className="flex items-center space-x-1.5">
-                      <h5 className="font-bold text-gray-900">{ci.name}</h5>
+                      <h5 className="font-bold">{ci.name}</h5>
                       {ci.sentToKitchen && (
-                        <span className="text-[8px] bg-slate-200 text-slate-700 px-1 py-0.2 rounded font-mono font-bold" title="Already sent to kitchen">
+                        <span className={`text-[8px] px-1 py-0.2 rounded font-mono font-bold ${isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'}`} title="Already sent to kitchen">
                           ✓ Sent
                         </span>
                       )}
                     </div>
                     {ci.selectedVariant && (
-                      <span className="text-[10px] text-purple-700 font-semibold block">• Variant: {ci.selectedVariant.name}</span>
+                      <span className="text-[10px] text-purple-400 font-semibold block">• Variant: {ci.selectedVariant.name}</span>
                     )}
                     {ci.dealComponents && ci.dealComponents.length > 0 && (
-                      <div className="text-[10px] text-emerald-700 space-y-0.5 pt-0.5 pl-2 border-l-2 border-emerald-500 my-1">
+                      <div className="text-[10px] text-emerald-400 space-y-0.5 pt-0.5 pl-2 border-l-2 border-emerald-500 my-1">
                         {ci.dealComponents.map((dc: any, dcIdx: number) => (
                           <div key={dcIdx}>↳ {dc.qty}x {dc.name}</div>
                         ))}
                       </div>
                     )}
                     {ci.selectedAddons && ci.selectedAddons.length > 0 && (
-                      <div className="text-[10px] text-blue-700 space-y-0.5 pt-0.5">
+                      <div className="text-[10px] text-blue-400 space-y-0.5 pt-0.5">
                         {ci.selectedAddons.map((ao: any, aIdx: number) => {
                           const varText = ao.selectedVariant ? ` (${ao.selectedVariant.name})` : ''
                           const varPrice = ao.selectedVariant ? ao.selectedVariant.price : 0
@@ -2667,43 +2711,43 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                       </div>
                     )}
                     <div className="flex items-center space-x-3 pt-1">
-                      <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
+                      <div className={`flex items-center border rounded-lg overflow-hidden ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
                         <button onClick={() => {
                           const updated = [...currentCart]
                           if (updated[idx].qty > 1) updated[idx].qty -= 1
                           updateCurrentCart(updated)
-                        }} className="px-2 py-0.5 hover:bg-gray-200 font-bold cursor-pointer">-</button>
-                        <span className="px-2 py-0.5 font-mono font-bold text-gray-900">{ci.qty}</span>
+                        }} className="px-2 py-0.5 hover:bg-gray-700 font-bold cursor-pointer">-</button>
+                        <span className="px-2 py-0.5 font-mono font-bold">{ci.qty}</span>
                         <button onClick={() => {
                           const updated = [...currentCart]
                           updated[idx].qty += 1
                           updateCurrentCart(updated)
-                        }} className="px-2 py-0.5 hover:bg-gray-200 font-bold cursor-pointer">+</button>
+                        }} className="px-2 py-0.5 hover:bg-gray-700 font-bold cursor-pointer">+</button>
                       </div>
                     </div>
                   </div>
                   
                   <div className="text-right space-y-1">
-                    <div className="font-mono font-black text-gray-950">{currencySymbol} {ci.finalUnitPrice * ci.qty}</div>
-                    <button onClick={() => updateCurrentCart(currentCart.filter((_, i) => i !== idx))} className="text-gray-400 hover:text-red-600 text-xs cursor-pointer">
+                    <div className="font-mono font-black text-emerald-400">{currencySymbol} {ci.finalUnitPrice * ci.qty}</div>
+                    <button onClick={() => updateCurrentCart(currentCart.filter((_, i) => i !== idx))} className="text-gray-400 hover:text-red-500 text-xs cursor-pointer">
                       🗑️
                     </button>
                   </div>
                 </div>
               ))
             ) : (
-              <div className="text-center py-20 text-gray-400 text-xs">Cart is empty. Select items from catalog.</div>
+              <div className="text-center py-20 text-gray-500 text-xs">Cart is empty. Select items from catalog.</div>
             )}
           </div>
 
-          <div className="p-3 border-t border-gray-200 bg-gray-50 space-y-2.5">
+          <div className={`p-3 border-t space-y-2.5 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-gray-50 border-gray-200'}`}>
             <div className="space-y-1 text-xs font-medium">
-              <div className="flex justify-between text-gray-600">
+              <div className="flex justify-between text-gray-400">
                 <span>Subtotal</span>
-                <span className="font-mono text-gray-900">{currencySymbol} {subtotal}</span>
+                <span className="font-mono">{currencySymbol} {subtotal}</span>
               </div>
               
-              <div className="flex items-center justify-between text-gray-600">
+              <div className="flex items-center justify-between text-gray-400">
                 <span>Service Charges</span>
                 <input
                   type="number"
@@ -2711,10 +2755,10 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                   value={serviceCharges || ''}
                   onChange={e => setServiceCharges(Math.max(0, Number(e.target.value)))}
                   placeholder="0"
-                  className="w-20 bg-white border border-gray-200 rounded px-1.5 py-0.5 font-mono text-right text-gray-900 text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className={`w-20 border rounded px-1.5 py-0.5 font-mono text-right text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
                 />
               </div>
-              <div className="flex items-center justify-between text-gray-600">
+              <div className="flex items-center justify-between text-gray-400">
                 <span>Discount</span>
                 <input
                   type="number"
@@ -2722,11 +2766,11 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                   value={discountAmount || ''}
                   onChange={e => setDiscountAmount(Math.max(0, Number(e.target.value)))}
                   placeholder="0"
-                  className="w-20 bg-white border border-gray-200 rounded px-1.5 py-0.5 font-mono text-right text-gray-900 text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className={`w-20 border rounded px-1.5 py-0.5 font-mono text-right text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
                 />
               </div>
               {serviceType === 'DELIVERY' && (
-                <div className="flex items-center justify-between text-gray-600">
+                <div className="flex items-center justify-between text-gray-400">
                   <span>Delivery Charges</span>
                   <input
                     type="number"
@@ -2734,28 +2778,28 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                     value={deliveryCharges || ''}
                     onChange={e => setDeliveryCharges(Math.max(0, Number(e.target.value)))}
                     placeholder="0"
-                    className="w-20 bg-white border border-gray-200 rounded px-1.5 py-0.5 font-mono text-right text-gray-900 text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className={`w-20 border rounded px-1.5 py-0.5 font-mono text-right text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
                   />
                 </div>
               )}
 
               {calculatedTax > 0 && (
-                <div className="flex justify-between text-gray-600">
+                <div className="flex justify-between text-gray-400">
                   <span>GST ({businessGstRate}%)</span>
-                  <span className="font-mono text-gray-900">{currencySymbol} {calculatedTax}</span>
+                  <span className="font-mono">{currencySymbol} {calculatedTax}</span>
                 </div>
               )}
 
               {isFbrSyncActive && (
-                <div className="flex items-center justify-between text-[11px] text-sky-700 bg-sky-50 px-2.5 py-1 rounded-lg border border-sky-200">
+                <div className="flex items-center justify-between text-[11px] text-sky-400 bg-sky-950/40 px-2.5 py-1 rounded-lg border border-sky-900/60">
                   <span className="font-bold">FBR Fiscal Linked</span>
                   <span className="font-mono font-semibold">{business.fbr_pos_id}</span>
                 </div>
               )}
 
-              <div className="flex justify-between text-base font-black text-gray-950 pt-2 border-t border-gray-200">
+              <div className={`flex justify-between text-base font-black pt-2 border-t ${isDarkMode ? 'border-slate-800 text-slate-100' : 'border-gray-200 text-gray-950'}`}>
                 <span>TOTAL PAYABLE</span>
-                <span className="font-mono text-emerald-700 text-lg">{currencySymbol} {grandTotal}</span>
+                <span className="font-mono text-emerald-400 text-lg">{currencySymbol} {grandTotal}</span>
               </div>
             </div>
 
@@ -2798,54 +2842,54 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       {/* MODAL: ADD NEW CUSTOMER RECORD */}
       {showNewCustomerModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <form onSubmit={handleSaveNewCustomer} className="bg-white rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-2xl">
+          <form onSubmit={handleSaveNewCustomer} className={`rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-2xl ${isDarkMode ? 'bg-slate-900 text-white border border-slate-800' : 'bg-white text-gray-900'}`}>
             <div className="flex justify-between items-center border-b pb-3">
-              <h3 className="font-black text-sm uppercase text-gray-900">➕ Add New Customer</h3>
-              <button type="button" onClick={() => setShowNewCustomerModal(false)} className="text-gray-400 hover:text-black font-bold cursor-pointer">✕</button>
+              <h3 className="font-black text-sm uppercase">➕ Add New Customer</h3>
+              <button type="button" onClick={() => setShowNewCustomerModal(false)} className="text-gray-400 hover:text-white font-bold cursor-pointer">✕</button>
             </div>
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="block text-gray-700 font-bold mb-1">Customer Full Name *</label>
+                <label className="block font-bold mb-1">Customer Full Name *</label>
                 <input 
                   type="text" 
                   placeholder="e.g. Malik Asad" 
                   value={newCustNameInput} 
                   onChange={e => setNewCustNameInput(e.target.value)} 
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 font-medium focus:outline-none focus:border-emerald-500"
+                  className={`w-full border rounded-xl px-3 py-2 font-medium focus:outline-none focus:border-emerald-500 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
                   required 
                 />
               </div>
 
               <div>
-                <label className="block text-gray-600 font-bold mb-1">Mobile Phone Number</label>
+                <label className="block font-bold mb-1">Mobile Phone Number</label>
                 <input 
                   type="text" 
                   value={customerPhone} 
                   disabled 
-                  className="w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2 font-mono text-gray-600 cursor-not-allowed"
+                  className={`w-full border rounded-xl px-3 py-2 font-mono cursor-not-allowed ${isDarkMode ? 'bg-slate-950 border-slate-800 text-slate-500' : 'bg-gray-100 border-gray-200 text-gray-600'}`}
                 />
               </div>
 
               <div>
-                <label className="block text-gray-700 font-bold mb-1">E-Mail (Optional)</label>
+                <label className="block font-bold mb-1">E-Mail (Optional)</label>
                 <input 
                   type="email" 
                   placeholder="customer@domain.com" 
                   value={newCustEmailInput} 
                   onChange={e => setNewCustEmailInput(e.target.value)} 
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-emerald-500"
+                  className={`w-full border rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-500 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
                 />
               </div>
 
               <div>
-                <label className="block text-gray-700 font-bold mb-1">Address (Optional)</label>
+                <label className="block font-bold mb-1">Address (Optional)</label>
                 <input 
                   type="text" 
                   placeholder="Street, Area, City" 
                   value={newCustAddressInput} 
                   onChange={e => setNewCustAddressInput(e.target.value)} 
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-emerald-500"
+                  className={`w-full border rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-500 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
                 />
               </div>
             </div>
@@ -2854,7 +2898,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
               <button 
                 type="button" 
                 onClick={() => setShowNewCustomerModal(false)}
-                className="w-1/2 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs cursor-pointer"
+                className={`w-1/2 py-2.5 font-bold rounded-xl text-xs cursor-pointer ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
               >
                 Cancel
               </button>
@@ -2873,7 +2917,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       {/* SECURE MANAGER REFUND & RETURN AUTHORIZATION MODAL WITH QR BADGE SCANNER */}
       {showRefundAuthModal && selectedOrderForRefund && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 font-sans">
-          <form onSubmit={handleProcessRefund} className="bg-white rounded-3xl w-full max-w-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden text-xs">
+          <form onSubmit={handleProcessRefund} className={`rounded-3xl w-full max-w-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden text-xs ${isDarkMode ? 'bg-slate-900 text-white border border-slate-800' : 'bg-white text-gray-900'}`}>
             
             <div className="p-5 bg-rose-900 text-white flex justify-between items-center shrink-0">
               <div className="flex items-center space-x-2">
@@ -2883,25 +2927,25 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
               <button type="button" onClick={() => setShowRefundAuthModal(false)} className="text-rose-200 hover:text-white font-bold cursor-pointer">✕</button>
             </div>
 
-            <div className="flex-1 p-6 overflow-y-auto space-y-4 bg-gray-50">
+            <div className={`flex-1 p-6 overflow-y-auto space-y-4 ${isDarkMode ? 'bg-slate-950' : 'bg-gray-50'}`}>
               
-              <div className="bg-white p-3.5 rounded-2xl border border-gray-200 shadow-2xs flex justify-between items-center">
+              <div className={`p-3.5 rounded-2xl border shadow-2xs flex justify-between items-center ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
                 <div>
                   <span className="text-[10px] font-bold text-gray-400 uppercase">Original Invoice</span>
-                  <div className="font-mono font-black text-sm text-slate-900">
+                  <div className="font-mono font-black text-sm">
                     {selectedOrderForRefund.order_number ? `KB-${String(selectedOrderForRefund.order_number).padStart(6, '0')}` : 'SAVED'}
                   </div>
                 </div>
                 <div className="text-right">
                   <span className="text-[10px] font-bold text-gray-400 uppercase">Original Total</span>
-                  <div className="font-mono font-black text-emerald-700 text-sm">{currencySymbol} {selectedOrderForRefund.total_amount}</div>
+                  <div className="font-mono font-black text-emerald-400 text-sm">{currencySymbol} {selectedOrderForRefund.total_amount}</div>
                 </div>
               </div>
 
               {/* Item Level Selection with Remaining Quantity Tracking */}
               <div className="space-y-2">
-                <label className="block text-gray-700 font-bold uppercase tracking-wide text-[11px]">Select Items & Quantities to Return:</label>
-                <div className="bg-white border border-gray-200 rounded-2xl p-3 space-y-2 max-h-48 overflow-y-auto">
+                <label className="block font-bold uppercase tracking-wide text-[11px]">Select Items & Quantities to Return:</label>
+                <div className={`border rounded-2xl p-3 space-y-2 max-h-48 overflow-y-auto ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
                   {selectedOrderForRefund.items && selectedOrderForRefund.items.map((item: any, idx: number) => {
                     const totalQty = item.qty || item.quantity || 1
                     const alreadyRefunded = item.refunded_qty || 0
@@ -2909,15 +2953,15 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                     const isFullyRefunded = sel.maxQty <= 0
 
                     return (
-                      <div key={idx} className={`flex justify-between items-center py-2 border-b border-gray-100 last:border-0 ${isFullyRefunded ? 'opacity-50 bg-gray-50 px-2 rounded-xl' : ''}`}>
+                      <div key={idx} className={`flex justify-between items-center py-2 border-b last:border-0 ${isDarkMode ? 'border-slate-800' : 'border-gray-100'} ${isFullyRefunded ? 'opacity-50 bg-slate-800/40 px-2 rounded-xl' : ''}`}>
                         <div>
-                          <div className="font-bold text-gray-900 flex items-center space-x-1.5">
+                          <div className="font-bold flex items-center space-x-1.5">
                             <span>{item.name} {item.selectedVariant ? `[${item.selectedVariant.name}]` : ''}</span>
                             {isFullyRefunded && (
-                              <span className="bg-red-100 text-red-800 text-[8px] font-black uppercase px-1.5 py-0.2 rounded">Fully Refunded</span>
+                              <span className="bg-red-900 text-red-200 text-[8px] font-black uppercase px-1.5 py-0.2 rounded">Fully Refunded</span>
                             )}
                           </div>
-                          <div className="text-[10px] text-gray-500 font-mono">
+                          <div className="text-[10px] text-gray-400 font-mono">
                             {currencySymbol} {item.finalUnitPrice || item.price} each • Total Ordered: {totalQty} {alreadyRefunded > 0 ? `(Already Refunded: ${alreadyRefunded})` : ''}
                           </div>
                         </div>
@@ -2931,11 +2975,11 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                                   if (updated[idx].returnQty > 0) updated[idx].returnQty -= 1
                                   setRefundItemsSelection(updated)
                                 }}
-                                className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 font-bold flex items-center justify-center cursor-pointer"
+                                className={`w-7 h-7 rounded-lg font-bold flex items-center justify-center cursor-pointer ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700' : 'bg-gray-100 hover:bg-gray-200'}`}
                               >
                                 -
                               </button>
-                              <span className="font-mono font-black text-gray-900 w-6 text-center">{sel.returnQty}</span>
+                              <span className="font-mono font-black w-6 text-center">{sel.returnQty}</span>
                               <button
                                 type="button"
                                 onClick={() => {
@@ -2943,13 +2987,13 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                                   if (updated[idx].returnQty < updated[idx].maxQty) updated[idx].returnQty += 1
                                   setRefundItemsSelection(updated)
                                 }}
-                                className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 font-bold flex items-center justify-center cursor-pointer"
+                                className={`w-7 h-7 rounded-lg font-bold flex items-center justify-center cursor-pointer ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700' : 'bg-gray-100 hover:bg-gray-200'}`}
                               >
                                 +
                               </button>
                             </>
                           ) : (
-                            <span className="text-[10px] font-bold text-red-600 font-mono">Locked</span>
+                            <span className="text-[10px] font-bold text-red-400 font-mono">Locked</span>
                           )}
                         </div>
                       </div>
@@ -2960,11 +3004,11 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
               {/* Mandatory Reason Code */}
               <div className="space-y-1.5">
-                <label className="block text-gray-700 font-bold uppercase tracking-wide text-[11px]">Refund / Damage Reason Code *</label>
+                <label className="block font-bold uppercase tracking-wide text-[11px]">Refund / Damage Reason Code *</label>
                 <select
                   value={refundReasonCode}
                   onChange={e => setRefundReasonCode(e.target.value)}
-                  className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-gray-900 uppercase"
+                  className={`w-full border rounded-xl px-3 py-2 text-xs font-bold uppercase ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                   required
                 >
                   <option value="Quality Issue / Damaged">🍔 Quality Issue / Damaged (Write-off Inventory)</option>
@@ -2976,8 +3020,8 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
               {/* Manager Authorization: QR Badge Scan OR PIN */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="bg-indigo-50 border border-indigo-200 p-3.5 rounded-2xl space-y-1.5">
-                  <label className="block text-indigo-950 font-black uppercase tracking-wide text-[10px]">🪪 Manager QR Badge Scan (Instant)</label>
+                <div className={`border p-3.5 rounded-2xl space-y-1.5 ${isDarkMode ? 'bg-indigo-950/40 border-indigo-900/60' : 'bg-indigo-50 border-indigo-200'}`}>
+                  <label className="block text-indigo-300 font-black uppercase tracking-wide text-[10px]">🪪 Manager QR Badge Scan (Instant)</label>
                   <input
                     type="text"
                     placeholder="Scan manager badge token..."
@@ -2986,32 +3030,32 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                       setRefundManagerQrToken(e.target.value)
                       handleManagerQrScan(e.target.value)
                     }}
-                    className="w-full bg-white border border-indigo-300 rounded-xl px-3 py-2 font-mono text-xs text-indigo-900 font-bold focus:outline-none focus:border-indigo-600"
+                    className={`w-full border rounded-xl px-3 py-2 font-mono text-xs font-bold focus:outline-none ${isDarkMode ? 'bg-slate-900 border-indigo-800 text-white' : 'bg-white border-indigo-300 text-indigo-900'}`}
                   />
-                  <span className="text-[9px] text-indigo-700 block">Scanning valid badge processes refund instantly.</span>
+                  <span className="text-[9px] text-indigo-400 block">Scanning valid badge processes refund instantly.</span>
                 </div>
 
-                <div className="bg-rose-50 border border-rose-200 p-3.5 rounded-2xl space-y-1.5">
-                  <label className="block text-rose-900 font-black uppercase tracking-wide text-[10px]">🔑 Manager Security PIN</label>
+                <div className={`border p-3.5 rounded-2xl space-y-1.5 ${isDarkMode ? 'bg-rose-950/40 border-rose-900/60' : 'bg-rose-50 border-rose-200'}`}>
+                  <label className="block text-rose-300 font-black uppercase tracking-wide text-[10px]">🔑 Manager Security PIN</label>
                   <input
                     type="password"
                     maxLength={6}
                     placeholder="Enter 4-6 digit PIN..."
                     value={refundManagerPin}
                     onChange={e => setRefundManagerPin(e.target.value)}
-                    className="w-full bg-white border border-rose-300 rounded-xl px-3 py-2 font-mono text-gray-900 font-bold tracking-widest text-sm focus:outline-none focus:border-rose-500"
+                    className={`w-full border rounded-xl px-3 py-2 font-mono font-bold tracking-widest text-sm focus:outline-none ${isDarkMode ? 'bg-slate-900 border-rose-800 text-white' : 'bg-white border-rose-300 text-gray-900'}`}
                   />
-                  <span className="text-[9px] text-rose-700 block">Manual PIN requires button authorization.</span>
+                  <span className="text-[9px] text-rose-400 block">Manual PIN requires button authorization.</span>
                 </div>
               </div>
 
             </div>
 
-            <div className="p-4 bg-white border-t flex justify-end space-x-2 shrink-0">
+            <div className={`p-4 border-t flex justify-end space-x-2 shrink-0 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white'}`}>
               <button
                 type="button"
                 onClick={() => setShowRefundAuthModal(false)}
-                className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs cursor-pointer"
+                className={`px-5 py-2.5 font-bold rounded-xl text-xs cursor-pointer ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
               >
                 Cancel
               </button>
@@ -3031,23 +3075,23 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       {/* MODAL: CUSTOMIZE ITEM */}
       {showCustomizeModal && customizingItem && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+          <div className={`rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] overflow-hidden ${isDarkMode ? 'bg-slate-900 text-white border border-slate-800' : 'bg-white text-gray-900'}`}>
             
-            <div className="p-6 pb-3 border-b flex justify-between items-start bg-white shrink-0">
+            <div className={`p-6 pb-3 border-b flex justify-between items-start shrink-0 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
               <div>
                 <span className="text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">
                   Customize Item
                 </span>
-                <h2 className="text-base font-black uppercase text-gray-900 mt-1">{customizingItem.name}</h2>
-                <p className="text-xs text-emerald-700 font-mono font-bold">Price: {currencySymbol} {customizingItem.price}</p>
+                <h2 className="text-base font-black uppercase mt-1">{customizingItem.name}</h2>
+                <p className="text-xs text-emerald-400 font-mono font-bold">Price: {currencySymbol} {customizingItem.price}</p>
               </div>
-              <button onClick={() => setShowCustomizeModal(false)} className="text-gray-400 hover:text-black font-bold text-sm cursor-pointer">✕</button>
+              <button onClick={() => setShowCustomizeModal(false)} className="text-gray-400 hover:text-white font-bold text-sm cursor-pointer">✕</button>
             </div>
 
             <div className="p-6 py-4 overflow-y-auto space-y-5 flex-1">
               {customizingItem.variants && customizingItem.variants.length > 0 && (
-                <div className="space-y-2 bg-purple-50/50 p-3 rounded-xl border border-purple-200">
-                  <span className="text-[11px] font-extrabold uppercase text-purple-900 block">Select Variant / Option:</span>
+                <div className={`space-y-2 p-3 rounded-xl border ${isDarkMode ? 'bg-purple-950/30 border-purple-900/60' : 'bg-purple-50/50 border-purple-200'}`}>
+                  <span className="text-[11px] font-extrabold uppercase text-purple-300 block">Select Variant / Option:</span>
                   <div className="space-y-1.5">
                     {customizingItem.variants.map((v: any, idx: number) => {
                       const isSelected = selectedVariant?.name === v.name
@@ -3057,7 +3101,9 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                           type="button"
                           onClick={() => setSelectedVariant(v)}
                           className={`w-full p-2.5 rounded-lg border text-left flex justify-between items-center transition text-xs font-bold cursor-pointer ${
-                            isSelected ? 'bg-purple-600 text-white border-purple-600 shadow-2xs' : 'bg-white border-gray-200 text-gray-800 hover:bg-gray-50'
+                            isSelected 
+                              ? 'bg-purple-600 text-white border-purple-600 shadow-2xs' 
+                              : isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700' : 'bg-white border-gray-200 text-gray-800 hover:bg-gray-50'
                           }`}
                         >
                           <span>{v.name}</span>
@@ -3070,8 +3116,8 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
               )}
 
               {profile.modules.hasKDS && customizingItem.has_modifiers && addOnsProducts.length > 0 && (
-                <div className="space-y-2.5 bg-blue-50/50 p-3 rounded-xl border border-blue-200">
-                  <span className="text-[11px] font-extrabold uppercase text-blue-900 block">Add-ons & Modifiers:</span>
+                <div className={`space-y-2.5 p-3 rounded-xl border ${isDarkMode ? 'bg-blue-950/30 border-blue-900/60' : 'bg-blue-50/50 border-blue-200'}`}>
+                  <span className="text-[11px] font-extrabold uppercase text-blue-300 block">Add-ons & Modifiers:</span>
                   <div className="space-y-2">
                     {addOnsProducts.map((addon: any) => {
                       const isChecked = selectedAddons.some(a => a.id === addon.id)
@@ -3079,7 +3125,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                       const currentAddonVariant = addonVariants[addon.id] || (addonHasVariants ? addon.variants[0] : null)
 
                       return (
-                        <div key={addon.id} className="bg-white border border-gray-200 rounded-xl p-2.5 space-y-2">
+                        <div key={addon.id} className={`border rounded-xl p-2.5 space-y-2 ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
                           <button
                             type="button"
                             onClick={() => {
@@ -3096,7 +3142,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                               }
                             }}
                             className={`w-full text-left flex justify-between items-center transition text-xs font-bold cursor-pointer ${
-                              isChecked ? 'text-blue-700' : 'text-gray-800'
+                              isChecked ? 'text-blue-400' : (isDarkMode ? 'text-slate-200' : 'text-gray-800')
                             }`}
                           >
                             <span className="flex items-center space-x-2">
@@ -3107,8 +3153,8 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                           </button>
 
                           {isChecked && addonHasVariants && (
-                            <div className="pt-2 border-t border-gray-100 space-y-1.5 pl-6">
-                              <span className="text-[9px] font-bold uppercase text-gray-500 block">Select {addon.name} Option:</span>
+                            <div className={`pt-2 border-t space-y-1.5 pl-6 ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
+                              <span className="text-[9px] font-bold uppercase text-gray-400 block">Select {addon.name} Option:</span>
                               <div className="space-y-1">
                                 {addon.variants.map((av: any, avIdx: number) => {
                                   const isVarSelected = currentAddonVariant?.name === av.name
@@ -3117,7 +3163,9 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                                       key={avIdx}
                                       onClick={() => setAddonVariants({ ...addonVariants, [addon.id]: av })}
                                       className={`flex items-center justify-between py-1.5 px-2.5 rounded-lg cursor-pointer border text-xs font-bold transition ${
-                                        isVarSelected ? 'bg-blue-50 border-blue-600 text-blue-900' : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                                        isVarSelected 
+                                          ? (isDarkMode ? 'bg-blue-950/60 border-blue-600 text-blue-200' : 'bg-blue-50 border-blue-600 text-blue-900') 
+                                          : (isDarkMode ? 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-700' : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100')
                                       }`}
                                     >
                                       <div className="flex items-center space-x-2">
@@ -3145,10 +3193,10 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
               )}
             </div>
 
-            <div className="p-6 pt-3 border-t bg-white flex justify-between items-center shrink-0">
+            <div className={`p-6 pt-3 border-t flex justify-between items-center shrink-0 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white'}`}>
               <div>
-                <span className="text-[10px] text-gray-500 font-bold uppercase block">Total Amount</span>
-                <span className="text-base font-mono font-black text-emerald-700">
+                <span className="text-[10px] text-gray-400 font-bold uppercase block">Total Amount</span>
+                <span className="text-base font-mono font-black text-emerald-400">
                   {currencySymbol} {
                     customizingItem.price + 
                     (selectedVariant?.price || 0) + 
@@ -3163,7 +3211,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                 <button 
                   type="button" 
                   onClick={() => setShowCustomizeModal(false)} 
-                  className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-bold cursor-pointer"
+                  className={`px-4 py-2.5 rounded-xl text-xs font-bold cursor-pointer ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
                 >
                   Cancel
                 </button>
@@ -3184,27 +3232,27 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       {/* MODAL: SETTLEMENT, TENDER MODES, SPLIT PAYMENT */}
       {showSettlementModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg space-y-4 shadow-2xl">
+          <div className={`rounded-2xl p-6 w-full max-w-lg space-y-4 shadow-2xl ${isDarkMode ? 'bg-slate-900 text-white border border-slate-800' : 'bg-white text-gray-900'}`}>
             <div className="flex justify-between items-center border-b pb-3">
-              <h3 className="font-black text-sm uppercase text-gray-900">Settle & Finalize Payment</h3>
-              <button onClick={() => setShowSettlementModal(false)} className="text-gray-400 hover:text-black font-bold cursor-pointer">✕</button>
+              <h3 className="font-black text-sm uppercase">Settle & Finalize Payment</h3>
+              <button onClick={() => setShowSettlementModal(false)} className="text-gray-400 hover:text-white font-bold cursor-pointer">✕</button>
             </div>
 
-            <div className="flex justify-between items-center bg-gray-50 p-3 rounded-xl border">
-              <span className="text-xs font-bold text-gray-600 uppercase">Grand Total Payable</span>
-              <span className="text-lg font-mono font-black text-emerald-700">{currencySymbol} {grandTotal}</span>
+            <div className={`flex justify-between items-center p-3 rounded-xl border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+              <span className="text-xs font-bold text-gray-400 uppercase">Grand Total Payable</span>
+              <span className="text-lg font-mono font-black text-emerald-400">{currencySymbol} {grandTotal}</span>
             </div>
 
             {/* SPECIAL INSTRUCTION NOTE FIELD FOR DELIVERY ORDERS */}
             {serviceType === 'DELIVERY' && (
               <div className="space-y-1">
-                <label className="block text-[10px] font-bold text-gray-500 uppercase">Special Instruction Note (Delivery)</label>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase">Special Instruction Note (Delivery)</label>
                 <input
                   type="text"
                   placeholder="e.g. Leave food at front gate / Ring bell twice..."
                   value={deliveryNote}
                   onChange={e => setDeliveryNote(e.target.value)}
-                  className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium text-gray-900 focus:outline-none focus:border-emerald-600"
+                  className={`w-full border rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:border-emerald-600 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
                 />
               </div>
             )}
@@ -3213,14 +3261,14 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
               <button
                 type="button"
                 onClick={() => setIsSplitPayment(false)}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold cursor-pointer ${!isSplitPayment ? 'bg-slate-900 text-white' : 'bg-gray-100 text-gray-700'}`}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold cursor-pointer ${!isSplitPayment ? 'bg-slate-900 text-white' : isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-gray-100 text-gray-700'}`}
               >
                 Single Tender / Payment Mode
               </button>
               <button
                 type="button"
                 onClick={() => setIsSplitPayment(true)}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold cursor-pointer ${isSplitPayment ? 'bg-slate-900 text-white' : 'bg-gray-100 text-gray-700'}`}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold cursor-pointer ${isSplitPayment ? 'bg-slate-900 text-white' : isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-gray-100 text-gray-700'}`}
               >
                 Split Payment Option
               </button>
@@ -3238,7 +3286,9 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                         if (method === 'CASH') setSingleReceivedCash(grandTotal)
                       }}
                       className={`py-2.5 rounded-xl border font-bold text-xs cursor-pointer ${
-                        singleMethod === method ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white border-gray-200 text-gray-800'
+                        singleMethod === method 
+                          ? 'bg-emerald-600 text-white border-emerald-600' 
+                          : isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-white border-gray-200 text-gray-800'
                       }`}
                     >
                       {method}
@@ -3247,8 +3297,8 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                 </div>
 
                 {singleMethod === 'CASH' && (
-                  <div className="space-y-2 bg-emerald-50/50 p-3 rounded-xl border border-emerald-200">
-                    <span className="text-[11px] font-bold uppercase text-emerald-900 block">Received Cash Denomination / Quick Select:</span>
+                  <div className={`space-y-2 p-3 rounded-xl border ${isDarkMode ? 'bg-emerald-950/30 border-emerald-900/60' : 'bg-emerald-50/50 border-emerald-200'}`}>
+                    <span className="text-[11px] font-bold uppercase text-emerald-400 block">Received Cash Denomination / Quick Select:</span>
                     <div className="grid grid-cols-4 gap-1.5">
                       {[500, 1000, 5000].map(amt => (
                         <button
@@ -3256,7 +3306,9 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                           type="button"
                           onClick={() => { setSingleReceivedCash(amt); setCustomReceivedCash('') }}
                           className={`py-2 rounded-lg font-mono font-bold text-xs border cursor-pointer ${
-                            singleReceivedCash === amt ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white text-gray-800 border-gray-300'
+                            singleReceivedCash === amt 
+                              ? 'bg-emerald-700 text-white border-emerald-700' 
+                              : isDarkMode ? 'bg-slate-800 text-slate-200 border-slate-700' : 'bg-white text-gray-800 border-gray-300'
                           }`}
                         >
                           {currencySymbol} {amt}
@@ -3266,7 +3318,9 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                         type="button"
                         onClick={() => { setSingleReceivedCash(-1) }}
                         className={`py-2 rounded-lg font-bold text-xs border cursor-pointer ${
-                          singleReceivedCash === -1 ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white text-gray-800 border-gray-300'
+                          singleReceivedCash === -1 
+                            ? 'bg-emerald-700 text-white border-emerald-700' 
+                            : isDarkMode ? 'bg-slate-800 text-slate-200 border-slate-700' : 'bg-white text-gray-800 border-gray-300'
                         }`}
                       >
                         Custom
@@ -3280,14 +3334,14 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                           placeholder="Enter Custom Received Cash..."
                           value={customReceivedCash}
                           onChange={e => setCustomReceivedCash(e.target.value)}
-                          className="w-full bg-white border border-emerald-400 rounded-lg px-3 py-1.5 font-mono text-xs text-gray-900"
+                          className={`w-full border rounded-lg px-3 py-1.5 font-mono text-xs ${isDarkMode ? 'bg-slate-800 border-emerald-700 text-white' : 'bg-white border-emerald-400 text-gray-900'}`}
                         />
                       </div>
                     )}
 
-                    <div className="flex justify-between items-center pt-2 border-t border-emerald-200 text-xs font-bold text-emerald-950">
+                    <div className="flex justify-between items-center pt-2 border-t border-emerald-900/50 text-xs font-bold">
                       <span>Change to be Returned:</span>
-                      <span className="font-mono text-sm text-emerald-700">{currencySymbol} {Math.max(0, changeReturned)}</span>
+                      <span className="font-mono text-sm text-emerald-400">{currencySymbol} {Math.max(0, changeReturned)}</span>
                     </div>
                   </div>
                 )}
@@ -3303,7 +3357,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                         updated[idx].method = e.target.value as any
                         setTenderSplits(updated)
                       }}
-                      className="bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs font-bold"
+                      className={`border rounded-lg p-2 text-xs font-bold ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
                     >
                       {availableTenderMethods.map(m => (
                         <option key={m} value={m}>{m}</option>
@@ -3317,7 +3371,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                         updated[idx].amount = Number(e.target.value) || 0
                         setTenderSplits(updated)
                       }}
-                      className="col-span-2 bg-white border border-gray-200 rounded-lg p-2 font-mono text-xs"
+                      className={`col-span-2 border rounded-lg p-2 font-mono text-xs ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
                     />
                   </div>
                 ))}
@@ -3328,7 +3382,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
               <button
                 type="button"
                 onClick={() => setShowSettlementModal(false)}
-                className="w-1/3 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs cursor-pointer"
+                className={`w-1/3 py-3 font-bold rounded-xl text-xs cursor-pointer ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
               >
                 Cancel
               </button>
