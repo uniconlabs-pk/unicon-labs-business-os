@@ -303,6 +303,10 @@ export default function ThermalReceipt({ business, order, cart, customer }: Ther
       <div className="text-center text-[10px] font-bold space-y-0.5 pt-2 border-t border-dotted border-black leading-relaxed [break-inside:avoid] page-break-inside-avoid">
         <p>Thank you for choosing {business.name}!</p>
         <p>See you again soon!</p>
+        <p>.</p>
+        <p>Designed & Powered By:</p>
+        <p>UNICON LABS</p>
+        <p>http://www.unicon-labs.com</p>
       </div>
 
     </div>
