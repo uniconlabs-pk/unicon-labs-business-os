@@ -1155,6 +1155,30 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
   }
 
   const handleReprintOrder = (orderRecord: any) => {
+    // Parse tender_breakdown safely to retrieve original cash tender & change
+    let parsedTender: any[] = []
+    try {
+      if (typeof orderRecord.tender_breakdown === 'string' && orderRecord.tender_breakdown.trim() !== '' && orderRecord.tender_breakdown !== '[]') {
+        parsedTender = JSON.parse(orderRecord.tender_breakdown)
+      } else if (Array.isArray(orderRecord.tender_breakdown)) {
+        parsedTender = orderRecord.tender_breakdown
+      }
+    } catch (e) {
+      parsedTender = []
+    }
+    const tenderEntry = parsedTender[0] || {}
+
+    // Extract actual received cash with correct priority fallbacks
+    const resolvedCashReceived = orderRecord.cash_received !== undefined && orderRecord.cash_received !== null && orderRecord.cash_received !== ''
+      ? orderRecord.cash_received 
+      : (tenderEntry.receivedCash !== undefined && tenderEntry.receivedCash !== null && tenderEntry.receivedCash !== ''
+      ? tenderEntry.receivedCash 
+      : (tenderEntry.amount !== undefined && tenderEntry.amount !== null ? tenderEntry.amount : orderRecord.total_amount || 0))
+
+    const resolvedChangeReturned = orderRecord.change_returned !== undefined && orderRecord.change_returned !== null && orderRecord.change_returned !== ''
+      ? orderRecord.change_returned
+      : (tenderEntry.changeReturned !== undefined && tenderEntry.changeReturned !== null ? tenderEntry.changeReturned : 0)
+
     const receiptPayload = {
       storeName: business?.name || 'STORE',
       address: business?.address || '',
@@ -1171,8 +1195,8 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       serviceType: orderRecord.service_type || 'COUNTER',
       items: orderRecord.items || [],
       subtotal: orderRecord.subtotal || orderRecord.total_amount,
-      serviceCharges: orderRecord.service_charges || 0,
-      discountAmount: orderRecord.discount_amount || 0,
+      serviceCharges: orderRecord.service_charges !== undefined ? orderRecord.service_charges : 0,
+      discountAmount: orderRecord.discount_amount !== undefined ? orderRecord.discount_amount : (orderRecord.discount || 0),
       deliveryCharges: orderRecord.delivery_charges || 0,
       calculatedTax: orderRecord.gst_amount || 0,
       tax_rate: orderRecord.tax_rate || activeTaxRate,
@@ -1180,8 +1204,8 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       tax_term: orderRecord.tax_term || manualTaxTerm,
       grandTotal: orderRecord.total_amount || 0,
       primaryPaymentMethod: orderRecord.payment_method || 'CASH',
-      cash_received: orderRecord.total_amount || 0,
-      change_returned: orderRecord.change_returned || 0,
+      cash_received: resolvedCashReceived,
+      change_returned: resolvedChangeReturned,
       fbrPosId: orderRecord.fbr_pos_id || null
     }
 
@@ -2309,7 +2333,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                     isDarkMode ? 'translate-x-0' : 'translate-x-7'
                   }`}
                 >
-                  {isDarkMode ? '🌙' : '☀️'}
+                  {isDarkMode ? '🌙' : '☀'}
                 </div>
               </button>
 
@@ -2414,7 +2438,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
           <div className="flex-1 p-4 overflow-hidden flex flex-col">
             {isTableLockedByReservation ? (
               <div className={`flex flex-col items-center justify-center h-full space-y-3 border rounded-3xl p-8 text-center ${isDarkMode ? 'bg-amber-950/20 border-amber-900/50 text-amber-200' : 'bg-amber-50/50 border-amber-200 text-amber-900'}`}>
-                <span className="text-3xl">⚠️</span>
+                <span className="text-3xl">⚠</span>
                 <h3 className="font-black text-sm uppercase">Table is Currently Reserved</h3>
                 <p className="text-xs max-w-md">
                   This table is booked for a pre-scheduled reservation. Order entry is locked until the customer arrives and you click **"Attended"** on the table tile on the left sidebar.
@@ -3513,7 +3537,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
               <div className="bg-black text-white text-[9px] font-black uppercase px-3 py-0.5 rounded tracking-widest inline-block my-1">
                 TASTY - JUICY - SPICY
               </div>
-               
+                
               <div className="font-black text-lg tracking-widest uppercase mt-2">- KOT -</div>
               <div className="font-bold text-xs tracking-wide">( KITCHEN ORDER TICKET )</div>
             </div>
@@ -3692,6 +3716,8 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                 tax_term: manualTaxTerm,
                 delivery_charges: printOrderData.deliveryCharges || 0,
                 discount: printOrderData.discountAmount || 0,
+                discount_amount: printOrderData.discountAmount || 0,
+                service_charges: printOrderData.serviceCharges || 0,
                 payment_breakdown: [{ method: printOrderData.primaryPaymentMethod || 'CASH', amount: printOrderData.grandTotal || 0 }],
                 order_type: printOrderData.serviceType?.toLowerCase() || 'dine-in',
                 table: (printOrderData.serviceType === 'DINE-IN' && selectedTable) ? (selectedTable.name || selectedTable.table_number) : undefined,

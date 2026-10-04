@@ -17,23 +17,29 @@ interface ThermalReceiptProps {
     id: string
     serial_number?: string
     created_at: string
-    total_amount: number
-    subtotal?: number
-    tax_amount?: number
-    tax_rate?: number
+    total_amount: number | string
+    subtotal?: number | string
+    tax_amount?: number | string
+    tax_rate?: number | string
     tax_label?: string
     tax_term?: string
-    delivery_charges?: number
-    discount?: number
+    delivery_charges?: number | string
+    discount?: number | string
+    discount_amount?: number | string
+    service_charges?: number | string
     payment_breakdown?: { method: string; amount: number }[]
+    tender_breakdown?: any
     order_type?: string
     table?: string
     waiter?: string
     rider?: string
     customer_note?: string
     cashier_name?: string
-    cash_received?: number
-    change_returned?: number
+    cash_received?: number | string
+    change_returned?: number | string
+    payment_method?: string
+    customer_name?: string
+    customer_phone?: string
   }
   cart: {
     name: string
@@ -46,6 +52,8 @@ interface ThermalReceiptProps {
     phone: string
     address?: string
   } | null
+  serviceCharges?: number | string
+  discount?: number | string
 }
 
 function numberToWords(num: number): string {
@@ -80,7 +88,7 @@ function numberToWords(num: number): string {
   return result
 }
 
-export default function ThermalReceipt({ business, order, cart, customer }: ThermalReceiptProps) {
+export default function ThermalReceipt({ business, order, cart, customer, serviceCharges: serviceChargesProp, discount: discountProp }: ThermalReceiptProps) {
   const currency = business.currency_symbol || 'Rs.'
   const slug = business.slug || 'krunchy-bite'
   
@@ -88,31 +96,77 @@ export default function ThermalReceipt({ business, order, cart, customer }: Ther
   const serialNumberText = order.serial_number || `SN-${order.id ? order.id.slice(0, 8).toUpperCase() : '1001'}`
   
   const isDelivery = order.order_type?.toLowerCase() === 'delivery'
-  const subtotal = order.subtotal || cart.reduce((sum, item) => sum + (item.finalUnitPrice * item.quantity), 0)
-  const deliveryCharges = isDelivery ? (order.delivery_charges || 200) : 0
-  const taxAmount = order.tax_amount || 0
-  const discount = order.discount || 0
+  const subtotal = order.subtotal !== undefined ? parseFloat(String(order.subtotal)) : cart.reduce((sum, item) => sum + (item.finalUnitPrice * item.quantity), 0)
+  const deliveryCharges = isDelivery ? (order.delivery_charges !== undefined ? parseFloat(String(order.delivery_charges)) : 200) : 0
+  const taxAmount = order.tax_amount !== undefined ? parseFloat(String(order.tax_amount)) : 0
   
-  const taxRate = order.tax_rate !== undefined ? order.tax_rate : 15
+  // 1. Normalize Service Charges
+  const explicitServiceCharges = serviceChargesProp !== undefined && serviceChargesProp !== null ? serviceChargesProp 
+    : ((order as any).service_charges !== undefined && (order as any).service_charges !== null && (order as any).service_charges !== '' ? (order as any).service_charges 
+    : ((order as any).serviceCharges !== undefined ? (order as any).serviceCharges : 0))
+  
+  const serviceCharges = parseFloat(String(explicitServiceCharges)) || 0
+
+  // 2. Normalize Discount
+  const explicitDiscount = discountProp !== undefined && discountProp !== null ? discountProp 
+    : (order.discount !== undefined && order.discount !== null && order.discount !== '' ? order.discount 
+    : ((order as any).discount_amount !== undefined && (order as any).discount_amount !== null && (order as any).discount_amount !== '' ? (order as any).discount_amount 
+    : ((order as any).discountAmount !== undefined ? (order as any).discountAmount : 0)))
+  
+  const discount = parseFloat(String(explicitDiscount)) || 0
+  
+  const taxRate = order.tax_rate !== undefined ? parseFloat(String(order.tax_rate)) : 15
   const taxLabel = order.tax_label || 'Tax'
   const taxTerm = order.tax_term || 'EXCLUSIVE'
 
-  const grandTotal = taxTerm === 'INCLUSIVE'
-    ? subtotal + deliveryCharges - discount
-    : subtotal + deliveryCharges + taxAmount - discount
+  const grandTotal = order.total_amount && parseFloat(String(order.total_amount)) > 0 
+    ? parseFloat(String(order.total_amount)) 
+    : (taxTerm === 'INCLUSIVE'
+        ? subtotal + deliveryCharges + serviceCharges - discount
+        : subtotal + deliveryCharges + serviceCharges + taxAmount - discount)
 
-  const paymentMethod = order.payment_breakdown?.[0]?.method || 'Cash On Delivery (COD)'
+  const paymentMethod = order.payment_breakdown?.[0]?.method || order.payment_method || 'Cash'
   const isCashPayment = paymentMethod.toUpperCase().includes('CASH')
   const isCOD = paymentMethod.toUpperCase().includes('CASH ON DELIVERY')
 
-  const customerName = customer && customer.name && customer.name !== 'Walk-In Customer' ? customer.name : 'Walk-In Customer'
-  const customerPhone = customer && customer.phone && customer.phone !== 'Walk-In' ? customer.phone : 'N/A'
+  const customerName = customer && customer.name && customer.name !== 'Walk-In Customer' ? customer.name : (order.customer_name || 'Walk-In Customer')
+  const customerPhone = customer && customer.phone && customer.phone !== 'Walk-In' ? customer.phone : (order.customer_phone || 'N/A')
 
   const amountInWords = `Rupees ${numberToWords(grandTotal)} only.`
   const formatPrice = (val: number) => val.toLocaleString('en-PK', { minimumFractionDigits: 0 })
 
-  const cashReceivedVal = order.cash_received !== undefined ? order.cash_received : (isCashPayment ? grandTotal : 0)
-  const changeReturnedVal = order.change_returned !== undefined ? order.change_returned : 0
+  // 3. Normalize Cash Received & Change Returned for recalled orders
+  let parsedTenderBreakdown: any[] = []
+  try {
+    if (typeof order.tender_breakdown === 'string' && order.tender_breakdown.trim() !== '' && order.tender_breakdown !== '[]') {
+      parsedTenderBreakdown = JSON.parse(order.tender_breakdown)
+    } else if (Array.isArray(order.tender_breakdown) && order.tender_breakdown.length > 0) {
+      parsedTenderBreakdown = order.tender_breakdown
+    }
+  } catch (e) {
+    parsedTenderBreakdown = []
+  }
+
+  const tenderEntry = parsedTenderBreakdown[0] || {}
+
+  const rawCashReceived = order.cash_received !== undefined && order.cash_received !== null && order.cash_received !== '' ? order.cash_received 
+    : ((order as any).received_cash !== undefined && (order as any).received_cash !== null && (order as any).received_cash !== '' ? (order as any).received_cash 
+    : ((order as any).cashReceived !== undefined && (order as any).cashReceived !== null && (order as any).cashReceived !== '' ? (order as any).cashReceived 
+    : (tenderEntry.receivedCash !== undefined && tenderEntry.receivedCash !== null && tenderEntry.receivedCash !== '' ? tenderEntry.receivedCash 
+    : (tenderEntry.amount !== undefined && tenderEntry.amount !== null ? tenderEntry.amount : undefined))))
+
+  const cashReceivedVal = rawCashReceived !== undefined && rawCashReceived !== null && Number(rawCashReceived) > 0 
+    ? parseFloat(String(rawCashReceived)) 
+    : (isCashPayment ? (grandTotal <= 5000 ? 5000 : Math.ceil(grandTotal / 1000) * 1000) : grandTotal)
+
+  const rawChangeReturned = order.change_returned !== undefined && order.change_returned !== null && order.change_returned !== '' ? order.change_returned 
+    : ((order as any).change_returned !== undefined && (order as any).change_returned !== null && (order as any).change_returned !== '' ? (order as any).change_returned 
+    : ((order as any).changeReturned !== undefined && (order as any).changeReturned !== null && (order as any).changeReturned !== '' ? (order as any).changeReturned 
+    : (tenderEntry.changeReturned !== undefined && tenderEntry.changeReturned !== null ? tenderEntry.changeReturned : undefined)))
+
+  const changeReturnedVal = rawChangeReturned !== undefined && rawChangeReturned !== null && rawChangeReturned !== '' 
+    ? parseFloat(String(rawChangeReturned)) 
+    : Math.max(0, cashReceivedVal - grandTotal)
 
   return (
     <div className="w-[80mm] m-0 p-2 bg-white text-black font-sans text-[11px] leading-tight select-none">
@@ -163,7 +217,7 @@ export default function ThermalReceipt({ business, order, cart, customer }: Ther
         </div>
         <div className="flex justify-between">
           <span className="font-semibold">Order Type:</span>
-          <span className="capitalize">{order.order_type || 'Delivery'}</span>
+          <span className="capitalize">{order.order_type || 'Takeaway'}</span>
         </div>
         {order.table && (
           <div className="flex justify-between">
@@ -233,7 +287,7 @@ export default function ThermalReceipt({ business, order, cart, customer }: Ther
       <div className="border-t border-dotted border-black pt-1 space-y-0.5 text-[11px] mb-2 [break-inside:avoid] page-break-inside-avoid">
         <div className="flex justify-between font-black text-xs border-b border-dotted border-black pb-1 mb-1">
           <span>GROSS AMOUNT</span>
-          <span className="font-mono">{currency} {formatPrice(subtotal + deliveryCharges)}</span>
+          <span className="font-mono">{currency} {formatPrice(subtotal)}</span>
         </div>
         <div className="flex justify-between">
           <span>{taxLabel} {taxRate}% {taxTerm === 'INCLUSIVE' ? '(Incl.)' : ''}</span>
@@ -246,12 +300,12 @@ export default function ThermalReceipt({ business, order, cart, customer }: Ther
           </div>
         )}
         <div className="flex justify-between">
-          <span>Other Charges</span>
-          <span className="font-mono">0</span>
+          <span>Service Charges</span>
+          <span className="font-mono">{formatPrice(serviceCharges)}</span>
         </div>
         <div className="flex justify-between">
           <span>Discount</span>
-          <span className="font-mono">{formatPrice(discount)}</span>
+          <span className="font-mono">-{formatPrice(discount)}</span>
         </div>
       </div>
 
