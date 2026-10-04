@@ -336,6 +336,45 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     }
   }, [categories])
 
+  // DYNAMIC TAX & DUAL-TIER CALCULATION LOGIC (TOP-LEVEL HOOKS)
+  const isManualTaxActive = Boolean(business?.enable_manual_tax)
+  const isDualTaxActive = Boolean(business?.enable_dual_tax_tier)
+  const manualTaxTerm = business?.manual_tax_term || 'EXCLUSIVE'
+
+  const activeTaxRate = useMemo(() => {
+    if (!isManualTaxActive && !business?.tax_enabled) return 0
+    if (isDualTaxActive) {
+      const currentMethod = isSplitPayment ? tenderSplits[0]?.method : singleMethod
+      if (currentMethod === 'CASH' || currentMethod === 'CASH ON DELIVERY') {
+        return Number(business?.cash_tax_rate ?? 15.00)
+      } else {
+        return Number(business?.digital_tax_rate ?? 8.00)
+      }
+    }
+    return Number(business?.tax_rate ?? 15.00)
+  }, [isManualTaxActive, isDualTaxActive, business, isSplitPayment, tenderSplits, singleMethod])
+
+  const subtotal = Math.max(0, currentCart.reduce((acc, item) => acc + (item.finalUnitPrice * item.qty), 0))
+  const taxableAmount = Math.max(0, subtotal + serviceCharges - discountAmount + deliveryCharges)
+  
+  const calculatedTax = useMemo(() => {
+    if (!isManualTaxActive && business?.tax_enabled === false && !business?.enable_fbr_integration) return 0
+    if (manualTaxTerm === 'INCLUSIVE') {
+      return Math.round(taxableAmount - (taxableAmount / (1 + (activeTaxRate / 100))))
+    } else {
+      return Math.round(taxableAmount * (activeTaxRate / 100))
+    }
+  }, [isManualTaxActive, business, manualTaxTerm, taxableAmount, activeTaxRate])
+
+  const grandTotal = useMemo(() => {
+    if (manualTaxTerm === 'INCLUSIVE') {
+      return Math.max(0, taxableAmount) // Inclusive does not inflate gross total
+    }
+    return Math.max(0, taxableAmount + calculatedTax) // Exclusive adds tax on top
+  }, [manualTaxTerm, taxableAmount, calculatedTax])
+
+  const businessGstRate = activeTaxRate
+
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date())
@@ -1136,6 +1175,9 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       discountAmount: orderRecord.discount_amount || 0,
       deliveryCharges: orderRecord.delivery_charges || 0,
       calculatedTax: orderRecord.gst_amount || 0,
+      tax_rate: orderRecord.tax_rate || activeTaxRate,
+      tax_label: orderRecord.tax_label || (business?.manual_tax_type || 'GST'),
+      tax_term: orderRecord.tax_term || manualTaxTerm,
       grandTotal: orderRecord.total_amount || 0,
       primaryPaymentMethod: orderRecord.payment_method || 'CASH',
       cash_received: orderRecord.total_amount || 0,
@@ -1379,12 +1421,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     handleClearCartAndCustomer()
   }
 
-  const subtotal = Math.max(0, currentCart.reduce((acc, item) => acc + (item.finalUnitPrice * item.qty), 0))
-  const taxableAmount = Math.max(0, subtotal + serviceCharges - discountAmount + deliveryCharges)
-  const businessGstRate = Number(business?.gst_rate ?? (business?.tax_enabled !== false ? (business?.tax_rate ?? 16) : 0))
-  const calculatedTax = Math.round(taxableAmount * (businessGstRate / 100))
-  const grandTotal = Math.max(0, taxableAmount + calculatedTax)
-
   const isFbrSyncActive = Boolean(
     (business?.enable_fbr_integration === true || business?.enable_fbr_integration === 'true' || business?.fbr_integration_enabled === true || business?.fbr_integration_enabled === 'true') && 
     (business?.fbr_pos_id && String(business.fbr_pos_id).trim() !== '')
@@ -1443,7 +1479,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         items: unsentItems
       }
 
-      // Respect KDS Module toggle status for digital KOT ticket generation
       if (effectiveModules.hasKDS) {
         try {
           const nextKot = baseKotSeq + 1
@@ -1499,7 +1534,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     const deliveryAddrSnapshot = deliveryAddress.trim()
     const deliveryNoteSnapshot = deliveryNote.trim()
 
-    // Sync and update delivery address in customer record if present
     await syncCustomerProfile()
     if (serviceType === 'DELIVERY' && custPhoneSnapshot && deliveryAddrSnapshot) {
       await supabase
@@ -1513,7 +1547,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       ? tenderSplits.filter(t => t.amount > 0)
       : [{ method: singleMethod, amount: grandTotal, receivedCash: singleMethod === 'CASH' ? activeReceivedCash : grandTotal, changeReturned: singleMethod === 'CASH' ? changeReturned : 0 }]
 
-    // SMART ROUTING: If KDS is disabled but Dispatch Queue is enabled for Delivery ONLY, insert straight into dispatch queue
     const shouldRouteToDispatch = !effectiveModules.hasKDS && effectiveModules.hasDispatchQueue && serviceType === 'DELIVERY'
 
     const orderPayload = {
@@ -1526,6 +1559,9 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       discount_amount: discountSnapshot,
       delivery_charges: deliverySnapshot,
       gst_amount: gstSnapshot,
+      tax_rate: activeTaxRate,
+      tax_label: business?.manual_tax_type || 'GST',
+      tax_term: manualTaxTerm,
       total_amount: totalSnapshot,
       service_type: serviceType,
       waiter_id: (serviceType === 'DINE-IN' && selectedWaiter) ? (selectedWaiter?.id || null) : null,
@@ -1607,6 +1643,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       storeName: business?.name || 'KRUNCHY BITE',
       address: business?.address || '',
       phone: business?.phone || '',
+      strn: business?.manual_strn || business?.strn || '',
       orderNo: assignedOrderCode,
       serial_number: generatedSerial,
       date: new Date().toLocaleString(),
@@ -1623,6 +1660,9 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       discountAmount: discountSnapshot,
       deliveryCharges: deliverySnapshot,
       calculatedTax: gstSnapshot,
+      tax_rate: activeTaxRate,
+      tax_label: business?.manual_tax_type || 'GST',
+      tax_term: manualTaxTerm,
       grandTotal: totalSnapshot,
       primaryPaymentMethod: paymentMethodSnapshot,
       cash_received: singleMethod === 'CASH' ? activeReceivedCash : totalSnapshot,
@@ -1782,6 +1822,14 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         </div>
 
         <div className="flex items-center space-x-4">
+          {/* RELOCATED STRN BADGE IN HEADER */}
+          {isManualTaxActive && business?.manual_strn && (
+            <div className="hidden lg:flex items-center space-x-1.5 bg-emerald-950/60 border border-emerald-800/80 px-3 py-1.5 rounded-xl text-emerald-300 font-mono text-[11px] font-bold">
+              <span>STRN: {business.manual_strn}</span>
+              <span className="text-[9px] uppercase px-1.5 bg-emerald-900 rounded">{manualTaxTerm}</span>
+            </div>
+          )}
+
           {profile.modules.hasTables && serviceType === 'DINE-IN' && selectedTable && (
             <div className="hidden xl:flex items-center space-x-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-xl">
               <span className="text-gray-400 font-semibold text-[10px]">ACTIVE TABLE</span>
@@ -1891,7 +1939,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                   placeholder="Search name..."
                   value={recallSearchCustName}
                   onChange={e => setRecallSearchCustName(e.target.value)}
-                  className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg px-2 py-1.5 font-medium"
+                  className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg px-2.5 py-1.5 font-medium"
                 />
               </div>
 
@@ -2783,9 +2831,16 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                 </div>
               )}
 
-              {calculatedTax > 0 && (
+              {isManualTaxActive && (
                 <div className="flex justify-between text-gray-400">
-                  <span>GST ({businessGstRate}%)</span>
+                  <span>{business?.manual_tax_type || 'GST'} ({activeTaxRate}% {isDualTaxActive ? `[${(isSplitPayment ? tenderSplits[0]?.method : singleMethod) === 'CASH' ? 'Cash' : 'Digital'}]` : ''} {manualTaxTerm})</span>
+                  <span className="font-mono">{currencySymbol} {calculatedTax}</span>
+                </div>
+              )}
+
+              {!isManualTaxActive && calculatedTax > 0 && (
+                <div className="flex justify-between text-gray-400">
+                  <span>GST ({activeTaxRate}%)</span>
                   <span className="font-mono">{currencySymbol} {calculatedTax}</span>
                 </div>
               )}
@@ -2918,7 +2973,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       {showRefundAuthModal && selectedOrderForRefund && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 font-sans">
           <form onSubmit={handleProcessRefund} className={`rounded-3xl w-full max-w-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden text-xs ${isDarkMode ? 'bg-slate-900 text-white border border-slate-800' : 'bg-white text-gray-900'}`}>
-            
+             
             <div className="p-5 bg-rose-900 text-white flex justify-between items-center shrink-0">
               <div className="flex items-center space-x-2">
                 <span className="text-base">↩️</span>
@@ -2928,7 +2983,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
             </div>
 
             <div className={`flex-1 p-6 overflow-y-auto space-y-4 ${isDarkMode ? 'bg-slate-950' : 'bg-gray-50'}`}>
-              
+               
               <div className={`p-3.5 rounded-2xl border shadow-2xs flex justify-between items-center ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
                 <div>
                   <span className="text-[10px] font-bold text-gray-400 uppercase">Original Invoice</span>
@@ -3076,7 +3131,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       {showCustomizeModal && customizingItem && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className={`rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] overflow-hidden ${isDarkMode ? 'bg-slate-900 text-white border border-slate-800' : 'bg-white text-gray-900'}`}>
-            
+             
             <div className={`p-6 pb-3 border-b flex justify-between items-start shrink-0 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
               <div>
                 <span className="text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">
@@ -3447,7 +3502,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
         {printKotData && (
           <div ref={printKotRef} className="print-receipt-wrapper bg-white text-black font-sans text-xs p-2 leading-tight select-none w-[80mm]">
-            
+             
             <div className="text-center mb-2">
               <img 
                 src={`/tenants/${slug}/logo-thermal.png`} 
@@ -3458,7 +3513,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
               <div className="bg-black text-white text-[9px] font-black uppercase px-3 py-0.5 rounded tracking-widest inline-block my-1">
                 TASTY - JUICY - SPICY
               </div>
-              
+               
               <div className="font-black text-lg tracking-widest uppercase mt-2">- KOT -</div>
               <div className="font-bold text-xs tracking-wide">( KITCHEN ORDER TICKET )</div>
             </div>
@@ -3621,7 +3676,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                 address: business?.address || 'Quaid Park, Shah Faisal Colony No.3, Karachi 75230 Pakistan',
                 phone: business?.phone || '0315 2147702',
                 email: business?.email || 'krunchybite.pk@gmail.com',
-                strn: business?.strn || '1000123456',
+                strn: business?.manual_strn || business?.strn || '1000123456',
                 currency_symbol: currencySymbol,
                 slug: slug
               }}
@@ -3632,6 +3687,9 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                 total_amount: printOrderData.grandTotal || 0,
                 subtotal: printOrderData.subtotal || 0,
                 tax_amount: printOrderData.calculatedTax || 0,
+                tax_rate: activeTaxRate,
+                tax_label: business?.manual_tax_type || 'GST',
+                tax_term: manualTaxTerm,
                 delivery_charges: printOrderData.deliveryCharges || 0,
                 discount: printOrderData.discountAmount || 0,
                 payment_breakdown: [{ method: printOrderData.primaryPaymentMethod || 'CASH', amount: printOrderData.grandTotal || 0 }],

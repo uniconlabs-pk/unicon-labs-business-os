@@ -35,6 +35,13 @@ interface BusinessTenant {
   tax_enabled?: boolean
   tax_rate?: number
   tax_label?: string
+  enable_manual_tax?: boolean
+  manual_strn?: string
+  manual_tax_type?: string
+  manual_tax_term?: string
+  enable_dual_tax_tier?: boolean
+  cash_tax_rate?: number
+  digital_tax_rate?: number
   created_at: string
 }
 
@@ -104,6 +111,18 @@ export default function MasterAdminPanel() {
   // FBR Provisioning State
   const [enableFbr, setEnableFbr] = useState(false)
   const [fbrPosId, setFbrPosId] = useState('')
+
+  // Manual Tax Provisioning State
+  const [enableManualTax, setEnableManualTax] = useState(false)
+  const [manualStrn, setManualStrn] = useState('')
+  const [manualTaxRate, setManualTaxRate] = useState('15')
+  const [manualTaxType, setManualTaxType] = useState('GST')
+  const [manualTaxTerm, setManualTaxTerm] = useState('EXCLUSIVE')
+
+  // Dual-Tier Tax Provisioning State
+  const [newEnableDualTax, setNewEnableDualTax] = useState(false)
+  const [newCashTaxRate, setNewCashTaxRate] = useState('15.00')
+  const [newDigitalTaxRate, setNewDigitalTaxRate] = useState('8.00')
 
   // Settings Credential State
   const [newAdminUser, setNewAdminUser] = useState('')
@@ -281,6 +300,7 @@ export default function MasterAdminPanel() {
     e.preventDefault()
     if (!newName || !newSlug) return alert('Name and Slug are required.')
     if (enableFbr && !fbrPosId.trim()) return alert('FBR POS Registration ID is required when FBR compliance is enabled.')
+    if (enableManualTax && !manualStrn.trim()) return alert('STRN / VAT Number is required when Manual Tax Integration is enabled.')
 
     const scheduleString = JSON.stringify(newSchedule)
 
@@ -307,9 +327,16 @@ export default function MasterAdminPanel() {
       contact_person_email: newCpEmail,
       enable_fbr_integration: enableFbr,
       fbr_pos_id: enableFbr ? fbrPosId.trim() : null,
-      tax_enabled: enableFbr,
-      tax_rate: enableFbr ? 16.00 : 0.00,
-      tax_label: enableFbr ? 'GST' : 'NONE'
+      tax_enabled: enableFbr || enableManualTax,
+      tax_rate: enableFbr ? 16.00 : (enableManualTax ? parseFloat(manualTaxRate) || 0 : 0.00),
+      tax_label: enableFbr ? 'GST' : (enableManualTax ? manualTaxType : 'NONE'),
+      enable_manual_tax: enableManualTax,
+      manual_strn: enableManualTax ? manualStrn.trim() : null,
+      manual_tax_type: enableManualTax ? manualTaxType : null,
+      manual_tax_term: enableManualTax ? manualTaxTerm : null,
+      enable_dual_tax_tier: newEnableDualTax,
+      cash_tax_rate: newEnableDualTax ? parseFloat(newCashTaxRate) || 15.00 : 15.00,
+      digital_tax_rate: newEnableDualTax ? parseFloat(newDigitalTaxRate) || 8.00 : 8.00
     }])
 
     if (error) {
@@ -330,6 +357,14 @@ export default function MasterAdminPanel() {
       setNewCpEmail('')
       setEnableFbr(false)
       setFbrPosId('')
+      setEnableManualTax(false)
+      setManualStrn('')
+      setManualTaxRate('15')
+      setManualTaxType('GST')
+      setManualTaxTerm('EXCLUSIVE')
+      setNewEnableDualTax(false)
+      setNewCashTaxRate('15.00')
+      setNewDigitalTaxRate('8.00')
       setNewSchedule(DEFAULT_SCHEDULE)
       loadAllTenants()
     }
@@ -759,6 +794,118 @@ export default function MasterAdminPanel() {
                         placeholder="e.g., POS-KRUNCHY-001"
                         className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-emerald-500"
                       />
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-3 border border-gray-700 p-4 rounded-xl bg-gray-900/60 mt-3">
+                  <label className="flex items-center space-x-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={enableManualTax}
+                      onChange={(e) => setEnableManualTax(e.target.checked)}
+                      className="w-4 h-4 text-emerald-600 rounded bg-gray-800 border-gray-700 focus:ring-0"
+                    />
+                    <div>
+                      <span className="font-bold text-xs uppercase text-emerald-400 block">Enable Manual Tax Integration (Self-Managed)</span>
+                      <span className="text-[10px] text-gray-400">Allows tenant to calculate and manage local tax/VAT using their own STRN without live FBR sync.</span>
+                    </div>
+                  </label>
+
+                  {enableManualTax && (
+                    <div className="space-y-3 pt-2 border-t border-gray-800">
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-300 uppercase mb-1">
+                          STRN / VAT Number *
+                        </label>
+                        <input
+                          type="text"
+                          required={enableManualTax}
+                          value={manualStrn}
+                          onChange={(e) => setManualStrn(e.target.value)}
+                          placeholder="Enter 13 digits STRN/VAT Number."
+                          className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-300 uppercase mb-1">Tax Type</label>
+                          <select
+                            value={manualTaxType}
+                            onChange={(e) => setManualTaxType(e.target.value)}
+                            className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white"
+                          >
+                            <option value="GST">GST - (General Sales Tax)</option>
+                            <option value="VAT">VAT - (Value Added Tax)</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-300 uppercase mb-1">Tax Percentage (%)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={manualTaxRate}
+                            onChange={(e) => setManualTaxRate(e.target.value)}
+                            className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-xs font-mono text-white"
+                            required={enableManualTax}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-300 uppercase mb-1">Tax Term / Basis</label>
+                        <select
+                          value={manualTaxTerm}
+                          onChange={(e) => setManualTaxTerm(e.target.value)}
+                          className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white font-bold"
+                        >
+                          <option value="EXCLUSIVE">EXCLUSIVE - (Tax %/Charges will be added on top of the item's price / subtotal)</option>
+                          <option value="INCLUSIVE">INCLUSIVE - (Tax %/Charges is already included inside the item's price)</option>
+                        </select>
+                      </div>
+
+                      {/* Dual-Tier Tax Sub-Option Model */}
+                      <div className="pt-2 border-t border-gray-800 space-y-3">
+                        <label className="flex items-center space-x-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={newEnableDualTax}
+                            onChange={(e) => setNewEnableDualTax(e.target.checked)}
+                            className="w-4 h-4 text-amber-500 rounded bg-gray-800 border-gray-700 focus:ring-0"
+                          />
+                          <div>
+                            <span className="font-bold text-xs uppercase text-amber-400 block">Enable Dual Cash / Digital Tax Tiers</span>
+                            <span className="text-[10px] text-gray-400">Applies lower tax for digital payments vs cash (e.g. 15% cash vs 8% digital).</span>
+                          </div>
+                        </label>
+
+                        {newEnableDualTax && (
+                          <div className="grid grid-cols-2 gap-2 bg-black/40 p-3 rounded-xl border border-gray-800">
+                            <div>
+                              <label className="block text-[10px] font-bold text-gray-300 uppercase mb-1">Cash Payment Tax (%)</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={newCashTaxRate}
+                                onChange={(e) => setNewCashTaxRate(e.target.value)}
+                                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-1 text-white font-mono text-xs"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-gray-300 uppercase mb-1">Digital/Card Tax (%)</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={newDigitalTaxRate}
+                                onChange={(e) => setNewDigitalTaxRate(e.target.value)}
+                                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-1 text-white font-mono text-xs"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

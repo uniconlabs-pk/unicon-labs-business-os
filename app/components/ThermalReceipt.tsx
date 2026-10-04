@@ -20,6 +20,9 @@ interface ThermalReceiptProps {
     total_amount: number
     subtotal?: number
     tax_amount?: number
+    tax_rate?: number
+    tax_label?: string
+    tax_term?: string
     delivery_charges?: number
     discount?: number
     payment_breakdown?: { method: string; amount: number }[]
@@ -89,7 +92,14 @@ export default function ThermalReceipt({ business, order, cart, customer }: Ther
   const deliveryCharges = isDelivery ? (order.delivery_charges || 200) : 0
   const taxAmount = order.tax_amount || 0
   const discount = order.discount || 0
-  const grandTotal = subtotal + deliveryCharges + taxAmount - discount
+  
+  const taxRate = order.tax_rate !== undefined ? order.tax_rate : 15
+  const taxLabel = order.tax_label || 'Tax'
+  const taxTerm = order.tax_term || 'EXCLUSIVE'
+
+  const grandTotal = taxTerm === 'INCLUSIVE'
+    ? subtotal + deliveryCharges - discount
+    : subtotal + deliveryCharges + taxAmount - discount
 
   const paymentMethod = order.payment_breakdown?.[0]?.method || 'Cash On Delivery (COD)'
   const isCashPayment = paymentMethod.toUpperCase().includes('CASH')
@@ -226,7 +236,7 @@ export default function ThermalReceipt({ business, order, cart, customer }: Ther
           <span className="font-mono">{currency} {formatPrice(subtotal + deliveryCharges)}</span>
         </div>
         <div className="flex justify-between">
-          <span>Tax 0%</span>
+          <span>{taxLabel} {taxRate}% {taxTerm === 'INCLUSIVE' ? '(Incl.)' : ''}</span>
           <span className="font-mono">{formatPrice(taxAmount)}</span>
         </div>
         {isDelivery && (

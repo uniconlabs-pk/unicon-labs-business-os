@@ -91,6 +91,10 @@ export default function TenantDetailPage({ params }: { params: Promise<{ slug: s
     e.preventDefault()
     if (!tenant) return
 
+    const isFbr = Boolean(tenant.enable_fbr_integration)
+    const isManual = Boolean(tenant.enable_manual_tax)
+    const isDual = Boolean(tenant.enable_dual_tax_tier)
+
     const scheduleString = JSON.stringify(editSchedule)
     const { error } = await supabase
       .from('businesses')
@@ -106,11 +110,18 @@ export default function TenantDetailPage({ params }: { params: Promise<{ slug: s
         contact_person_name: tenant.contact_person_name,
         contact_person_phone: tenant.contact_person_phone,
         contact_person_email: tenant.contact_person_email,
-        enable_fbr_integration: Boolean(tenant.enable_fbr_integration),
-        fbr_pos_id: tenant.enable_fbr_integration ? tenant.fbr_pos_id || null : null,
-        tax_enabled: Boolean(tenant.enable_fbr_integration),
-        tax_rate: tenant.enable_fbr_integration ? 16.00 : 0.00,
-        tax_label: tenant.enable_fbr_integration ? 'GST' : 'NONE',
+        enable_fbr_integration: isFbr,
+        fbr_pos_id: isFbr ? tenant.fbr_pos_id || null : null,
+        enable_manual_tax: isManual,
+        manual_strn: isManual ? tenant.manual_strn || null : null,
+        manual_tax_type: isManual ? tenant.manual_tax_type || 'GST' : null,
+        manual_tax_term: isManual ? tenant.manual_tax_term || 'EXCLUSIVE' : null,
+        enable_dual_tax_tier: isDual,
+        cash_tax_rate: isDual ? parseFloat(tenant.cash_tax_rate) || 15.00 : 15.00,
+        digital_tax_rate: isDual ? parseFloat(tenant.digital_tax_rate) || 8.00 : 8.00,
+        tax_enabled: isFbr || isManual,
+        tax_rate: isFbr ? 16.00 : (isManual ? parseFloat(tenant.tax_rate) || 0 : 0.00),
+        tax_label: isFbr ? 'GST' : (isManual ? tenant.manual_tax_type || 'GST' : 'NONE'),
       })
       .eq('id', tenant.id)
 
@@ -272,9 +283,9 @@ export default function TenantDetailPage({ params }: { params: Promise<{ slug: s
                   onChange={e => setTenant({ 
                     ...tenant, 
                     enable_fbr_integration: e.target.checked,
-                    tax_enabled: e.target.checked,
-                    tax_rate: e.target.checked ? 16.00 : 0.00,
-                    tax_label: e.target.checked ? 'GST' : 'NONE'
+                    tax_enabled: e.target.checked || Boolean(tenant.enable_manual_tax),
+                    tax_rate: e.target.checked ? 16.00 : (tenant.enable_manual_tax ? tenant.tax_rate : 0.00),
+                    tax_label: e.target.checked ? 'GST' : (tenant.enable_manual_tax ? tenant.tax_label : 'NONE')
                   })}
                   className="rounded bg-gray-800 border-gray-700 text-emerald-600 focus:ring-0 w-4 h-4"
                 />
@@ -295,6 +306,125 @@ export default function TenantDetailPage({ params }: { params: Promise<{ slug: s
                     placeholder="e.g. POS-KRUNCHY-001"
                     className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-white font-mono text-xs"
                   />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Manual Tax & Sindh Dual-Tier Tax Configuration */}
+          <div className="pt-4 border-t border-gray-700 space-y-3">
+            <span className="text-[11px] text-emerald-400 uppercase font-bold tracking-wider">Manual Tax & Dual-Tier Tax Configuration</span>
+            <div className="bg-gray-900 rounded-xl p-4 border border-gray-700 space-y-4">
+              <label className="flex items-center space-x-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={Boolean(tenant.enable_manual_tax)}
+                  onChange={e => setTenant({ 
+                    ...tenant, 
+                    enable_manual_tax: e.target.checked,
+                    tax_enabled: e.target.checked || Boolean(tenant.enable_fbr_integration),
+                    tax_rate: e.target.checked ? (parseFloat(tenant.tax_rate) || 15.00) : (tenant.enable_fbr_integration ? 16.00 : 0.00),
+                    tax_label: e.target.checked ? (tenant.manual_tax_type || 'GST') : (tenant.enable_fbr_integration ? 'GST' : 'NONE')
+                  })}
+                  className="rounded bg-gray-800 border-gray-700 text-emerald-600 focus:ring-0 w-4 h-4"
+                />
+                <div>
+                  <span className="font-bold text-white text-xs block">Enable Manual Tax Integration (Self-Managed)</span>
+                  <span className="text-[10px] text-gray-400">Calculates local tax/VAT using custom STRN without live FBR web-service sync.</span>
+                </div>
+              </label>
+
+              {tenant.enable_manual_tax && (
+                <div className="space-y-3 pt-3 border-t border-gray-800">
+                  <div>
+                    <label className="block text-gray-400 font-medium mb-1 text-[11px]">STRN / VAT Number *</label>
+                    <input
+                      type="text"
+                      required={Boolean(tenant.enable_manual_tax)}
+                      value={tenant.manual_strn || ''}
+                      onChange={e => setTenant({ ...tenant, manual_strn: e.target.value })}
+                      placeholder="Enter 13 digits STRN/VAT Number."
+                      className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-white font-mono text-xs"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-gray-400 font-medium mb-1 text-[11px]">Tax Type</label>
+                      <select
+                        value={tenant.manual_tax_type || 'GST'}
+                        onChange={e => setTenant({ ...tenant, manual_tax_type: e.target.value, tax_label: e.target.value })}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-white text-xs"
+                      >
+                        <option value="GST">GST - (General Sales Tax)</option>
+                        <option value="VAT">VAT - (Value Added Tax)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-gray-400 font-medium mb-1 text-[11px]">Default Tax Percentage (%)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={tenant.tax_rate ?? 15}
+                        onChange={e => setTenant({ ...tenant, tax_rate: parseFloat(e.target.value) || 0 })}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-white font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-400 font-medium mb-1 text-[11px]">Tax Term / Basis</label>
+                    <select
+                      value={tenant.manual_tax_term || 'EXCLUSIVE'}
+                      onChange={e => setTenant({ ...tenant, manual_tax_term: e.target.value })}
+                      className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-white font-bold text-xs"
+                    >
+                      <option value="EXCLUSIVE">EXCLUSIVE - (Tax %/Charges will be added on top of the item's price / subtotal)</option>
+                      <option value="INCLUSIVE">INCLUSIVE - (Tax %/Charges is already included inside the item's price)</option>
+                    </select>
+                  </div>
+
+                  {/* Dual-Tier Tax Sub-Option Model (Cash vs Digital) */}
+                  <div className="pt-2 border-t border-gray-800 space-y-3">
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(tenant.enable_dual_tax_tier)}
+                        onChange={e => setTenant({ ...tenant, enable_dual_tax_tier: e.target.checked })}
+                        className="rounded bg-gray-800 border-gray-700 text-amber-500 focus:ring-0 w-4 h-4"
+                      />
+                      <div>
+                        <span className="font-bold text-amber-400 text-xs block">Enable Dual Cash / Digital Tax Tiers Model</span>
+                        <span className="text-[10px] text-gray-400">Automatically applies lower tax for digital payments vs cash.</span>
+                      </div>
+                    </label>
+
+                    {tenant.enable_dual_tax_tier && (
+                      <div className="grid grid-cols-2 gap-2 bg-black/30 p-3 rounded-xl border border-gray-800">
+                        <div>
+                          <label className="block text-gray-400 font-medium mb-1 text-[10px]">Cash Payment Tax (%)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={tenant.cash_tax_rate ?? 15.00}
+                            onChange={e => setTenant({ ...tenant, cash_tax_rate: parseFloat(e.target.value) || 15 })}
+                            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2.5 py-1 text-white font-mono text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-gray-400 font-medium mb-1 text-[10px]">Digital/Card Payment Tax (%)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={tenant.digital_tax_rate ?? 8.00}
+                            onChange={e => setTenant({ ...tenant, digital_tax_rate: parseFloat(e.target.value) || 8 })}
+                            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2.5 py-1 text-white font-mono text-xs"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -456,7 +586,7 @@ export default function TenantDetailPage({ params }: { params: Promise<{ slug: s
         {/* Danger Zone */}
         <div className="bg-red-950/20 p-6 rounded-2xl border border-red-900/30 flex justify-between items-center">
           <div>
-            <span className="text-xs text-red-400 uppercase font-extrabold tracking-wider block">⚠️ Danger Zone: Delete Tenant</span>
+            <span className="text-xs text-red-400 uppercase font-extrabold tracking-wider block">⚠️ Danger Zone: Delete Tenant Profile & Settings</span>
             <span className="text-[11px] text-gray-400">Permanently remove this tenant instance and all associated data from the ecosystem.</span>
           </div>
           <button type="button" onClick={handleDeleteTenant} className="px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl transition shadow text-xs whitespace-nowrap">
