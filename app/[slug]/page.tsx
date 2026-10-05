@@ -112,6 +112,7 @@ export default function TenantDashboard({ params }: PageProps) {
   const [editNextOrderSeq, setEditNextOrderSeq] = useState<string>('100000')
   const [editNextSerialSeq, setEditNextSerialSeq] = useState<string>('100000')
   const [editNextKotSeq, setEditNextKotSeq] = useState<string>('100000')
+  const [editNextSrrSeq, setEditNextSrrSeq] = useState<string>('100000')
 
   // Fetch Active Sessions with direct staff profile join for instant, accurate details
   const fetchActiveSessions = async (businessId: string) => {
@@ -198,6 +199,7 @@ export default function TenantDashboard({ params }: PageProps) {
       setEditNextOrderSeq(String(biz.next_order_seq ?? 100000))
       setEditNextSerialSeq(String(biz.next_serial_seq ?? 100000))
       setEditNextKotSeq(String(biz.next_kot_seq ?? 100000))
+      setEditNextSrrSeq(String(biz.next_srr_seq ?? 100000))
 
       // Dynamically update browser tab title to Tenant Name
       if (biz.name) {
@@ -381,6 +383,10 @@ export default function TenantDashboard({ params }: PageProps) {
           setEditHasStorefront(updatedBiz.has_storefront ?? true)
           setEditHasErp(updatedBiz.has_erp ?? true)
           setEditHasTables(updatedBiz.has_tables ?? false)
+          setEditNextOrderSeq(String(updatedBiz.next_order_seq ?? 100000))
+          setEditNextSerialSeq(String(updatedBiz.next_serial_seq ?? 100000))
+          setEditNextKotSeq(String(updatedBiz.next_kot_seq ?? 100000))
+          setEditNextSrrSeq(String(updatedBiz.next_srr_seq ?? 100000))
           
           if (updatedBiz.name) {
             document.title = updatedBiz.name
@@ -482,6 +488,7 @@ export default function TenantDashboard({ params }: PageProps) {
     const parsedOrderSeq = parseInt(editNextOrderSeq) || 100000
     const parsedSerialSeq = parseInt(editNextSerialSeq) || 100000
     const parsedKotSeq = parseInt(editNextKotSeq) || 100000
+    const parsedSrrSeq = parseInt(editNextSrrSeq) || 100000
 
     setSavingSettings(true)
     const { error } = await supabase
@@ -503,7 +510,8 @@ export default function TenantDashboard({ params }: PageProps) {
         has_tables: editHasTables,
         next_order_seq: parsedOrderSeq,
         next_serial_seq: parsedSerialSeq,
-        next_kot_seq: parsedKotSeq
+        next_kot_seq: parsedKotSeq,
+        next_srr_seq: parsedSrrSeq
       })
       .eq('id', business.id)
 
@@ -529,7 +537,8 @@ export default function TenantDashboard({ params }: PageProps) {
         has_tables: editHasTables,
         next_order_seq: parsedOrderSeq,
         next_serial_seq: parsedSerialSeq,
-        next_kot_seq: parsedKotSeq
+        next_kot_seq: parsedKotSeq,
+        next_srr_seq: parsedSrrSeq
       })
       if (editName) {
         document.title = editName
@@ -1098,7 +1107,7 @@ export default function TenantDashboard({ params }: PageProps) {
                   {effectiveModules.hasPOS && (
                     <a href={`/${slug}/pos`} className="bg-gray-900 text-white p-5 rounded-2xl shadow-md hover:bg-black transition group space-y-2.5 border border-yellow-500/40">
                       <div className="flex justify-between items-center">
-                        <div className="w-9 h-9 rounded-xl bg-yellow-500 text-black flex items-center justify-center font-bold text-base shadow-inner">🖥️️</div>
+                        <div className="w-9 h-9 rounded-xl bg-yellow-500 text-black flex items-center justify-center font-bold text-base shadow-inner">🖥</div>
                         <span className="text-[9px] font-mono bg-yellow-400/20 text-yellow-300 px-2 py-0.5 rounded font-bold uppercase">POS Live</span>
                       </div>
                       <h4 className="font-extrabold text-xs tracking-wide group-hover:underline">{profile.terminology.posTitle}</h4>
@@ -1950,9 +1959,9 @@ export default function TenantDashboard({ params }: PageProps) {
                   <div className="space-y-2 pt-2 border-t border-gray-200">
                     <label className="block text-gray-700 font-bold uppercase tracking-wider text-[11px]">Sequence Starting Points</label>
                     <p className="text-[10px] text-gray-500">Configure exact starting numbers for your invoice numbering continuity.</p>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Next Order Seq</label>
+                        <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Set Order No.</label>
                         <input 
                           type="number"
                           value={editNextOrderSeq}
@@ -1961,7 +1970,7 @@ export default function TenantDashboard({ params }: PageProps) {
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Next Serial Seq</label>
+                        <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Set Serial No.</label>
                         <input 
                           type="number"
                           value={editNextSerialSeq}
@@ -1970,11 +1979,20 @@ export default function TenantDashboard({ params }: PageProps) {
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Next KOT Seq</label>
+                        <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Set KOT No.</label>
                         <input 
                           type="number"
                           value={editNextKotSeq}
                           onChange={e => setEditNextKotSeq(e.target.value)}
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-2 font-mono text-xs font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Set SRR No.</label>
+                        <input 
+                          type="number"
+                          value={editNextSrrSeq}
+                          onChange={e => setEditNextSrrSeq(e.target.value)}
                           className="w-full bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-2 font-mono text-xs font-bold"
                         />
                       </div>

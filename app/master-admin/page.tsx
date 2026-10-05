@@ -89,6 +89,7 @@ export default function MasterAdminPanel() {
   const [resetKots, setResetKots] = useState(true)
   const [resetTables, setResetTables] = useState(true)
   const [resetSequences, setResetSequences] = useState(true)
+  const [resetReturns, setResetReturns] = useState(true)
   const [isResetting, setIsResetting] = useState(false)
 
   // New Tenant Modal State
@@ -275,14 +276,18 @@ export default function MasterAdminPanel() {
       if (resetKots) {
         await supabase.from('kds_tickets').delete().eq('business_id', resettingTenant.id)
       }
+      if (resetReturns) {
+        await supabase.from('order_refunds').delete().eq('business_id', resettingTenant.id)
+      }
       if (resetTables) {
         await supabase.from('tables').update({ status: 'available' }).eq('business_id', resettingTenant.id)
       }
       if (resetSequences) {
         await supabase.from('businesses').update({
-          next_order_seq: 100000,
-          next_serial_seq: 100000,
-          next_kot_seq: 100000
+          next_order_seq: 100011,
+          next_serial_seq: 100011,
+          next_kot_seq: 100011,
+          next_srr_seq: 100011
         }).eq('id', resettingTenant.id)
       }
 
@@ -675,12 +680,16 @@ export default function MasterAdminPanel() {
                   <span className="text-white font-semibold">Delete all Kitchen Tickets (`kds_tickets`)</span>
                 </label>
                 <label className="flex items-center space-x-3 cursor-pointer">
+                  <input type="checkbox" checked={resetReturns} onChange={e => setResetReturns(e.target.checked)} className="rounded bg-gray-800 border-gray-700 text-amber-500 focus:ring-0 w-4 h-4" />
+                  <span className="text-white font-semibold">Delete all Sales Return Receipts / Refunds (`order_refunds`)</span>
+                </label>
+                <label className="flex items-center space-x-3 cursor-pointer">
                   <input type="checkbox" checked={resetTables} onChange={e => setResetTables(e.target.checked)} className="rounded bg-gray-800 border-gray-700 text-amber-500 focus:ring-0 w-4 h-4" />
                   <span className="text-white font-semibold">Reset all dine-in tables back to 'available'</span>
                 </label>
                 <label className="flex items-center space-x-3 cursor-pointer">
                   <input type="checkbox" checked={resetSequences} onChange={e => setResetSequences(e.target.checked)} className="rounded bg-gray-800 border-gray-700 text-amber-500 focus:ring-0 w-4 h-4" />
-                  <span className="text-white font-semibold">Reset sequence numbers back to 100000</span>
+                  <span className="text-white font-semibold">Reset sequence numbers back to 100011</span>
                 </label>
               </div>
 
