@@ -63,31 +63,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
   const [authenticatedStaff, setAuthenticatedStaff] = useState<any>(null)
   const [showSecurityGate, setShowSecurityGate] = useState(true)
   
-  // Invoice Recall & Advanced Full-Screen View States
-  const [isRecallViewActive, setIsRecallViewActive] = useState(false)
-  const [recentOrders, setRecentOrders] = useState<any[]>([])
-  const [loadingRecall, setLoadingRecall] = useState(false)
-  
-  // Search Filters for Recall View
-  const [recallSearchOrderNo, setRecallSearchOrderNo] = useState('')
-  const [recallSearchSerial, setRecallSearchSerial] = useState('')
-  const [recallSearchCustName, setRecallSearchCustName] = useState('')
-  const [recallSearchPhone, setRecallSearchPhone] = useState('')
-  const [recallDateFrom, setRecallDateFrom] = useState('')
-  const [recallDateTo, setRecallDateTo] = useState('')
-
-  // Refund & Return Workflow States
-  const [showRefundAuthModal, setShowRefundAuthModal] = useState(false)
-  const [selectedOrderForRefund, setSelectedOrderForRefund] = useState<any>(null)
-  const [refundManagerPin, setRefundManagerPin] = useState('')
-  const [refundManagerQrToken, setRefundManagerQrToken] = useState('')
-  const [refundItemsSelection, setRefundItemsSelection] = useState<{ [itemIndex: number]: { returnQty: number, maxQty: number } }>({})
-  const [refundReasonCode, setRefundReasonCode] = useState('Quality Issue / Damaged')
-  const [processingRefund, setProcessingRefund] = useState(false)
-  
-  // Print Sales Return Receipt State
-  const [printSrrData, setPrintSrrData] = useState<any>(null)
-  
   const [zones, setZones] = useState<string[]>([])
   const [tables, setTables] = useState<any[]>([])
   const [activeZone, setActiveZone] = useState('ALL')
@@ -123,6 +98,10 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
   const [selectedVariant, setSelectedVariant] = useState<any>(null)
   const [selectedAddons, setSelectedAddons] = useState<any[]>([])
   const [addonVariants, setAddonVariants] = useState<{ [addonId: string]: any }>({})
+
+  // Recall & Refund Sliding Drawer Modal States
+  const [showRecallModal, setShowRecallModal] = useState(false)
+  const [showRefundModal, setShowRefundModal] = useState(false)
 
   // Service Charges, Discount, and Delivery Charges State
   const [serviceCharges, setServiceCharges] = useState<number>(0)
@@ -211,45 +190,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     const query = waiterSearchInput.toLowerCase()
     return waiters.filter(w => (w.full_name || w.name || '').toLowerCase().includes(query))
   }, [waiters, waiterSearchInput])
-
-  // 3. Filter recent orders for recall view
-  const filteredRecallOrders = useMemo(() => {
-    return recentOrders.filter(ord => {
-      if (recallDateFrom) {
-        const orderDate = new Date(ord.created_at).toISOString().split('T')[0]
-        if (orderDate < recallDateFrom) return false
-      }
-      if (recallDateTo) {
-        const orderDate = new Date(ord.created_at).toISOString().split('T')[0]
-        if (orderDate > recallDateTo) return false
-      }
-      if (recallSearchCustName.trim()) {
-        const cName = (ord.customer_name || '').toLowerCase()
-        if (!cName.includes(recallSearchCustName.trim().toLowerCase())) return false
-      }
-      if (recallSearchPhone.trim()) {
-        const phone = (ord.customer_phone || '')
-        if (!phone.includes(recallSearchPhone.trim())) return false
-      }
-      if (recallSearchOrderNo.trim()) {
-        const idStr = String(ord.order_number || ord.id || '').toLowerCase()
-        if (!idStr.includes(recallSearchOrderNo.trim().toLowerCase())) return false
-      }
-      if (recallSearchSerial.trim()) {
-        const serial = (ord.serial_number || '').toLowerCase()
-        if (!serial.includes(recallSearchSerial.trim().toLowerCase())) return false
-      }
-      return true
-    })
-  }, [
-    recentOrders,
-    recallSearchOrderNo,
-    recallSearchSerial,
-    recallSearchCustName,
-    recallSearchPhone,
-    recallDateFrom,
-    recallDateTo
-  ])
 
   // Zone Grouping Memoized
   const posGroupedZones = useMemo(() => {
@@ -1107,7 +1047,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
   const triggerPrintKot = (kotPayload: any) => {
     setPrintOrderData(null)
-    setPrintSrrData(null) // Explicitly clear stale sale return records before printing KOT
     setPrintKotData(kotPayload)
     setTimeout(() => {
       if (printKotRef.current) {
@@ -1118,275 +1057,12 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
   const triggerPrintReceipt = (receiptPayload: any) => {
     setPrintKotData(null)
-    setPrintSrrData(null) // Explicitly clear any lingering sale return data
     setPrintOrderData(receiptPayload)
     setTimeout(() => {
       if (printReceiptRef.current) {
         window.print()
       }
     }, 150)
-  }
-
-  const triggerPrintSrr = (srrPayload: any) => {
-    setPrintKotData(null)
-    setPrintOrderData(null)
-    setPrintSrrData(srrPayload)
-    setTimeout(() => {
-      if (printSrrRef.current) {
-        window.print()
-      }
-    }, 150)
-  }
-
-  const handleOpenRecallView = async () => {
-    if (!business?.id) return
-    setLoadingRecall(true)
-    setIsRecallViewActive(true)
-
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('business_id', business.id)
-      .order('created_at', { ascending: false })
-      .limit(100)
-
-    if (!error && data) {
-      setRecentOrders(data)
-    } else {
-      setRecentOrders([])
-    }
-    setLoadingRecall(false)
-  }
-
-  const handleReprintOrder = (orderRecord: any) => {
-    // Parse tender_breakdown safely to retrieve original cash tender & change
-    let parsedTender: any[] = []
-    try {
-      if (typeof orderRecord.tender_breakdown === 'string' && orderRecord.tender_breakdown.trim() !== '' && orderRecord.tender_breakdown !== '[]') {
-        parsedTender = JSON.parse(orderRecord.tender_breakdown)
-      } else if (Array.isArray(orderRecord.tender_breakdown)) {
-        parsedTender = orderRecord.tender_breakdown
-      }
-    } catch (e) {
-      parsedTender = []
-    }
-    const tenderEntry = parsedTender[0] || {}
-
-    // Extract actual received cash with correct priority fallbacks
-    const resolvedCashReceived = orderRecord.cash_received !== undefined && orderRecord.cash_received !== null && orderRecord.cash_received !== ''
-      ? orderRecord.cash_received 
-      : (tenderEntry.receivedCash !== undefined && tenderEntry.receivedCash !== null && tenderEntry.receivedCash !== ''
-      ? tenderEntry.receivedCash 
-      : (tenderEntry.amount !== undefined && tenderEntry.amount !== null ? tenderEntry.amount : orderRecord.total_amount || 0))
-
-    const resolvedChangeReturned = orderRecord.change_returned !== undefined && orderRecord.change_returned !== null && orderRecord.change_returned !== ''
-      ? orderRecord.change_returned
-      : (tenderEntry.changeReturned !== undefined && tenderEntry.changeReturned !== null ? tenderEntry.changeReturned : 0)
-
-    const receiptPayload = {
-      storeName: business?.name || 'STORE',
-      address: business?.address || '',
-      phone: business?.phone || '',
-      orderNo: orderRecord.order_number ? `KB-${String(orderRecord.order_number).padStart(6, '0')}` : (orderRecord.serial_number || orderRecord.id?.slice(0, 8) || 'SAVED'),
-      serial_number: orderRecord.serial_number || `SN-${Math.floor(100000 + Math.random() * 900000)}`,
-      date: new Date(orderRecord.created_at || Date.now()).toLocaleString(),
-      staff: authenticatedStaff?.full_name || 'Staff',
-      waiter: orderRecord.waiter_name || null,
-      customerName: orderRecord.customer_name || 'Walk-In Customer',
-      customerPhone: orderRecord.customer_phone || '',
-      deliveryAddress: orderRecord.delivery_address || '',
-      deliveryNote: orderRecord.delivery_note || '',
-      serviceType: orderRecord.service_type || 'COUNTER',
-      items: orderRecord.items || [],
-      subtotal: orderRecord.subtotal || orderRecord.total_amount,
-      serviceCharges: orderRecord.service_charges !== undefined ? orderRecord.service_charges : 0,
-      discountAmount: orderRecord.discount_amount !== undefined ? orderRecord.discount_amount : (orderRecord.discount || 0),
-      deliveryCharges: orderRecord.delivery_charges || 0,
-      calculatedTax: orderRecord.gst_amount || 0,
-      tax_rate: orderRecord.tax_rate || activeTaxRate,
-      tax_label: orderRecord.tax_label || (business?.manual_tax_type || 'GST'),
-      tax_term: orderRecord.tax_term || manualTaxTerm,
-      grandTotal: orderRecord.total_amount || 0,
-      primaryPaymentMethod: orderRecord.payment_method || 'CASH',
-      cash_received: resolvedCashReceived,
-      change_returned: resolvedChangeReturned,
-      fbrPosId: orderRecord.fbr_pos_id || null
-    }
-
-    triggerPrintReceipt(receiptPayload)
-  }
-
-  // Initiate Refund Workflow with Quantity Tracking
-  const handleOpenRefundModal = (orderRecord: any) => {
-    setSelectedOrderForRefund(orderRecord)
-    setRefundManagerPin('')
-    setRefundManagerQrToken('')
-    setRefundReasonCode('Quality Issue / Damaged')
-    
-    const initialSelection: { [idx: number]: { returnQty: number, maxQty: number } } = {}
-    if (orderRecord.items && Array.isArray(orderRecord.items)) {
-      orderRecord.items.forEach((item: any, idx: number) => {
-        const totalQty = item.qty || item.quantity || 1
-        const alreadyRefunded = item.refunded_qty || 0
-        const availableMax = Math.max(0, totalQty - alreadyRefunded)
-        initialSelection[idx] = { returnQty: 0, maxQty: availableMax }
-      })
-    }
-    setRefundItemsSelection(initialSelection)
-    setShowRefundAuthModal(true)
-  }
-
-  // Core Refund Execution Function (Shared between PIN and Instant QR Scan)
-  const executeRefundTransaction = async (staffMatch: any) => {
-    if (!business?.id || !selectedOrderForRefund) return
-
-    setProcessingRefund(true)
-    try {
-      let totalRefundAmount = 0
-      const returnedItemsList: any[] = []
-      const updatedOrderItems = [...(selectedOrderForRefund.items || [])]
-
-      Object.entries(refundItemsSelection).forEach(([idxStr, sel]) => {
-        const idx = Number(idxStr)
-        if (sel.returnQty > 0) {
-          const origItem = updatedOrderItems[idx]
-          const itemPrice = origItem.finalUnitPrice || origItem.price || 0
-          totalRefundAmount += itemPrice * sel.returnQty
-
-          const prevRefunded = origItem.refunded_qty || 0
-          origItem.refunded_qty = prevRefunded + sel.returnQty
-
-          returnedItemsList.push({
-            ...origItem,
-            qty: sel.returnQty
-          })
-        }
-      })
-
-      if (totalRefundAmount <= 0) {
-        alert('Please select at least one item quantity to refund.')
-        setProcessingRefund(false)
-        return
-      }
-
-      // 1. Insert into order_refunds audit log table
-      const { error: refundErr } = await supabase.from('order_refunds').insert({
-        business_id: business.id,
-        original_order_id: selectedOrderForRefund.id,
-        order_number: selectedOrderForRefund.order_number,
-        refund_amount: totalRefundAmount,
-        refund_reason: refundReasonCode,
-        returned_items: returnedItemsList,
-        authorized_by_staff_id: staffMatch.id,
-        authorized_by_name: staffMatch.full_name,
-        created_at: new Date().toISOString()
-      })
-
-      if (refundErr) {
-        console.warn('Order refunds table note:', refundErr.message)
-      }
-
-      // 2. Update original order in Supabase
-      const newTotalAmount = Math.max(0, (selectedOrderForRefund.total_amount || 0) - totalRefundAmount)
-      const allItemsFullyRefunded = updatedOrderItems.every(i => (i.refunded_qty || 0) >= (i.qty || i.quantity || 1))
-
-      await supabase.from('orders').update({
-        items: updatedOrderItems,
-        total_amount: newTotalAmount,
-        fiscal_status: allItemsFullyRefunded ? 'fully_refunded' : 'partially_refunded'
-      }).eq('id', selectedOrderForRefund.id)
-
-      // 3. Fetch live Next SRR Sequence from database
-      const { data: freshBizForSrr } = await supabase
-        .from('businesses')
-        .select('next_srr_seq')
-        .eq('id', business.id)
-        .single()
-
-      const baseSrrSeq = Number(freshBizForSrr?.next_srr_seq ?? 100000)
-      const srrNumber = `SRR-${String(baseSrrSeq).padStart(6, '0')}`
-
-      // Increment next_srr_seq in Supabase
-      try {
-        await supabase
-          .from('businesses')
-          .update({ next_srr_seq: baseSrrSeq + 1 })
-          .eq('id', business.id)
-        
-        setBusiness((prev: any) => ({ ...prev, next_srr_seq: baseSrrSeq + 1 }))
-      } catch (seqErr) {
-        console.warn('SRR sequence increment note:', seqErr)
-      }
-
-      const srrPayload = {
-        storeName: business?.name || 'STORE',
-        address: business?.address || '',
-        phone: business?.phone || '',
-        srrNo: srrNumber,
-        originalOrderNo: selectedOrderForRefund.order_number ? `KB-${String(selectedOrderForRefund.order_number).padStart(6, '0')}` : 'N/A',
-        serialNumber: selectedOrderForRefund.serial_number || 'N/A',
-        date: new Date().toLocaleString(),
-        authorizedManager: staffMatch.full_name,
-        serviceType: selectedOrderForRefund.service_type || 'COUNTER',
-        paymentMode: selectedOrderForRefund.payment_method || 'CASH',
-        refundReason: refundReasonCode,
-        returnedItems: returnedItemsList,
-        totalRefundAmount
-      }
-
-      triggerPrintSrr(srrPayload)
-
-      alert(`Successfully processed refund of ${currencySymbol} ${totalRefundAmount} authorized by ${staffMatch.full_name}! Sales Return Receipt printed.`)
-      setShowRefundAuthModal(false)
-      setSelectedOrderForRefund(null)
-      handleOpenRecallView()
-    } catch (err: any) {
-      alert(`Refund error: ${err.message || err}`)
-    } finally {
-      setProcessingRefund(false)
-    }
-  }
-
-  // Execute Secure Refund Processing via Manual PIN
-  const handleProcessRefund = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!business?.id || !selectedOrderForRefund) return
-    if (!refundManagerPin.trim()) {
-      alert('Manager Security PIN is mandatory to authorize a refund.')
-      return
-    }
-
-    const { data: staffMatch, error: staffErr } = await supabase
-      .from('staff_profiles')
-      .select('*')
-      .eq('business_id', business.id)
-      .eq('pin_code', refundManagerPin.trim())
-      .single()
-
-    if (staffErr || !staffMatch) {
-      alert('Invalid Manager PIN. Refund authorization denied.')
-      return
-    }
-
-    await executeRefundTransaction(staffMatch)
-  }
-
-  // Instant QR Badge Scan Authorization Handler
-  const handleManagerQrScan = async (scannedToken: string) => {
-    const cleanToken = scannedToken.trim()
-    if (!cleanToken || !business?.id || !selectedOrderForRefund) return
-
-    const { data: staffMatch, error: staffErr } = await supabase
-      .from('staff_profiles')
-      .select('*')
-      .eq('business_id', business.id)
-      .eq('qr_token', cleanToken)
-      .single()
-
-    if (!staffErr && staffMatch) {
-      // Valid manager badge detected -> Instant Authorization & Processing!
-      await executeRefundTransaction(staffMatch)
-    }
   }
 
   const handleSendToKitchen = async () => {
@@ -1431,7 +1107,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       items: unsentItems
     }
 
-    // Respect KDS Module toggle status for digital database routing
     if (effectiveModules.hasKDS) {
       try {
         const nextKot = baseKotSeq + 1
@@ -1822,6 +1497,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
           onAuthenticated={(staff) => {
             setAuthenticatedStaff(staff)
             sessionStorage.setItem(`unicon_staff_session_${slug}`, JSON.stringify({ ...staff, business_id: business.id }))
+            localStorage.setItem('pos_unlocked', 'true')
             setShowSecurityGate(false)
           }}
           onCancel={() => router.push(`/`)}
@@ -1837,7 +1513,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
               alt={business?.name || 'Logo'} 
               className="w-full h-full object-contain"
               onError={(e) => {
-                // Fallback to emoji if tenant logo asset is missing
                 e.currentTarget.style.display = 'none';
                 if (e.currentTarget.parentElement) {
                   e.currentTarget.parentElement.innerText = profile.modules.hasKDS ? '🍔' : '⚡';
@@ -1870,7 +1545,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         </div>
 
         <div className="flex items-center space-x-4">
-          {/* RELOCATED STRN BADGE IN HEADER */}
           {isManualTaxActive && business?.manual_strn && (
             <div className="hidden lg:flex items-center space-x-1.5 bg-emerald-950/60 border border-emerald-800/80 px-3 py-1.5 rounded-xl text-emerald-300 font-mono text-[11px] font-bold">
               <span>STRN: {business.manual_strn}</span>
@@ -1889,17 +1563,25 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
             </div>
           )}
 
-          <div className="flex items-center space-x-3 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
-            {!isRecallViewActive && (
-              <button 
-                onClick={handleOpenRecallView}
-                className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl transition text-[10px] font-bold flex items-center space-x-1 shadow-2xs cursor-pointer"
-                title="Recall Invoice / Search & Reprint"
-              >
-                <span>📜</span>
-                <span>Recall / Search</span>
-              </button>
-            )}
+          <div className="flex items-center space-x-2 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
+            <button 
+              type="button"
+              onClick={() => setShowRecallModal(true)}
+              className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl transition text-[10px] font-bold flex items-center space-x-1 shadow-2xs cursor-pointer"
+              title="Recall Invoice / Search & Reprint"
+            >
+              <span>📜</span>
+              <span>Recall / Search</span>
+            </button>
+            <button 
+              type="button"
+              onClick={() => setShowRefundModal(true)}
+              className="px-2.5 py-1 bg-rose-700 hover:bg-rose-600 text-white rounded-xl transition text-[10px] font-bold flex items-center space-x-1 shadow-2xs cursor-pointer"
+              title="Process Refund & Return"
+            >
+              <span>↩️</span>
+              <span>Refunds</span>
+            </button>
             <div className="text-right font-mono">
               <div className="text-xs font-black text-white">{currentTime.toLocaleTimeString('en-US', { hour12: false })}</div>
               <div className="text-[9px] text-emerald-400 uppercase font-bold">Staff: {authenticatedStaff?.full_name || 'Online'}</div>
@@ -1923,167 +1605,8 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         </div>
       </header>
 
-      {/* MAIN WORKSPACE OR FULL-SCREEN RECALL VIEW */}
-      {isRecallViewActive ? (
-        <div className="flex-1 flex flex-col bg-gray-50 dark:bg-slate-900 overflow-hidden">
-          <div className="p-4 bg-slate-900 text-white flex justify-between items-center shrink-0">
-            <div className="flex items-center space-x-2">
-              <span className="text-base">📜</span>
-              <h3 className="font-black text-sm uppercase tracking-wider">Invoice Recall, Audit & Refund Portal</h3>
-            </div>
-            <button 
-              onClick={() => setIsRecallViewActive(false)}
-              className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs transition cursor-pointer"
-            >
-              ← Back to POS Register
-            </button>
-          </div>
-
-          <div className="p-4 bg-white dark:bg-slate-900 border-b dark:border-slate-800 space-y-3 shrink-0 text-xs shadow-2xs">
-            <div className="font-black text-slate-900 dark:text-slate-100 uppercase tracking-wide text-[11px] flex justify-between items-center">
-              <span>🔍 Search & Filter Criteria</span>
-              {(recallSearchOrderNo || recallSearchSerial || recallSearchCustName || recallSearchPhone || recallDateFrom || recallDateTo) && (
-                <button 
-                  onClick={() => {
-                    setRecallSearchOrderNo('')
-                    setRecallSearchSerial('')
-                    setRecallSearchCustName('')
-                    setRecallSearchPhone('')
-                    setRecallDateFrom('')
-                    setRecallDateTo('')
-                  }}
-                  className="text-[10px] text-rose-600 hover:underline font-bold cursor-pointer"
-                >
-                  Clear All Filters
-                </button>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-2">
-              <div>
-                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-0.5">Date From</label>
-                <input 
-                  type="date"
-                  value={recallDateFrom}
-                  onChange={e => setRecallDateFrom(e.target.value)}
-                  className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg px-2 py-1.5 font-mono text-[11px]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-0.5">Date To</label>
-                <input 
-                  type="date"
-                  value={recallDateTo}
-                  onChange={e => setRecallDateTo(e.target.value)}
-                  className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg px-2 py-1.5 font-mono text-[11px]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-0.5">Customer Name</label>
-                <input 
-                  type="text"
-                  placeholder="Search name..."
-                  value={recallSearchCustName}
-                  onChange={e => setRecallSearchCustName(e.target.value)}
-                  className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg px-2.5 py-1.5 font-medium"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-0.5">Mobile Number</label>
-                <input 
-                  type="text"
-                  placeholder="Search phone..."
-                  value={recallSearchPhone}
-                  onChange={e => setRecallSearchPhone(e.target.value)}
-                  className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg px-2.5 py-1.5 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-0.5">Order ID</label>
-                <input 
-                  type="text"
-                  placeholder="ID..."
-                  value={recallSearchOrderNo}
-                  onChange={e => setRecallSearchOrderNo(e.target.value)}
-                  className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg px-2.5 py-1.5 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-0.5">Serial</label>
-                <input 
-                  type="text"
-                  placeholder="SN-..."
-                  value={recallSearchSerial}
-                  onChange={e => setRecallSearchSerial(e.target.value)}
-                  className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg px-2 py-1.5 font-mono uppercase"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex-1 p-6 overflow-y-auto space-y-3">
-            {loadingRecall ? (
-              <div className="text-center py-20 text-gray-400 font-bold">Querying order archives from database...</div>
-            ) : filteredRecallOrders.length > 0 ? (
-              <div className="space-y-2">
-                <div className="text-[10px] font-bold text-gray-400 uppercase px-1">
-                  Showing {filteredRecallOrders.length} matching invoice records (Audit, Reprint & Refund):
-                </div>
-                {filteredRecallOrders.map((ord: any) => (
-                  <div key={ord.id} className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl p-4 flex items-center justify-between shadow-2xs hover:border-slate-900 transition">
-                    <div className="space-y-1">
-                      <div className="flex items-center space-x-2">
-                        <span className="font-mono font-black text-slate-900 dark:text-white text-xs">{ord.order_number ? `KB-${String(ord.order_number).padStart(6, '0')}` : (ord.serial_number || `SN-${Math.floor(100000 + Math.random() * 900000)}`)}</span>
-                        <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[9px] font-bold px-2 py-0.5 rounded uppercase">{ord.service_type || 'COUNTER'}</span>
-                        {ord.fiscal_status && (
-                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase ${
-                            ord.fiscal_status.includes('refund') ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'
-                          }`}>
-                            {ord.fiscal_status}
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">
-                        Customer: <span className="text-gray-900 dark:text-gray-200 font-bold">{ord.customer_name || 'Walk-In'}</span> ({ord.customer_phone || 'No Phone'}) • {new Date(ord.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <div className="text-right font-mono">
-                        <div className="text-sm font-black text-emerald-700 dark:text-emerald-400">{currencySymbol} {ord.total_amount}</div>
-                        <div className="text-[10px] text-gray-400 uppercase">{ord.payment_method || 'CASH'}</div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleReprintOrder(ord)}
-                          className="px-4 py-2 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold shadow-2xs transition flex items-center space-x-1 cursor-pointer"
-                        >
-                          <span>🖨️</span>
-                          <span>Reprint</span>
-                        </button>
-                        <button
-                          onClick={() => handleOpenRefundModal(ord)}
-                          className="px-4 py-2 bg-rose-700 hover:bg-rose-600 text-white rounded-xl text-xs font-bold shadow-2xs transition flex items-center space-x-1 cursor-pointer"
-                        >
-                          <span>↩️</span>
-                          <span>Refund / Return</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-20 text-gray-400 text-xs">No invoices found matching your search criteria.</div>
-            )}
-          </div>
-        </div>
-      ) : (
-        <div className="flex-1 flex overflow-hidden">
+      {/* MAIN WORKSPACE */}
+      <div className="flex-1 flex overflow-hidden">
         
         {/* COLUMN 1: DINE-IN TABLES OR FAVORITE/FAST-MOVING ITEMS WITH UNICON BADGE FOOTER */}
         <aside className={`w-80 border-r flex flex-col shrink-0 shadow-2xs transition-colors duration-300 ${isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-gray-200 text-gray-800'}`}>
@@ -2205,7 +1728,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
                           {isReserved && timeLeftStr && (
                             <div className="text-[9px] font-mono font-bold text-amber-800 bg-amber-100/80 px-1.5 py-0.5 rounded text-center">
-                              ⏱️ {timeLeftStr} left
+                              ⏱ {timeLeftStr} left
                             </div>
                           )}
 
@@ -2700,7 +2223,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                   className={`w-full border rounded-lg px-2.5 py-1.5 font-medium focus:outline-none focus:border-purple-600 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-white border-gray-200 text-gray-900'}`}
                 />
                 
-                {/* Waiter Dropdown Selection Menu */}
                 {showWaiterDropdown && matchingWaiters.length > 0 && (
                   <div className={`absolute left-0 right-0 top-full mt-1 border rounded-xl shadow-lg z-30 max-h-40 overflow-y-auto ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
                     <div
@@ -2940,7 +2462,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         </aside>
 
       </div>
-      )}
 
       {/* MODAL: ADD NEW CUSTOMER RECORD */}
       {showNewCustomerModal && (
@@ -3017,169 +2538,11 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         </div>
       )}
 
-      {/* SECURE MANAGER REFUND & RETURN AUTHORIZATION MODAL WITH QR BADGE SCANNER */}
-      {showRefundAuthModal && selectedOrderForRefund && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 font-sans">
-          <form onSubmit={handleProcessRefund} className={`rounded-3xl w-full max-w-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden text-xs ${isDarkMode ? 'bg-slate-900 text-white border border-slate-800' : 'bg-white text-gray-900'}`}>
-             
-            <div className="p-5 bg-rose-900 text-white flex justify-between items-center shrink-0">
-              <div className="flex items-center space-x-2">
-                <span className="text-base">↩️</span>
-                <h3 className="font-black text-sm uppercase tracking-wider">Process Order Refund & Return</h3>
-              </div>
-              <button type="button" onClick={() => setShowRefundAuthModal(false)} className="text-rose-200 hover:text-white font-bold cursor-pointer">✕</button>
-            </div>
-
-            <div className={`flex-1 p-6 overflow-y-auto space-y-4 ${isDarkMode ? 'bg-slate-950' : 'bg-gray-50'}`}>
-               
-              <div className={`p-3.5 rounded-2xl border shadow-2xs flex justify-between items-center ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
-                <div>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase">Original Invoice</span>
-                  <div className="font-mono font-black text-sm">
-                    {selectedOrderForRefund.order_number ? `KB-${String(selectedOrderForRefund.order_number).padStart(6, '0')}` : 'SAVED'}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase">Original Total</span>
-                  <div className="font-mono font-black text-emerald-400 text-sm">{currencySymbol} {selectedOrderForRefund.total_amount}</div>
-                </div>
-              </div>
-
-              {/* Item Level Selection with Remaining Quantity Tracking */}
-              <div className="space-y-2">
-                <label className="block font-bold uppercase tracking-wide text-[11px]">Select Items & Quantities to Return:</label>
-                <div className={`border rounded-2xl p-3 space-y-2 max-h-48 overflow-y-auto ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
-                  {selectedOrderForRefund.items && selectedOrderForRefund.items.map((item: any, idx: number) => {
-                    const totalQty = item.qty || item.quantity || 1
-                    const alreadyRefunded = item.refunded_qty || 0
-                    const sel = refundItemsSelection[idx] || { returnQty: 0, maxQty: Math.max(0, totalQty - alreadyRefunded) }
-                    const isFullyRefunded = sel.maxQty <= 0
-
-                    return (
-                      <div key={idx} className={`flex justify-between items-center py-2 border-b last:border-0 ${isDarkMode ? 'border-slate-800' : 'border-gray-100'} ${isFullyRefunded ? 'opacity-50 bg-slate-800/40 px-2 rounded-xl' : ''}`}>
-                        <div>
-                          <div className="font-bold flex items-center space-x-1.5">
-                            <span>{item.name} {item.selectedVariant ? `[${item.selectedVariant.name}]` : ''}</span>
-                            {isFullyRefunded && (
-                              <span className="bg-red-900 text-red-200 text-[8px] font-black uppercase px-1.5 py-0.2 rounded">Fully Refunded</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-gray-400 font-mono">
-                            {currencySymbol} {item.finalUnitPrice || item.price} each • Total Ordered: {totalQty} {alreadyRefunded > 0 ? `(Already Refunded: ${alreadyRefunded})` : ''}
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          {!isFullyRefunded ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const updated = { ...refundItemsSelection }
-                                  if (updated[idx].returnQty > 0) updated[idx].returnQty -= 1
-                                  setRefundItemsSelection(updated)
-                                }}
-                                className={`w-7 h-7 rounded-lg font-bold flex items-center justify-center cursor-pointer ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700' : 'bg-gray-100 hover:bg-gray-200'}`}
-                              >
-                                -
-                              </button>
-                              <span className="font-mono font-black w-6 text-center">{sel.returnQty}</span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const updated = { ...refundItemsSelection }
-                                  if (updated[idx].returnQty < updated[idx].maxQty) updated[idx].returnQty += 1
-                                  setRefundItemsSelection(updated)
-                                }}
-                                className={`w-7 h-7 rounded-lg font-bold flex items-center justify-center cursor-pointer ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700' : 'bg-gray-100 hover:bg-gray-200'}`}
-                              >
-                                +
-                              </button>
-                            </>
-                          ) : (
-                            <span className="text-[10px] font-bold text-red-400 font-mono">Locked</span>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Mandatory Reason Code */}
-              <div className="space-y-1.5">
-                <label className="block font-bold uppercase tracking-wide text-[11px]">Refund / Damage Reason Code *</label>
-                <select
-                  value={refundReasonCode}
-                  onChange={e => setRefundReasonCode(e.target.value)}
-                  className={`w-full border rounded-xl px-3 py-2 text-xs font-bold uppercase ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                  required
-                >
-                  <option value="Quality Issue / Damaged">🍔 Quality Issue / Damaged (Write-off Inventory)</option>
-                  <option value="Customer Cancelled / Changed Mind">❌ Customer Cancelled / Changed Mind (Restock Stock)</option>
-                  <option value="Delivery Mishap / Driver Drop">🛵 Delivery Mishap / Driver Drop</option>
-                  <option value="Wrong Item Prepared">⚠️ Wrong Item Prepared</option>
-                </select>
-              </div>
-
-              {/* Manager Authorization: QR Badge Scan OR PIN */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className={`border p-3.5 rounded-2xl space-y-1.5 ${isDarkMode ? 'bg-indigo-950/40 border-indigo-900/60' : 'bg-indigo-50 border-indigo-200'}`}>
-                  <label className="block text-indigo-300 font-black uppercase tracking-wide text-[10px]">🪪 Manager QR Badge Scan (Instant)</label>
-                  <input
-                    type="text"
-                    placeholder="Scan manager badge token..."
-                    value={refundManagerQrToken}
-                    onChange={e => {
-                      setRefundManagerQrToken(e.target.value)
-                      handleManagerQrScan(e.target.value)
-                    }}
-                    className={`w-full border rounded-xl px-3 py-2 font-mono text-xs font-bold focus:outline-none ${isDarkMode ? 'bg-slate-900 border-indigo-800 text-white' : 'bg-white border-indigo-300 text-indigo-900'}`}
-                  />
-                  <span className="text-[9px] text-indigo-400 block">Scanning valid badge processes refund instantly.</span>
-                </div>
-
-                <div className={`border p-3.5 rounded-2xl space-y-1.5 ${isDarkMode ? 'bg-rose-950/40 border-rose-900/60' : 'bg-rose-50 border-rose-200'}`}>
-                  <label className="block text-rose-300 font-black uppercase tracking-wide text-[10px]">🔑 Manager Security PIN</label>
-                  <input
-                    type="password"
-                    maxLength={6}
-                    placeholder="Enter 4-6 digit PIN..."
-                    value={refundManagerPin}
-                    onChange={e => setRefundManagerPin(e.target.value)}
-                    className={`w-full border rounded-xl px-3 py-2 font-mono font-bold tracking-widest text-sm focus:outline-none ${isDarkMode ? 'bg-slate-900 border-rose-800 text-white' : 'bg-white border-rose-300 text-gray-900'}`}
-                  />
-                  <span className="text-[9px] text-rose-400 block">Manual PIN requires button authorization.</span>
-                </div>
-              </div>
-
-            </div>
-
-            <div className={`p-4 border-t flex justify-end space-x-2 shrink-0 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white'}`}>
-              <button
-                type="button"
-                onClick={() => setShowRefundAuthModal(false)}
-                className={`px-5 py-2.5 font-bold rounded-xl text-xs cursor-pointer ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={processingRefund}
-                className="px-6 py-2.5 bg-rose-700 hover:bg-rose-600 disabled:opacity-50 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-sm cursor-pointer"
-              >
-                {processingRefund ? 'Processing Refund...' : 'Authorize & Process Refund ↩️'}
-              </button>
-            </div>
-
-          </form>
-        </div>
-      )}
-
       {/* MODAL: CUSTOMIZE ITEM */}
       {showCustomizeModal && customizingItem && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className={`rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] overflow-hidden ${isDarkMode ? 'bg-slate-900 text-white border border-slate-800' : 'bg-white text-gray-900'}`}>
-             
+            
             <div className={`p-6 pb-3 border-b flex justify-between items-start shrink-0 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
               <div>
                 <span className="text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">
@@ -3346,7 +2709,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
               <span className="text-lg font-mono font-black text-emerald-400">{currencySymbol} {grandTotal}</span>
             </div>
 
-            {/* SPECIAL INSTRUCTION NOTE FIELD FOR DELIVERY ORDERS */}
             {serviceType === 'DELIVERY' && (
               <div className="space-y-1">
                 <label className="block text-[10px] font-bold text-gray-400 uppercase">Special Instruction Note (Delivery)</label>
@@ -3501,6 +2863,42 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         </div>
       )}
 
+      {/* SLIDING DRAWER / MODAL: RECALL / SEARCH */}
+      {showRecallModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-end z-50">
+          <div className={`w-full md:w-1/2 min-w-[50vw] h-full shadow-2xl flex flex-col ${isDarkMode ? 'bg-slate-900 text-white border-l border-slate-800' : 'bg-white text-gray-900 border-l border-gray-200'}`}>
+            <div className={`p-4 border-b flex justify-between items-center shrink-0 ${isDarkMode ? 'border-slate-800' : 'border-gray-200'}`}>
+              <h3 className="font-black text-sm uppercase flex items-center space-x-2">
+                <span>📜</span>
+                <span>Recall Invoice / Search & Reprint</span>
+              </h3>
+              <button type="button" onClick={() => setShowRecallModal(false)} className="text-gray-400 hover:text-white font-bold text-sm cursor-pointer">✕</button>
+            </div>
+            <div className="flex-1 p-4 overflow-y-auto">
+              <iframe src={`/${slug}/pos/recall`} className="w-full h-full border-0 rounded-xl" title="Recall Invoice" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SLIDING DRAWER / MODAL: REFUNDS */}
+      {showRefundModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-end z-50">
+          <div className={`w-full md:w-1/2 min-w-[50vw] h-full shadow-2xl flex flex-col ${isDarkMode ? 'bg-slate-900 text-white border-l border-slate-800' : 'bg-white text-gray-900 border-l border-gray-200'}`}>
+            <div className={`p-4 border-b flex justify-between items-center shrink-0 ${isDarkMode ? 'border-slate-800' : 'border-gray-200'}`}>
+              <h3 className="font-black text-sm uppercase flex items-center space-x-2">
+                <span>↩</span>
+                <span>Process Refund & Return</span>
+              </h3>
+              <button type="button" onClick={() => setShowRefundModal(false)} className="text-gray-400 hover:text-white font-bold text-sm cursor-pointer">✕</button>
+            </div>
+            <div className="flex-1 p-4 overflow-y-auto">
+              <iframe src={`/${slug}/pos/refund`} className="w-full h-full border-0 rounded-xl" title="Process Refund" />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* HIDDEN THERMAL PRINT DOM STAGING */}
       <div className="hidden print:block print:w-[80mm] print:m-0 print:p-0">
         <style jsx global>{`
@@ -3551,12 +2949,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         {printKotData && (
           <div ref={printKotRef} className="print-receipt-wrapper">
             <ThermalKOT kotData={printKotData} business={business} slug={slug} />
-          </div>
-        )}
-
-        {printSrrData && (
-          <div ref={printSrrRef} className="print-receipt-wrapper">
-            <ThermalSaleReturn srrData={printSrrData} currencySymbol={currencySymbol} />
           </div>
         )}
 

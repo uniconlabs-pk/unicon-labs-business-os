@@ -46,9 +46,12 @@ export async function POST(req: Request) {
 
     const staff = staffList.find((s: any) => {
       const matchPin = s.pin_code && String(s.pin_code).trim() === cleanedInput
-      const matchQr = s.qr_token && String(s.qr_token).trim() === cleanedInput
-      const matchCode = s.staff_code && String(s.staff_code).trim() === cleanedInput
-      return matchPin || matchQr || matchCode
+      const matchQr = s.qr_token && String(s.qr_token).trim().toLowerCase() === cleanedInput.toLowerCase()
+      const matchCode = s.staff_code && String(s.staff_code).trim().toLowerCase() === cleanedInput.toLowerCase()
+      const matchBadgeId = s.badge_id && String(s.badge_id).trim().toLowerCase() === cleanedInput.toLowerCase()
+      const matchBadgeCode = s.badge_code && String(s.badge_code).trim().toLowerCase() === cleanedInput.toLowerCase()
+      const matchBadgeString = s.badge_string && String(s.badge_string).trim().toLowerCase() === cleanedInput.toLowerCase()
+      return matchPin || matchQr || matchCode || matchBadgeId || matchBadgeCode || matchBadgeString
     })
 
     if (!staff) {

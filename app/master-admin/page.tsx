@@ -278,6 +278,7 @@ export default function MasterAdminPanel() {
       }
       if (resetReturns) {
         await supabase.from('order_refunds').delete().eq('business_id', resettingTenant.id)
+        await supabase.from('sales_returns').delete().eq('business_id', resettingTenant.id)
       }
       if (resetTables) {
         await supabase.from('tables').update({ status: 'available' }).eq('business_id', resettingTenant.id)
@@ -681,7 +682,7 @@ export default function MasterAdminPanel() {
                 </label>
                 <label className="flex items-center space-x-3 cursor-pointer">
                   <input type="checkbox" checked={resetReturns} onChange={e => setResetReturns(e.target.checked)} className="rounded bg-gray-800 border-gray-700 text-amber-500 focus:ring-0 w-4 h-4" />
-                  <span className="text-white font-semibold">Delete all Sales Return Receipts / Refunds (`order_refunds`)</span>
+                  <span className="text-white font-semibold">Delete all Sales Return Receipts / Refunds (`order_refunds`, `sales_returns`)</span>
                 </label>
                 <label className="flex items-center space-x-3 cursor-pointer">
                   <input type="checkbox" checked={resetTables} onChange={e => setResetTables(e.target.checked)} className="rounded bg-gray-800 border-gray-700 text-amber-500 focus:ring-0 w-4 h-4" />

@@ -29,7 +29,7 @@ export default function TenantDashboard({ params }: PageProps) {
   const [uploadingBanner, setUploadingBanner] = useState(false)
 
   // Reports & Database Full-Screen View State & Collapsible Menu State
-  const [activeReportView, setActiveReportView] = useState<'sales' | 'customers' | 'staff' | null>(null)
+  const [activeReportView, setActiveReportView] = useState<'sales' | 'sales_returns' | 'customers' | 'staff' | null>(null)
   const [isReportsMenuOpen, setIsReportsMenuOpen] = useState(false)
   
   // Reports Filter States
@@ -43,6 +43,17 @@ export default function TenantDashboard({ params }: PageProps) {
   const [filterPaymentMode, setFilterPaymentMode] = useState('ALL')
   const [filterWaiterName, setFilterWaiterName] = useState('')
   const [filterRiderName, setFilterRiderName] = useState('')
+
+  // Sales Return Report View & Filter States
+  const [salesReturnData, setSalesReturnData] = useState<any[]>([])
+  const [loadingSalesReturns, setLoadingSalesReturns] = useState(false)
+  const [filterSrrDateFrom, setFilterSrrDateFrom] = useState('')
+  const [filterSrrDateTo, setFilterSrrDateTo] = useState('')
+  const [filterSrrNo, setFilterSrrNo] = useState('')
+  const [filterSrrOrderNo, setFilterSrrOrderNo] = useState('')
+  const [filterSrrOrderType, setFilterSrrOrderType] = useState('ALL')
+  const [filterSrrItem, setFilterSrrItem] = useState('')
+  const [filterSrrAuthorizedBy, setFilterSrrAuthorizedBy] = useState('')
 
   // Customer Database States
   const [customerList, setCustomerList] = useState<any[]>([])
@@ -255,6 +266,22 @@ export default function TenantDashboard({ params }: PageProps) {
     setLoadingSales(false)
   }
 
+  // Fetch Sales Return Report Data
+  const fetchSalesReturnsReport = async () => {
+    if (!business?.id) return
+    setLoadingSalesReturns(true)
+    const { data, error } = await supabase
+      .from('sales_returns')
+      .select('*')
+      .eq('business_id', business.id)
+      .order('created_at', { ascending: false })
+
+    if (!error && data) {
+      setSalesReturnData(data)
+    }
+    setLoadingSalesReturns(false)
+  }
+
   // Fetch Customer Database Data
   const fetchCustomerDatabase = async () => {
     if (!business?.id) return
@@ -272,9 +299,10 @@ export default function TenantDashboard({ params }: PageProps) {
   }
 
   // Handle Opening Reports Full-Screen Views
-  const selectReportView = (type: 'sales' | 'customers' | 'staff' | null) => {
+  const selectReportView = (type: 'sales' | 'sales_returns' | 'customers' | 'staff' | null) => {
     setActiveReportView(type)
     if (type === 'sales') fetchSalesReport()
+    if (type === 'sales_returns') fetchSalesReturnsReport()
     if (type === 'customers') fetchCustomerDatabase()
   }
 
@@ -316,6 +344,36 @@ export default function TenantDashboard({ params }: PageProps) {
       return true
     })
   }, [salesReportData, filterDateFrom, filterDateTo, filterCustQuery, filterOrderNo, filterOrderType, filterPaymentMode, filterWaiterName, filterRiderName])
+
+  // Filtered Sales Return Computed Data
+  const filteredSalesReturnsReports = useMemo(() => {
+    return salesReturnData.filter(srr => {
+      if (filterSrrDateFrom) {
+        const srrDate = new Date(srr.created_at).toISOString().split('T')[0]
+        if (srrDate < filterSrrDateFrom) return false
+      }
+      if (filterSrrDateTo) {
+        const srrDate = new Date(srr.created_at).toISOString().split('T')[0]
+        if (srrDate > filterSrrDateTo) return false
+      }
+      if (filterSrrNo.trim()) {
+        if (!(srr.srr_number || '').toLowerCase().includes(filterSrrNo.trim().toLowerCase())) return false
+      }
+      if (filterSrrOrderNo.trim()) {
+        if (!(srr.order_number || '').toLowerCase().includes(filterSrrOrderNo.trim().toLowerCase())) return false
+      }
+      if (filterSrrOrderType !== 'ALL') {
+        if ((srr.order_type || '').toUpperCase() !== filterSrrOrderType.toUpperCase()) return false
+      }
+      if (filterSrrItem.trim()) {
+        if (!(srr.returned_items_description || '').toLowerCase().includes(filterSrrItem.trim().toLowerCase())) return false
+      }
+      if (filterSrrAuthorizedBy.trim()) {
+        if (!(srr.authorized_by || '').toLowerCase().includes(filterSrrAuthorizedBy.trim().toLowerCase())) return false
+      }
+      return true
+    })
+  }, [salesReturnData, filterSrrDateFrom, filterSrrDateTo, filterSrrNo, filterSrrOrderNo, filterSrrOrderType, filterSrrItem, filterSrrAuthorizedBy])
 
   // Filtered Customer Database Computed Data
   const filteredCustomers = useMemo(() => {
@@ -403,6 +461,18 @@ export default function TenantDashboard({ params }: PageProps) {
         () => {
           // Automatically refresh active sessions on any insert, update, or delete event across active sessions
           fetchActiveSessions(business.id)
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'sales_returns',
+          filter: `business_id=eq.${business.id}`,
+        },
+        (payload) => {
+          setSalesReturnData(prev => [payload.new, ...prev])
         }
       )
       .subscribe()
@@ -950,7 +1020,16 @@ export default function TenantDashboard({ params }: PageProps) {
                     }`}
                   >
                     <span>📈</span>
-                    <span>Sale Report</span>
+                    <span>Sales Report</span>
+                  </button>
+                  <button 
+                    onClick={() => selectReportView('sales_returns')}
+                    className={`w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg font-medium text-[11px] transition text-left cursor-pointer ${
+                      activeReportView === 'sales_returns' ? 'bg-emerald-600 text-white font-bold' : 'text-gray-300 hover:bg-slate-800 hover:text-white'
+                    }`}
+                  >
+                    <span>🔄</span>
+                    <span>Sales Return Report</span>
                   </button>
                   <button 
                     onClick={() => selectReportView('customers')}
@@ -1004,7 +1083,8 @@ export default function TenantDashboard({ params }: PageProps) {
           <div>
             <h2 className="text-sm font-black uppercase text-gray-900 tracking-wide">
               {activeReportView === null && 'Command Center & Operations'}
-              {activeReportView === 'sales' && 'Advanced Sale Report & Audit Hub'}
+              {activeReportView === 'sales' && 'Advanced Sales Report & Audit Hub'}
+              {activeReportView === 'sales_returns' && 'Sales Return Passes & Audit Hub'}
               {activeReportView === 'customers' && 'Customer Database & CRM Directory'}
               {activeReportView === 'staff' && 'Staff Directory & Security Badge Hub'}
             </h2>
@@ -1296,12 +1376,12 @@ export default function TenantDashboard({ params }: PageProps) {
             /* FULL-SCREEN REPORT VIEWS */
             <div className="space-y-4">
               
-              {/* SUB-VIEW 1: SALE REPORT */}
+              {/* SUB-VIEW 1: SALES REPORT */}
               {activeReportView === 'sales' && (
                 <div className="space-y-4">
                   <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs space-y-3">
                     <div className="font-black text-gray-900 uppercase tracking-wide text-[11px] flex justify-between items-center">
-                      <span>🔍 Sale Report Filters</span>
+                      <span>🔍 Sales Report Filters</span>
                       <button 
                         onClick={() => { setFilterDateFrom(''); setFilterDateTo(''); setFilterCustQuery(''); setFilterOrderNo(''); setFilterOrderType('ALL'); setFilterPaymentMode('ALL'); setFilterWaiterName(''); setFilterRiderName(''); }}
                         className="text-rose-600 hover:underline font-bold text-[10px] cursor-pointer"
@@ -1398,6 +1478,104 @@ export default function TenantDashboard({ params }: PageProps) {
                           ))
                         ) : (
                           <tr><td colSpan={5} className="text-center py-12 text-gray-400">No matching sales records found.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* SUB-VIEW: SALES RETURN REPORT */}
+              {activeReportView === 'sales_returns' && (
+                <div className="space-y-4">
+                  <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs space-y-3">
+                    <div className="font-black text-gray-900 uppercase tracking-wide text-[11px] flex justify-between items-center">
+                      <span>🔍 Sales Return Report Filters</span>
+                      <button 
+                        onClick={() => { setFilterSrrDateFrom(''); setFilterSrrDateTo(''); setFilterSrrNo(''); setFilterSrrOrderNo(''); setFilterSrrOrderType('ALL'); setFilterSrrItem(''); setFilterSrrAuthorizedBy(''); }}
+                        className="text-rose-600 hover:underline font-bold text-[10px] cursor-pointer"
+                      >
+                        Clear Filters
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Date From</label>
+                        <input type="date" value={filterSrrDateFrom} onChange={e => setFilterSrrDateFrom(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-xs" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Date To</label>
+                        <input type="date" value={filterSrrDateTo} onChange={e => setFilterSrrDateTo(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-xs" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5">SRR Number</label>
+                        <input type="text" placeholder="Search SRR..." value={filterSrrNo} onChange={e => setFilterSrrNo(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-mono text-xs" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Order Number</label>
+                        <input type="text" placeholder="Search order..." value={filterSrrOrderNo} onChange={e => setFilterSrrOrderNo(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-mono text-xs" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Order Type</label>
+                        <select value={filterSrrOrderType} onChange={e => setFilterSrrOrderType(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-bold uppercase text-xs">
+                          <option value="ALL">ALL TYPES</option>
+                          <option value="DINE-IN">DINE-IN</option>
+                          <option value="TAKEAWAY">TAKEAWAY</option>
+                          <option value="DELIVERY">DELIVERY</option>
+                          <option value="COUNTER">COUNTER</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Item Name</label>
+                        <input type="text" placeholder="Search item..." value={filterSrrItem} onChange={e => setFilterSrrItem(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Authorized By</label>
+                      <input type="text" placeholder="Search authorizer..." value={filterSrrAuthorizedBy} onChange={e => setFilterSrrAuthorizedBy(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs" />
+                    </div>
+                  </div>
+
+                  <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-2xs">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-gray-100 text-gray-500 uppercase text-[10px] font-bold">
+                        <tr>
+                          <th className="p-3">Date/Time</th>
+                          <th className="p-3">SRR Number</th>
+                          <th className="p-3">Order Number</th>
+                          <th className="p-3">Order Type & Payment</th>
+                          <th className="p-3">Returned Items Description</th>
+                          <th className="p-3">Return Reason</th>
+                          <th className="p-3">Authorized By</th>
+                          <th className="p-3 text-right">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {loadingSalesReturns ? (
+                          <tr><td colSpan={8} className="text-center py-12 text-gray-400 font-bold">Querying sales return passes...</td></tr>
+                        ) : filteredSalesReturnsReports.length > 0 ? (
+                          filteredSalesReturnsReports.map(srr => (
+                            <tr key={srr.id} className="hover:bg-gray-50 transition">
+                              <td className="p-3 font-mono text-[10px] text-gray-500">
+                                {new Date(srr.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                              </td>
+                              <td className="p-3 font-mono font-black text-indigo-700">{srr.srr_number}</td>
+                              <td className="p-3 font-mono font-bold text-gray-900">{srr.order_number}</td>
+                              <td className="p-3">
+                                <span className="bg-slate-100 text-slate-800 font-bold px-2 py-0.5 rounded text-[9px] uppercase mr-1">{srr.order_type}</span>
+                                <div className="text-[10px] text-emerald-700 font-semibold mt-0.5">{srr.payment_mode}</div>
+                              </td>
+                              <td className="p-3 font-medium text-gray-900 max-w-xs">{srr.returned_items_description}</td>
+                              <td className="p-3 text-rose-700 font-semibold">{srr.return_reason}</td>
+                              <td className="p-3 font-bold text-gray-800">{srr.authorized_by}</td>
+                              <td className="p-3 text-right font-mono font-black text-rose-600 text-sm">
+                                {business?.currency_symbol || 'Rs.'} {srr.amount}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr><td colSpan={8} className="text-center py-12 text-gray-400">No sales return passes recorded matching the criteria.</td></tr>
                         )}
                       </tbody>
                     </table>
