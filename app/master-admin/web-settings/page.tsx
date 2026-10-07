@@ -1,20 +1,25 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 export default function WebSettingsPage() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'header' | 'menu' | 'hero' | 'products' | 'partners' | 'blogs' | 'about' | 'footer'>('header')
   const [saving, setSaving] = useState(false)
+  const [loadingData, setLoadingData] = useState(true)
   const [isSidebarHovered, setIsSidebarHovered] = useState(false)
 
-  // 1. Header State
+  // CMS States
   const [headerBrand, setHeaderBrand] = useState('UNICON LABS')
   const [headerSlogan, setHeaderSlogan] = useState('YOU THINK WE BUILD')
   const [headerSubtitle, setHeaderSubtitle] = useState('Enterprise Software Company')
 
-  // 2. Menu Bar State
   const [menuItems, setMenuItems] = useState([
     { id: 1, label: 'HOME', href: '#home' },
     { id: 2, label: 'Products', href: '#products' },
@@ -26,7 +31,6 @@ export default function WebSettingsPage() {
   const [newMenuLabel, setNewMenuLabel] = useState('')
   const [newMenuHref, setNewMenuHref] = useState('')
 
-  // 3. Hero Banners State
   const [heroSlideInterval, setHeroSlideInterval] = useState(4500)
   const [heroBanners, setHeroBanners] = useState([
     { id: 1, title: 'POWERING AUTONOMOUS ENTERPRISE ECOSYSTEMS', subtitle: 'Next-generation multi-tenant Business OS designed for scale, speed, and real-time offline sync.', tag: 'FLAGSHIP PLATFORM' },
@@ -37,7 +41,6 @@ export default function WebSettingsPage() {
   const [newHeroSubtitle, setNewHeroSubtitle] = useState('')
   const [newHeroTag, setNewHeroTag] = useState('')
 
-  // 4. Products Display State
   const [products, setProducts] = useState([
     { id: 1, name: 'Adaptive POS Terminal', desc: 'Feature-rich multi-surface touchscreen cash register and terminal engine.', image: '🖥️' },
     { id: 2, name: 'Kitchen Display System (KDS)', desc: 'Live order ticket dispatch routing with speed-of-service performance meters.', image: '🍳' },
@@ -49,13 +52,11 @@ export default function WebSettingsPage() {
   const [newProdDesc, setNewProdDesc] = useState('')
   const [newProdImage, setNewProdImage] = useState('📦')
 
-  // 5. Partners State
   const [partners, setPartners] = useState(
     Array.from({ length: 18 }, (_, i) => ({ id: i + 1, name: `Partner Brand ${i + 1}`, logo: '🏢' }))
   )
   const [newPartnerName, setNewPartnerName] = useState('')
 
-  // 6. Blogs State
   const [blogs, setBlogs] = useState([
     { id: 1, title: 'Scaling Cloud POS Architecture in 2026', date: 'Oct 04, 2026', category: 'Engineering', desc: 'Discover how offline-first Supabase synchronization keeps retail stores running smoothly.' },
     { id: 2, title: 'Optimizing Kitchen Workflow with KDS', date: 'Sep 28, 2026', category: 'Operations', desc: 'Best practices for reducing order preparation times in high-volume restaurants.' },
@@ -64,16 +65,63 @@ export default function WebSettingsPage() {
   const [newBlogCat, setNewBlogCat] = useState('Engineering')
   const [newBlogDesc, setNewBlogDesc] = useState('')
 
-  // 7. About Us & Footer State
   const [aboutText, setAboutText] = useState('Founded with a vision to revolutionize enterprise operations, Unicon Labs specializes in building end-to-end digital ecosystems. From multi-tenant POS hardware integrations to cloud synchronization and automated financial auditing, we provide the infrastructure businesses need to thrive.')
   const [footerHQ, setFooterHQ] = useState('Software Development Enterprise\nDigital Ecosystems & Modules\nEmail: care.uniconlabs@gmail.com')
 
-  const handleSaveChanges = () => {
+  // Load existing settings from Supabase on mount
+  useEffect(() => {
+    async function fetchSettings() {
+      const { data, error } = await supabase
+        .from('unicon_global_settings')
+        .select('settings')
+        .eq('id', 'main')
+        .maybeSingle()
+
+      if (!error && data && data.settings) {
+        const s = data.settings
+        if (s.headerBrand) setHeaderBrand(s.headerBrand)
+        if (s.headerSlogan) setHeaderSlogan(s.headerSlogan)
+        if (s.headerSubtitle) setHeaderSubtitle(s.headerSubtitle)
+        if (s.menuItems) setMenuItems(s.menuItems)
+        if (s.heroSlideInterval) setHeroSlideInterval(s.heroSlideInterval)
+        if (s.heroBanners) setHeroBanners(s.heroBanners)
+        if (s.products) setProducts(s.products)
+        if (s.partners) setPartners(s.partners)
+        if (s.blogs) setBlogs(s.blogs)
+        if (s.aboutText) setAboutText(s.aboutText)
+        if (s.footerHQ) setFooterHQ(s.footerHQ)
+      }
+      setLoadingData(false)
+    }
+    fetchSettings()
+  }, [])
+
+  const handleSaveChanges = async () => {
     setSaving(true)
-    setTimeout(() => {
-      setSaving(false)
-      alert('UNICON LABS website settings saved and deployed successfully!')
-    }, 600)
+    const payload = {
+      headerBrand,
+      headerSlogan,
+      headerSubtitle,
+      menuItems,
+      heroSlideInterval,
+      heroBanners,
+      products,
+      partners,
+      blogs,
+      aboutText,
+      footerHQ
+    }
+
+    const { error } = await supabase
+      .from('unicon_global_settings')
+      .upsert({ id: 'main', settings: payload, updated_at: new Date().toISOString() })
+
+    setSaving(false)
+    if (error) {
+      alert(`Failed to save settings: ${error.message}`)
+    } else {
+      alert('UNICON LABS website settings saved, published, and synced in real-time successfully!')
+    }
   }
 
   const navTabs = [
@@ -86,6 +134,10 @@ export default function WebSettingsPage() {
     { key: 'about', label: 'About UNICON', icon: '🏢' },
     { key: 'footer', label: 'Footer Area', icon: '📌' },
   ] as const
+
+  if (loadingData) {
+    return <div className="min-h-screen bg-slate-950 flex items-center justify-center font-bold text-white">Loading CMS Settings...</div>
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans select-none">
@@ -113,7 +165,7 @@ export default function WebSettingsPage() {
             disabled={saving}
             className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs uppercase tracking-wider rounded-xl transition shadow cursor-pointer"
           >
-            {saving ? 'Saving...' : 'Save & Publish Website 🚀'}
+            {saving ? 'Publishing...' : 'Save & Publish Website 🚀'}
           </button>
         </div>
       </header>

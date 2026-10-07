@@ -2,19 +2,107 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 export default function UniconLabsLandingPage() {
   const router = useRouter()
   const [clientSlugInput, setClientSlugInput] = useState('')
   const [activeHeroSlide, setActiveHeroSlide] = useState(0)
 
-  // Auto-slide hero banners every 4.5 seconds
+  // Dynamic Content State loaded from Supabase
+  const [headerBrand, setHeaderBrand] = useState('UNICON LABS')
+  const [headerSlogan, setHeaderSlogan] = useState('YOU THINK WE BUILD')
+  const [headerSubtitle, setHeaderSubtitle] = useState('Enterprise Software Company')
+  const [menuItems, setMenuItems] = useState([
+    { id: 1, label: 'HOME', href: '#home' },
+    { id: 2, label: 'Products', href: '#products' },
+    { id: 3, label: 'Our Partners', href: '#partners' },
+    { id: 4, label: 'About UNICON LABS', href: '#about' },
+    { id: 5, label: 'Blogs', href: '#blogs' },
+    { id: 6, label: 'Contact Us', href: '#contact' },
+  ])
+  const [heroSlideInterval, setHeroSlideInterval] = useState(4500)
+  const [heroBanners, setHeroBanners] = useState([
+    { id: 1, title: 'POWERING AUTONOMOUS ENTERPRISE ECOSYSTEMS', subtitle: 'Next-generation multi-tenant Business OS designed for scale, speed, and real-time offline sync.', tag: 'FLAGSHIP PLATFORM' },
+    { id: 2, title: 'INTELLIGENT POINT OF SALE & KITCHEN DISPLAY', subtitle: 'Streamline multi-tender settlement, split payments, FBR fiscal integration, and instant KOT ticket routing.', tag: 'OPERATIONAL EXCELLENCE' },
+    { id: 3, title: 'REAL-TIME LOGISTICS & DISPATCH QUEUE', subtitle: 'Effortlessly manage delivery fleets, rider assignments, and automated customer notifications.', tag: 'SUPPLY CHAIN' },
+  ])
+  const [products, setProducts] = useState([
+    { id: 1, name: 'Adaptive POS Terminal', desc: 'Feature-rich multi-surface touchscreen cash register and terminal engine.', image: '🖥️' },
+    { id: 2, name: 'Kitchen Display System (KDS)', desc: 'Live order ticket dispatch routing with speed-of-service performance meters.', image: '🍳' },
+    { id: 3, name: 'Dispatch & Fulfillment', desc: 'Complete delivery order queue manager with rider tracking and analytics.', image: '📦' },
+    { id: 4, name: 'Enterprise ERP & Finance', desc: 'Automated ledger tracking, tax compliance, and comprehensive audit reports.', image: '📊' },
+    { id: 5, name: 'Customer Storefront Portal', desc: 'Branded public web ordering storefront connected directly to your POS.', image: '🛍️' }
+  ])
+  const [partners, setPartners] = useState(
+    Array.from({ length: 18 }, (_, i) => ({ id: i + 1, name: `Partner Brand ${i + 1}`, logo: '🏢' }))
+  )
+  const [blogs, setBlogs] = useState([
+    { id: 1, title: 'Scaling Cloud POS Architecture in 2026', date: 'Oct 04, 2026', category: 'Engineering', desc: 'Discover how offline-first Supabase synchronization keeps retail stores running smoothly.' },
+    { id: 2, title: 'Optimizing Kitchen Workflow with KDS', date: 'Sep 28, 2026', category: 'Operations', desc: 'Best practices for reducing order preparation times in high-volume restaurants.' },
+  ])
+  const [aboutText, setAboutText] = useState('Founded with a vision to revolutionize enterprise operations, Unicon Labs specializes in building end-to-end digital ecosystems. From multi-tenant POS hardware integrations to cloud synchronization and automated financial auditing, we provide the infrastructure businesses need to thrive.')
+  const [footerHQ, setFooterHQ] = useState('Software Development Enterprise\nDigital Ecosystems & Modules\nEmail: care.uniconlabs@gmail.com')
+
+  // Fetch settings on load & subscribe to real-time changes
   useEffect(() => {
-    const timer = setInterval(() => {
-      setActiveHeroSlide(prev => (prev + 1) % 4)
-    }, 4500)
-    return () => clearInterval(timer)
+    async function loadSettings() {
+      const { data } = await supabase
+        .from('unicon_global_settings')
+        .select('settings')
+        .eq('id', 'main')
+        .maybeSingle()
+
+      if (data && data.settings) {
+        applySettings(data.settings)
+      }
+    }
+    loadSettings()
+
+    const channel = supabase
+      .channel('unicon-website-realtime-sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'unicon_global_settings' },
+        (payload: any) => {
+          if (payload.new && payload.new.settings) {
+            applySettings(payload.new.settings)
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [])
+
+  const applySettings = (s: any) => {
+    if (s.headerBrand) setHeaderBrand(s.headerBrand)
+    if (s.headerSlogan) setHeaderSlogan(s.headerSlogan)
+    if (s.headerSubtitle) setHeaderSubtitle(s.headerSubtitle)
+    if (s.menuItems) setMenuItems(s.menuItems)
+    if (s.heroSlideInterval) setHeroSlideInterval(s.heroSlideInterval)
+    if (s.heroBanners && s.heroBanners.length > 0) setHeroBanners(s.heroBanners)
+    if (s.products && s.products.length > 0) setProducts(s.products)
+    if (s.partners && s.partners.length > 0) setPartners(s.partners)
+    if (s.blogs && s.blogs.length > 0) setBlogs(s.blogs)
+    if (s.aboutText) setAboutText(s.aboutText)
+    if (s.footerHQ) setFooterHQ(s.footerHQ)
+  }
+
+  // Auto-slide hero banners based on dynamic interval
+  useEffect(() => {
+    if (heroBanners.length === 0) return
+    const timer = setInterval(() => {
+      setActiveHeroSlide(prev => (prev + 1) % heroBanners.length)
+    }, heroSlideInterval || 4500)
+    return () => clearInterval(timer)
+  }, [heroBanners.length, heroSlideInterval])
 
   const handleClientLogin = (e: React.FormEvent) => {
     e.preventDefault()
@@ -25,49 +113,7 @@ export default function UniconLabsLandingPage() {
     router.push(`/${clientSlugInput.trim().toLowerCase()}/pos`)
   }
 
-  const heroSlides = [
-    {
-      title: "POWERING AUTONOMOUS ENTERPRISE ECOSYSTEMS",
-      subtitle: "Next-generation multi-tenant Business OS designed for scale, speed, and real-time offline sync.",
-      tag: "FLAGSHIP PLATFORM"
-    },
-    {
-      title: "INTELLIGENT POINT OF SALE & KITCHEN DISPLAY",
-      subtitle: "Streamline multi-tender settlement, split payments, FBR fiscal integration, and instant KOT ticket routing.",
-      tag: "OPERATIONAL EXCELLENCE"
-    },
-    {
-      title: "REAL-TIME LOGISTICS & DISPATCH QUEUE",
-      subtitle: "Effortlessly manage delivery fleets, rider assignments, and automated customer notifications.",
-      tag: "SUPPLY CHAIN"
-    },
-    {
-      title: "SECURE CLOUD ARCHITECTURE & ANALYTICS",
-      subtitle: "Enterprise-grade security with instant PIN/QR staff badge access and advanced financial telemetry.",
-      tag: "ENTERPRISE SECURITY"
-    }
-  ]
-
-  const featuredProducts = [
-    { name: "Adaptive POS Terminal", desc: "Feature-rich multi-surface touchscreen cash register and terminal engine.", image: "🖥️" },
-    { name: "Kitchen Display System (KDS)", desc: "Live order ticket dispatch routing with speed-of-service performance meters.", image: "🍳" },
-    { name: "Dispatch & Fulfillment", desc: "Complete delivery order queue manager with rider tracking and analytics.", image: "📦" },
-    { name: "Enterprise ERP & Finance", desc: "Automated ledger tracking, tax compliance, and comprehensive audit reports.", image: "📊" },
-    { name: "Customer Storefront Portal", desc: "Branded public web ordering storefront connected directly to your POS.", image: "🛍️" }
-  ]
-
-  const partnerList = Array.from({ length: 18 }, (_, i) => ({
-    id: i + 1,
-    name: `Partner Brand ${i + 1}`,
-    logo: `🏢`
-  }))
-
-  const blogPosts = [
-    { title: "Scaling Cloud POS Architecture in 2026", date: "Oct 04, 2026", category: "Engineering", desc: "Discover how offline-first Supabase synchronization keeps retail stores running smoothly during network outages." },
-    { title: "Optimizing Kitchen Workflow with KDS", date: "Sep 28, 2026", category: "Operations", desc: "Best practices for reducing order preparation times and eliminating paper ticket errors in high-volume restaurants." },
-    { title: "Automating FBR Fiscal Compliance", date: "Sep 19, 2026", category: "Compliance", desc: "A comprehensive guide to integrating real-time tax invoicing and digital receipt verification systems." },
-    { title: "Securing Workstations with QR Badges", date: "Sep 12, 2026", category: "Security", desc: "Implementing instant staff authentication and active device session locks across multiple terminal seats." }
-  ]
+  const currentSlide = heroBanners[activeHeroSlide] || heroBanners[0]
 
   return (
     <div className="min-h-screen bg-white text-slate-800 flex flex-col font-sans select-none">
@@ -81,13 +127,13 @@ export default function UniconLabsLandingPage() {
           <div>
             <div className="flex items-center space-x-2">
               <span className="text-base font-black tracking-wider uppercase text-blue-900">
-                UNICON LABS
+                {headerBrand}
               </span>
               <span className="text-[10px] font-extrabold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-200">
-                YOU THINK WE BUILD
+                {headerSlogan}
               </span>
             </div>
-            <span className="block text-[10px] text-slate-500 font-bold uppercase tracking-widest">Enterprise Software Company</span>
+            <span className="block text-[10px] text-slate-500 font-bold uppercase tracking-widest">{headerSubtitle}</span>
           </div>
         </div>
 
@@ -119,32 +165,33 @@ export default function UniconLabsLandingPage() {
       {/* 2. STICKY HORIZONTAL MENU BAR */}
       <nav className="bg-blue-900 text-white px-8 py-3 sticky top-[73px] z-40 shadow-md">
         <div className="max-w-7xl mx-auto flex justify-center md:justify-start space-x-8 text-xs font-black uppercase tracking-wider overflow-x-auto">
-          <a href="#home" className="hover:text-blue-300 transition py-1 border-b-2 border-blue-400">HOME</a>
-          <a href="#products" className="hover:text-blue-300 transition py-1 hover:border-b-2 hover:border-blue-400">Products</a>
-          <a href="#partners" className="hover:text-blue-300 transition py-1 hover:border-b-2 hover:border-blue-400">Our Partners</a>
-          <a href="#about" className="hover:text-blue-300 transition py-1 hover:border-b-2 hover:border-blue-400">About UNICON LABS</a>
-          <a href="#blogs" className="hover:text-blue-300 transition py-1 hover:border-b-2 hover:border-blue-400">Blogs</a>
-          <a href="#contact" className="hover:text-blue-300 transition py-1 hover:border-b-2 hover:border-blue-400">Contact Us</a>
+          {menuItems.map(item => (
+            <a key={item.id} href={item.href} className="hover:text-blue-300 transition py-1 hover:border-b-2 hover:border-blue-400 whitespace-nowrap">
+              {item.label}
+            </a>
+          ))}
         </div>
       </nav>
 
-      {/* 3. HERO BANNER SECTION (3-5 Sliding Banners) */}
+      {/* 3. HERO BANNER SECTION (Sliding Banners) */}
       <section id="home" className="bg-gradient-to-b from-blue-900 to-blue-950 text-white px-8 py-24 relative overflow-hidden">
         <div className="max-w-5xl mx-auto text-center space-y-6 relative z-10 min-h-[220px] flex flex-col justify-center items-center">
-          <div className="inline-block bg-blue-800/80 text-blue-200 border border-blue-700 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-widest shadow-inner">
-            {heroSlides[activeHeroSlide].tag}
-          </div>
+          {currentSlide?.tag && (
+            <div className="inline-block bg-blue-800/80 text-blue-200 border border-blue-700 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-widest shadow-inner">
+              {currentSlide.tag}
+            </div>
+          )}
           
           <h1 className="text-3xl md:text-5xl font-black tracking-tight uppercase leading-tight max-w-4xl">
-            {heroSlides[activeHeroSlide].title}
+            {currentSlide?.title}
           </h1>
           
           <p className="text-blue-100 max-w-2xl mx-auto text-sm md:text-base font-medium leading-relaxed">
-            {heroSlides[activeHeroSlide].subtitle}
+            {currentSlide?.subtitle}
           </p>
 
           <div className="flex justify-center space-x-2 pt-4">
-            {heroSlides.map((_, idx) => (
+            {heroBanners.map((_, idx) => (
               <button
                 key={idx}
                 onClick={() => setActiveHeroSlide(idx)}
@@ -155,7 +202,7 @@ export default function UniconLabsLandingPage() {
         </div>
       </section>
 
-      {/* 4. FEATURED PRODUCTS DISPLAY ROW (5 Vertical Rectangular Cards) */}
+      {/* 4. FEATURED PRODUCTS DISPLAY ROW */}
       <section id="products" className="px-8 py-20 max-w-7xl mx-auto w-full space-y-10">
         <div className="text-center space-y-2">
           <span className="text-xs font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">SOFTWARE ECOSYSTEM</span>
@@ -163,8 +210,8 @@ export default function UniconLabsLandingPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-5 gap-5">
-          {featuredProducts.map((prod, idx) => (
-            <div key={idx} className="bg-white border border-blue-100 rounded-3xl p-5 shadow-lg shadow-blue-900/5 flex flex-col justify-between hover:border-blue-500 hover:shadow-xl transition group">
+          {products.map((prod, idx) => (
+            <div key={prod.id || idx} className="bg-white border border-blue-100 rounded-3xl p-5 shadow-lg shadow-blue-900/5 flex flex-col justify-between hover:border-blue-500 hover:shadow-xl transition group">
               <div className="space-y-4">
                 <div className="w-full h-32 bg-blue-50 rounded-2xl border border-blue-100 flex items-center justify-center text-4xl shadow-inner group-hover:scale-105 transition duration-300">
                   {prod.image}
@@ -174,7 +221,7 @@ export default function UniconLabsLandingPage() {
               </div>
               <div className="pt-6">
                 <button
-                  onClick={() => alert(`Redirecting to details for ${prod.name}...`)}
+                  onClick={() => alert(`Details for ${prod.name}`)}
                   className="w-full py-2.5 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white font-bold rounded-xl text-xs transition uppercase tracking-wider border border-blue-200 cursor-pointer"
                 >
                   Read more...
@@ -185,7 +232,7 @@ export default function UniconLabsLandingPage() {
         </div>
       </section>
 
-      {/* 5. OUR RESPECTED PARTNERS SECTION (3 Rows x 6 Square Rounded Cards = 18 Slots) */}
+      {/* 5. OUR RESPECTED PARTNERS SECTION */}
       <section id="partners" className="bg-slate-50 border-y border-slate-200 px-8 py-20">
         <div className="max-w-7xl mx-auto space-y-10">
           <div className="text-center space-y-2">
@@ -195,7 +242,7 @@ export default function UniconLabsLandingPage() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
-            {partnerList.map(partner => (
+            {partners.map(partner => (
               <div key={partner.id} className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col items-center justify-center h-28 shadow-xs hover:border-blue-400 hover:shadow-md transition">
                 <span className="text-2xl mb-1">{partner.logo}</span>
                 <span className="font-extrabold text-[11px] text-slate-700 text-center truncate w-full">{partner.name}</span>
@@ -206,7 +253,7 @@ export default function UniconLabsLandingPage() {
         </div>
       </section>
 
-      {/* 6. DAILY BLOGS SECTION (4 Rectangular Cards in a row) */}
+      {/* 6. DAILY BLOGS SECTION */}
       <section id="blogs" className="px-8 py-20 max-w-7xl mx-auto w-full space-y-10">
         <div className="flex justify-between items-end">
           <div className="space-y-2">
@@ -223,8 +270,8 @@ export default function UniconLabsLandingPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {blogPosts.map((blog, idx) => (
-            <div key={idx} className="bg-white border border-blue-100 rounded-3xl p-5 shadow-lg shadow-blue-900/5 flex flex-col justify-between hover:border-blue-400 transition group">
+          {blogs.map((blog, idx) => (
+            <div key={blog.id || idx} className="bg-white border border-blue-100 rounded-3xl p-5 shadow-lg shadow-blue-900/5 flex flex-col justify-between hover:border-blue-400 transition group">
               <div className="space-y-3">
                 <div className="w-full h-36 bg-blue-900 rounded-2xl flex items-center justify-center text-3xl text-white font-black shadow-inner group-hover:bg-blue-600 transition">
                   📰
@@ -249,13 +296,13 @@ export default function UniconLabsLandingPage() {
         </div>
       </section>
 
-      {/* ABOUT & CONTACT SECTION ANCHORS */}
+      {/* ABOUT US SECTION */}
       <section id="about" className="bg-blue-900 text-white px-8 py-16">
         <div className="max-w-5xl mx-auto text-center space-y-4">
           <h2 className="text-xs font-black uppercase tracking-widest text-blue-300">ABOUT UNICON LABS</h2>
           <h3 className="text-2xl font-black uppercase tracking-wide">Engineering Robust Software Solutions</h3>
-          <p className="text-blue-100 text-xs md:text-sm max-w-3xl mx-auto leading-relaxed">
-            Founded with a vision to revolutionize enterprise operations, Unicon Labs specializes in building end-to-end digital ecosystems. From multi-tenant POS hardware integrations to cloud synchronization and automated financial auditing, we provide the infrastructure businesses need to thrive.
+          <p className="text-blue-100 text-xs md:text-sm max-w-3xl mx-auto leading-relaxed whitespace-pre-line">
+            {aboutText}
           </p>
         </div>
       </section>
@@ -266,19 +313,18 @@ export default function UniconLabsLandingPage() {
           <div className="space-y-3">
             <div className="flex items-center space-x-2">
               <span className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center font-black">⚡</span>
-              <span className="font-black uppercase tracking-wider text-sm">UNICON LABS</span>
+              <span className="font-black uppercase tracking-wider text-sm">{headerBrand}</span>
             </div>
             <p className="text-blue-300 leading-relaxed">
-              YOU THINK WE BUILD. Providing enterprise software ecosystems, web applications, and autonomous POS modules globally.
+              {headerSlogan}. Providing enterprise software ecosystems, web applications, and autonomous POS modules globally.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="font-black uppercase tracking-wider text-blue-300 text-sm">Quick Links</h4>
             <ul className="space-y-1.5 text-blue-200">
-              <li><a href="#home" className="hover:text-white transition">Home Dashboard</a></li>
-              <li><a href="#products" className="hover:text-white transition">Software Products</a></li>
-              <li><a href="#partners" className="hover:text-white transition">Our Partners</a></li>
-              <li><a href="#blogs" className="hover:text-white transition">Company Blogs</a></li>
+              {menuItems.map(m => (
+                <li key={m.id}><a href={m.href} className="hover:text-white transition">{m.label}</a></li>
+              ))}
             </ul>
           </div>
           <div className="space-y-2">
@@ -292,16 +338,14 @@ export default function UniconLabsLandingPage() {
           </div>
           <div className="space-y-2">
             <h4 className="font-black uppercase tracking-wider text-blue-300 text-sm">Headquarters</h4>
-            <p className="text-blue-200 leading-relaxed">
-              Software Development Enterprise<br />
-              Digital Ecosystems & Modules<br />
-              Email: care.uniconlabs@gmail.com
+            <p className="text-blue-200 leading-relaxed whitespace-pre-line">
+              {footerHQ}
             </p>
           </div>
         </div>
 
         <div className="max-w-7xl mx-auto pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-blue-400 font-medium">
-          <p>© 2026 UNICON LABS. All rights reserved.</p>
+          <p>© 2026 {headerBrand}. All rights reserved.</p>
           <div className="flex space-x-6 mt-4 md:mt-0">
             <span>Privacy Policy</span>
             <span>Terms of Service</span>
