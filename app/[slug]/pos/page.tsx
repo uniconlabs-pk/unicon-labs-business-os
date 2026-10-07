@@ -51,6 +51,8 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
   // Assign Waiter Search & Text State for Smart Type Matching
   const [waiterSearchInput, setWaiterSearchInput] = useState('')
   const [showWaiterDropdown, setShowWaiterDropdown] = useState(false)
+  const [waiterHighlightIndex, setWaiterHighlightIndex] = useState(-1)
+  const waiterDropdownRef = useRef<HTMLDivElement>(null)
 
   // New Customer Modal State (with optional address field and exact field sequence)
   const [showNewCustomerModal, setShowNewCustomerModal] = useState(false)
@@ -183,6 +185,26 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
   const activeOrderNumber = activeOrderMeta?.code || 'PENDING'
   const activeOrderInt = activeOrderMeta?.intVal || Number(business?.next_order_seq ?? 100000)
+
+// Outside click & Escape key listener for Assign Waiter dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (waiterDropdownRef.current && !waiterDropdownRef.current.contains(event.target as Node)) {
+        setShowWaiterDropdown(false)
+      }
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && showWaiterDropdown) {
+        setShowWaiterDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [showWaiterDropdown])
 
   // Filtered list of waiters matching the typed input
   const matchingWaiters = useMemo(() => {
@@ -627,6 +649,31 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
             const updatedTable = payload.new
             setTables(prev => prev.map(t => t.id === updatedTable.id ? { ...t, ...updatedTable } : t))
             setSelectedTable(curr => curr?.id === updatedTable.id ? { ...curr, ...updatedTable } : curr)
+          }
+        }
+      )
+      // --- EXACT ADDITION: Real-time listener for staff_profiles ---
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'staff_profiles',
+          filter: `business_id=eq.${business.id}`,
+        },
+        async () => {
+          const { data: staffList } = await supabase
+            .from('staff_profiles')
+            .select('id, full_name, role, department')
+            .eq('business_id', business.id)
+
+          if (staffList) {
+            const filteredWaiters = staffList.filter((s: any) => {
+              const r = (s.role || '').toLowerCase()
+              const d = (s.department || '').toLowerCase()
+              return r.includes('waiter') || r.includes('waitstaff') || d.includes('service') || d.includes('waiter')
+            })
+            setWaiters(filteredWaiters)
           }
         }
       )
@@ -2200,16 +2247,34 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
             {/* ASSIGN WAITER FIELD */}
             {profile.modules.hasTables && serviceType === 'DINE-IN' && (
-              <div className="relative">
+              <div className="relative" ref={waiterDropdownRef}>
                 <label className="block text-[10px] font-bold text-gray-400 mb-0.5 uppercase">Assign Waiter</label>
                 <input
                   type="text"
                   placeholder="Select or type waiter name..."
                   value={waiterSearchInput}
-                  onFocus={() => setShowWaiterDropdown(true)}
+                  onFocus={async () => {
+                    setShowWaiterDropdown(true)
+                    setWaiterHighlightIndex(-1)
+                    if (business?.id) {
+                      const { data: staffList } = await supabase
+                        .from('staff_profiles')
+                        .select('id, full_name, role, department')
+                        .eq('business_id', business.id)
+                      if (staffList) {
+                        const filteredWaiters = staffList.filter((s: any) => {
+                          const r = (s.role || '').toLowerCase()
+                          const d = (s.department || '').toLowerCase()
+                          return r.includes('waiter') || r.includes('waitstaff') || d.includes('service') || d.includes('waiter')
+                        })
+                        setWaiters(filteredWaiters)
+                      }
+                    }
+                  }}
                   onChange={e => {
                     setWaiterSearchInput(e.target.value)
                     setShowWaiterDropdown(true)
+                    setWaiterHighlightIndex(0)
                     const matched = waiters.find(w => (w.full_name || w.name || '').toLowerCase() === e.target.value.toLowerCase().trim())
                     if (matched) {
                       setSelectedWaiter(matched)
@@ -2220,10 +2285,45 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                       }
                     }
                   }}
+                  onKeyDown={e => {
+                    const totalOptions = matchingWaiters.length + 1 // +1 for "-- No Waiter Assigned --"
+                    if (!showWaiterDropdown) {
+                      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                        setShowWaiterDropdown(true)
+                        setWaiterHighlightIndex(0)
+                        e.preventDefault()
+                      }
+                      return
+                    }
+
+                    if (e.key === 'ArrowDown') {
+                      e.preventDefault()
+                      setWaiterHighlightIndex(prev => (prev < totalOptions - 1 ? prev + 1 : 0))
+                    } else if (e.key === 'ArrowUp') {
+                      e.preventDefault()
+                      setWaiterHighlightIndex(prev => (prev > 0 ? prev - 1 : totalOptions - 1))
+                    } else if (e.key === 'Enter') {
+                      e.preventDefault()
+                      if (waiterHighlightIndex === 0) {
+                        setSelectedWaiter(null)
+                        setWaiterSearchInput('')
+                        setShowWaiterDropdown(false)
+                      } else if (waiterHighlightIndex > 0) {
+                        const chosen = matchingWaiters[waiterHighlightIndex - 1]
+                        if (chosen) {
+                          setSelectedWaiter(chosen)
+                          setWaiterSearchInput(chosen.full_name || chosen.name)
+                          setShowWaiterDropdown(false)
+                        }
+                      }
+                    } else if (e.key === 'Escape') {
+                      setShowWaiterDropdown(false)
+                    }
+                  }}
                   className={`w-full border rounded-lg px-2.5 py-1.5 font-medium focus:outline-none focus:border-purple-600 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-white border-gray-200 text-gray-900'}`}
                 />
                 
-                {showWaiterDropdown && matchingWaiters.length > 0 && (
+                {showWaiterDropdown && matchingWaiters.length >= 0 && (
                   <div className={`absolute left-0 right-0 top-full mt-1 border rounded-xl shadow-lg z-30 max-h-40 overflow-y-auto ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
                     <div
                       onClick={() => {
@@ -2231,28 +2331,36 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                         setWaiterSearchInput('')
                         setShowWaiterDropdown(false)
                       }}
-                      className={`px-3 py-2 text-xs font-bold cursor-pointer border-b ${isDarkMode ? 'text-slate-400 hover:bg-slate-800 border-slate-800' : 'text-gray-500 hover:bg-gray-100 border-gray-100'}`}
+                      className={`px-3 py-2 text-xs font-bold cursor-pointer border-b ${
+                        waiterHighlightIndex === 0 
+                          ? (isDarkMode ? 'bg-purple-950/60 text-purple-300' : 'bg-purple-100 text-purple-900')
+                          : (isDarkMode ? 'text-slate-400 hover:bg-slate-800 border-slate-800' : 'text-gray-500 hover:bg-gray-100 border-gray-100')
+                      }`}
                     >
                       -- No Waiter Assigned --
                     </div>
-                    {matchingWaiters.map(w => (
-                      <div
-                        key={w.id}
-                        onClick={() => {
-                          setSelectedWaiter(w)
-                          setWaiterSearchInput(w.full_name || w.name)
-                          setShowWaiterDropdown(false)
-                        }}
-                        className={`px-3 py-2 text-xs font-bold cursor-pointer flex justify-between items-center ${
-                          selectedWaiter?.id === w.id 
-                            ? (isDarkMode ? 'bg-purple-950/60 text-purple-300' : 'bg-purple-100 text-purple-900') 
-                            : (isDarkMode ? 'text-slate-200 hover:bg-slate-800' : 'text-gray-800 hover:bg-purple-50')
-                        }`}
-                      >
-                        <span>{w.full_name || w.name}</span>
-                        <span className="text-[10px] text-gray-400 uppercase">{w.role || 'Waiter'}</span>
-                      </div>
-                    ))}
+                    {matchingWaiters.map((w, index) => {
+                      const itemIndex = index + 1
+                      const isHighlighted = waiterHighlightIndex === itemIndex
+                      return (
+                        <div
+                          key={w.id}
+                          onClick={() => {
+                            setSelectedWaiter(w)
+                            setWaiterSearchInput(w.full_name || w.name)
+                            setShowWaiterDropdown(false)
+                          }}
+                          className={`px-3 py-2 text-xs font-bold cursor-pointer flex justify-between items-center ${
+                            selectedWaiter?.id === w.id || isHighlighted
+                              ? (isDarkMode ? 'bg-purple-950/60 text-purple-300' : 'bg-purple-100 text-purple-900') 
+                              : (isDarkMode ? 'text-slate-200 hover:bg-slate-800' : 'text-gray-800 hover:bg-purple-50')
+                          }`}
+                        >
+                          <span>{w.full_name || w.name}</span>
+                          <span className="text-[10px] text-gray-400 uppercase">{w.role || 'Waiter'}</span>
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </div>
