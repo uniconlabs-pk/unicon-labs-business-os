@@ -33,13 +33,14 @@ export default function WebSettingsPage() {
 
   const [heroSlideInterval, setHeroSlideInterval] = useState(4500)
   const [heroBanners, setHeroBanners] = useState([
-    { id: 1, title: 'POWERING AUTONOMOUS ENTERPRISE ECOSYSTEMS', subtitle: 'Next-generation multi-tenant Business OS designed for scale, speed, and real-time offline sync.', tag: 'FLAGSHIP PLATFORM' },
-    { id: 2, title: 'INTELLIGENT POINT OF SALE & KITCHEN DISPLAY', subtitle: 'Streamline multi-tender settlement, split payments, FBR fiscal integration, and instant KOT ticket routing.', tag: 'OPERATIONAL EXCELLENCE' },
-    { id: 3, title: 'REAL-TIME LOGISTICS & DISPATCH QUEUE', subtitle: 'Effortlessly manage delivery fleets, rider assignments, and automated customer notifications.', tag: 'SUPPLY CHAIN' },
+    { id: 1, title: 'POWERING AUTONOMOUS ENTERPRISE ECOSYSTEMS', subtitle: 'Next-generation multi-tenant Business OS designed for scale, speed, and real-time offline sync.', tag: 'FLAGSHIP PLATFORM', bgImage: '' },
+    { id: 2, title: 'INTELLIGENT POINT OF SALE & KITCHEN DISPLAY', subtitle: 'Streamline multi-tender settlement, split payments, FBR fiscal integration, and instant KOT ticket routing.', tag: 'OPERATIONAL EXCELLENCE', bgImage: '' },
+    { id: 3, title: 'REAL-TIME LOGISTICS & DISPATCH QUEUE', subtitle: 'Effortlessly manage delivery fleets, rider assignments, and automated customer notifications.', tag: 'SUPPLY CHAIN', bgImage: '' },
   ])
   const [newHeroTitle, setNewHeroTitle] = useState('')
   const [newHeroSubtitle, setNewHeroSubtitle] = useState('')
   const [newHeroTag, setNewHeroTag] = useState('')
+  const [newHeroImage, setNewHeroImage] = useState('')
 
   const [products, setProducts] = useState([
     { id: 1, name: 'Adaptive POS Terminal', desc: 'Feature-rich multi-surface touchscreen cash register and terminal engine.', image: '🖥️' },
@@ -122,6 +123,34 @@ export default function WebSettingsPage() {
     } else {
       alert('UNICON LABS website settings saved, published, and synced in real-time successfully!')
     }
+  }
+
+  const handleHeroImageUpload = (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (uploadEvent) => {
+      const resultStr = uploadEvent.target?.result as string
+      if (resultStr) {
+        const updated = [...heroBanners]
+        updated[idx].bgImage = resultStr
+        setHeroBanners(updated)
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleNewHeroImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (uploadEvent) => {
+      const resultStr = uploadEvent.target?.result as string
+      if (resultStr) {
+        setNewHeroImage(resultStr)
+      }
+    }
+    reader.readAsDataURL(file)
   }
 
   const navTabs = [
@@ -302,10 +331,10 @@ export default function WebSettingsPage() {
             </div>
           )}
 
-          {/* 3. HERO BANNERS SETTINGS */}
+          {/* 3. HERO BANNERS SETTINGS (Image Upload / URL + Timing) */}
           {activeTab === 'hero' && (
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
-              <h2 className="font-extrabold text-sm uppercase text-blue-400">Hero Banners & Sliding Timing</h2>
+              <h2 className="font-extrabold text-sm uppercase text-blue-400">Hero Banners, Visuals & Sliding Timing</h2>
               <div className="space-y-4 text-xs">
                 <div>
                   <label className="block text-slate-400 font-bold mb-1">Slide Transition Interval (Milliseconds)</label>
@@ -320,31 +349,68 @@ export default function WebSettingsPage() {
                 <div className="space-y-3 pt-2">
                   <span className="font-bold text-slate-300 block uppercase text-[11px]">Active Banners ({heroBanners.length}):</span>
                   {heroBanners.map((hb, idx) => (
-                    <div key={hb.id} className="bg-slate-950 border border-slate-800 p-3.5 rounded-xl space-y-2">
+                    <div key={hb.id} className="bg-slate-950 border border-slate-800 p-4 rounded-xl space-y-3">
                       <div className="flex justify-between items-center">
                         <span className="bg-blue-950 text-blue-300 px-2 py-0.5 rounded font-mono text-[10px] uppercase font-bold">{hb.tag}</span>
                         <button onClick={() => setHeroBanners(heroBanners.filter(b => b.id !== hb.id))} className="text-red-400 hover:text-red-300 font-bold cursor-pointer">Remove Banner</button>
                       </div>
-                      <input
-                        type="text"
-                        value={hb.title}
-                        onChange={e => {
-                          const updated = [...heroBanners]
-                          updated[idx].title = e.target.value
-                          setHeroBanners(updated)
-                        }}
-                        className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-white font-bold uppercase"
-                      />
-                      <textarea
-                        rows={2}
-                        value={hb.subtitle}
-                        onChange={e => {
-                          const updated = [...heroBanners]
-                          updated[idx].subtitle = e.target.value
-                          setHeroBanners(updated)
-                        }}
-                        className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-slate-300 resize-none"
-                      />
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            value={hb.title}
+                            onChange={e => {
+                              const updated = [...heroBanners]
+                              updated[idx].title = e.target.value
+                              setHeroBanners(updated)
+                            }}
+                            className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-white font-bold uppercase text-xs"
+                            placeholder="Banner Title"
+                          />
+                          <textarea
+                            rows={2}
+                            value={hb.subtitle}
+                            onChange={e => {
+                              const updated = [...heroBanners]
+                              updated[idx].subtitle = e.target.value
+                              setHeroBanners(updated)
+                            }}
+                            className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-slate-300 resize-none text-xs"
+                            placeholder="Banner Subtitle"
+                          />
+                        </div>
+
+                        <div className="space-y-2 bg-slate-900 p-3 rounded-lg border border-slate-800">
+                          <span className="font-bold text-slate-400 uppercase text-[10px] block">Banner Background Image</span>
+                          <div className="flex items-center space-x-2">
+                            {hb.bgImage ? (
+                              <div className="w-12 h-10 bg-slate-950 rounded border border-slate-700 overflow-hidden shrink-0 flex items-center justify-center">
+                                <img src={hb.bgImage} alt="" className="w-full h-full object-cover" />
+                              </div>
+                            ) : (
+                              <div className="w-12 h-10 bg-slate-950 rounded border border-slate-700 flex items-center justify-center text-xs text-slate-500">None</div>
+                            )}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={e => handleHeroImageUpload(idx, e)}
+                              className="w-full text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-blue-600 file:text-white cursor-pointer"
+                            />
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="Or paste image URL..."
+                            value={hb.bgImage || ''}
+                            onChange={e => {
+                              const updated = [...heroBanners]
+                              updated[idx].bgImage = e.target.value
+                              setHeroBanners(updated)
+                            }}
+                            className="w-full bg-slate-950 border border-slate-800 px-2 py-1 rounded text-[11px] font-mono text-slate-300"
+                          />
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -354,13 +420,21 @@ export default function WebSettingsPage() {
                   <input type="text" placeholder="Banner Title..." value={newHeroTitle} onChange={e => setNewHeroTitle(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
                   <input type="text" placeholder="Banner Subtitle..." value={newHeroSubtitle} onChange={e => setNewHeroSubtitle(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
                   <input type="text" placeholder="Badge Tag (e.g. INNOVATION)" value={newHeroTag} onChange={e => setNewHeroTag(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
+                  
+                  <div className="space-y-1">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase">Banner Image (Upload or URL)</label>
+                    <input type="file" accept="image/*" onChange={handleNewHeroImageUpload} className="w-full text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-blue-600 file:text-white cursor-pointer" />
+                    <input type="text" placeholder="Or paste image URL..." value={newHeroImage} onChange={e => setNewHeroImage(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs font-mono text-white" />
+                  </div>
+
                   <button
                     onClick={() => {
                       if (!newHeroTitle.trim()) return
-                      setHeroBanners([...heroBanners, { id: Date.now(), title: newHeroTitle.trim(), subtitle: newHeroSubtitle.trim(), tag: newHeroTag.trim() || 'FEATURED' }])
+                      setHeroBanners([...heroBanners, { id: Date.now(), title: newHeroTitle.trim(), subtitle: newHeroSubtitle.trim(), tag: newHeroTag.trim() || 'FEATURED', bgImage: newHeroImage.trim() }])
                       setNewHeroTitle('')
                       setNewHeroSubtitle('')
                       setNewHeroTag('')
+                      setNewHeroImage('')
                     }}
                     className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl cursor-pointer"
                   >

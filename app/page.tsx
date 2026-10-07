@@ -12,6 +12,7 @@ export default function UniconLabsLandingPage() {
   const router = useRouter()
   const [clientSlugInput, setClientSlugInput] = useState('')
   const [activeHeroSlide, setActiveHeroSlide] = useState(0)
+  const [isPaused, setIsPaused] = useState(false)
 
   // Dynamic Content State loaded from Supabase
   const [headerBrand, setHeaderBrand] = useState('UNICON LABS')
@@ -27,9 +28,9 @@ export default function UniconLabsLandingPage() {
   ])
   const [heroSlideInterval, setHeroSlideInterval] = useState(4500)
   const [heroBanners, setHeroBanners] = useState([
-    { id: 1, title: 'POWERING AUTONOMOUS ENTERPRISE ECOSYSTEMS', subtitle: 'Next-generation multi-tenant Business OS designed for scale, speed, and real-time offline sync.', tag: 'FLAGSHIP PLATFORM' },
-    { id: 2, title: 'INTELLIGENT POINT OF SALE & KITCHEN DISPLAY', subtitle: 'Streamline multi-tender settlement, split payments, FBR fiscal integration, and instant KOT ticket routing.', tag: 'OPERATIONAL EXCELLENCE' },
-    { id: 3, title: 'REAL-TIME LOGISTICS & DISPATCH QUEUE', subtitle: 'Effortlessly manage delivery fleets, rider assignments, and automated customer notifications.', tag: 'SUPPLY CHAIN' },
+    { id: 1, title: 'POWERING AUTONOMOUS ENTERPRISE ECOSYSTEMS', subtitle: 'Next-generation multi-tenant Business OS designed for scale, speed, and real-time offline sync.', tag: 'FLAGSHIP PLATFORM', bgImage: '' },
+    { id: 2, title: 'INTELLIGENT POINT OF SALE & KITCHEN DISPLAY', subtitle: 'Streamline multi-tender settlement, split payments, FBR fiscal integration, and instant KOT ticket routing.', tag: 'OPERATIONAL EXCELLENCE', bgImage: '' },
+    { id: 3, title: 'REAL-TIME LOGISTICS & DISPATCH QUEUE', subtitle: 'Effortlessly manage delivery fleets, rider assignments, and automated customer notifications.', tag: 'SUPPLY CHAIN', bgImage: '' },
   ])
   const [products, setProducts] = useState([
     { id: 1, name: 'Adaptive POS Terminal', desc: 'Feature-rich multi-surface touchscreen cash register and terminal engine.', image: '🖥️' },
@@ -95,14 +96,22 @@ export default function UniconLabsLandingPage() {
     if (s.footerHQ) setFooterHQ(s.footerHQ)
   }
 
-  // Auto-slide hero banners based on dynamic interval
+  // Auto-slide hero banners with pause support
   useEffect(() => {
-    if (heroBanners.length === 0) return
+    if (heroBanners.length === 0 || isPaused) return
     const timer = setInterval(() => {
       setActiveHeroSlide(prev => (prev + 1) % heroBanners.length)
     }, heroSlideInterval || 4500)
     return () => clearInterval(timer)
-  }, [heroBanners.length, heroSlideInterval])
+  }, [heroBanners.length, heroSlideInterval, isPaused])
+
+  const handleNextSlide = () => {
+    setActiveHeroSlide(prev => (prev + 1) % heroBanners.length)
+  }
+
+  const handlePrevSlide = () => {
+    setActiveHeroSlide(prev => (prev - 1 + heroBanners.length) % heroBanners.length)
+  }
 
   const handleClientLogin = (e: React.FormEvent) => {
     e.preventDefault()
@@ -112,8 +121,6 @@ export default function UniconLabsLandingPage() {
     }
     router.push(`/${clientSlugInput.trim().toLowerCase()}/pos`)
   }
-
-  const currentSlide = heroBanners[activeHeroSlide] || heroBanners[0]
 
   return (
     <div className="min-h-screen bg-white text-slate-800 flex flex-col font-sans select-none">
@@ -173,32 +180,76 @@ export default function UniconLabsLandingPage() {
         </div>
       </nav>
 
-      {/* 3. HERO BANNER SECTION (Sliding Banners) */}
-      <section id="home" className="bg-gradient-to-b from-blue-900 to-blue-950 text-white px-8 py-24 relative overflow-hidden">
-        <div className="max-w-5xl mx-auto text-center space-y-6 relative z-10 min-h-[220px] flex flex-col justify-center items-center">
-          {currentSlide?.tag && (
-            <div className="inline-block bg-blue-800/80 text-blue-200 border border-blue-700 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-widest shadow-inner">
-              {currentSlide.tag}
-            </div>
-          )}
-          
-          <h1 className="text-3xl md:text-5xl font-black tracking-tight uppercase leading-tight max-w-4xl">
-            {currentSlide?.title}
-          </h1>
-          
-          <p className="text-blue-100 max-w-2xl mx-auto text-sm md:text-base font-medium leading-relaxed">
-            {currentSlide?.subtitle}
-          </p>
+      {/* 3. HERO BANNER SECTION (Smooth Sliding / Diffusion with Manual Arrows & Pause) */}
+      <section
+        id="home"
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+        className="bg-gradient-to-b from-blue-900 to-blue-950 text-white px-8 py-24 relative overflow-hidden min-h-[420px] flex items-center justify-center"
+      >
+        {/* Render Carousel Slides with Smooth Sliding & Diffusion Animation */}
+        <div className="absolute inset-0 w-full h-full flex items-center justify-center">
+          {heroBanners.map((hb, idx) => {
+            const isActive = idx === activeHeroSlide
+            return (
+              <div
+                key={hb.id || idx}
+                className={`absolute inset-0 w-full h-full flex items-center justify-center px-8 transition-all duration-700 ease-in-out ${
+                  isActive
+                    ? 'opacity-100 translate-x-0 scale-100 filter blur-0 pointer-events-auto'
+                    : 'opacity-0 translate-x-20 scale-95 filter blur-sm pointer-events-none'
+                }`}
+                style={{
+                  backgroundImage: hb.bgImage ? `linear-gradient(rgba(15, 23, 42, 0.82), rgba(15, 23, 42, 0.88)), url('${hb.bgImage}')` : 'none',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center'
+                }}
+              >
+                <div className="max-w-5xl mx-auto text-center space-y-6 relative z-10">
+                  {hb.tag && (
+                    <div className="inline-block bg-blue-800/80 text-blue-200 border border-blue-700 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-widest shadow-inner">
+                      {hb.tag}
+                    </div>
+                  )}
+                  
+                  <h1 className="text-3xl md:text-5xl font-black tracking-tight uppercase leading-tight max-w-4xl mx-auto">
+                    {hb.title}
+                  </h1>
+                  
+                  <p className="text-blue-100 max-w-2xl mx-auto text-sm md:text-base font-medium leading-relaxed">
+                    {hb.subtitle}
+                  </p>
+                </div>
+              </div>
+            )
+          })}
+        </div>
 
-          <div className="flex justify-center space-x-2 pt-4">
-            {heroBanners.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => setActiveHeroSlide(idx)}
-                className={`h-2.5 rounded-full transition-all cursor-pointer ${activeHeroSlide === idx ? 'w-8 bg-white' : 'w-2.5 bg-blue-700'}`}
-              />
-            ))}
-          </div>
+        {/* Manual Navigation Arrows */}
+        <button
+          onClick={handlePrevSlide}
+          className="absolute left-6 top-1/2 -translate-y-1/2 z-30 w-11 h-11 bg-white/10 hover:bg-white/25 backdrop-blur-md rounded-full flex items-center justify-center text-white text-lg font-bold transition shadow-lg cursor-pointer border border-white/20"
+          title="Previous Banner"
+        >
+          ‹
+        </button>
+        <button
+          onClick={handleNextSlide}
+          className="absolute right-6 top-1/2 -translate-y-1/2 z-30 w-11 h-11 bg-white/10 hover:bg-white/25 backdrop-blur-md rounded-full flex items-center justify-center text-white text-lg font-bold transition shadow-lg cursor-pointer border border-white/20"
+          title="Next Banner"
+        >
+          ›
+        </button>
+
+        {/* Slide Indicators / Dots */}
+        <div className="absolute bottom-6 left-0 right-0 z-30 flex justify-center space-x-2">
+          {heroBanners.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setActiveHeroSlide(idx)}
+              className={`h-2.5 rounded-full transition-all cursor-pointer ${activeHeroSlide === idx ? 'w-8 bg-white shadow' : 'w-2.5 bg-blue-700/80'}`}
+            />
+          ))}
         </div>
       </section>
 
