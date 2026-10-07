@@ -452,15 +452,23 @@ export default function MasterAdminPanel() {
           </div>
         </div>
         <div className="flex items-center space-x-4">
+          {/* --- EXACT ADDITION: Link to Unicon Labs Website Settings CMS --- */}
+          <button 
+            onClick={() => router.push('/master-admin/web-settings')}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition shadow flex items-center space-x-1.5 cursor-pointer"
+          >
+            <span>🌐</span>
+            <span>Website CMS Settings</span>
+          </button>
           <button 
             onClick={() => setShowNewModal(true)}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition shadow"
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition shadow cursor-pointer"
           >
             + Provision New Tenant
           </button>
           <button 
             onClick={handleLogout}
-            className="bg-red-900/40 hover:bg-red-900/60 text-red-300 px-4 py-2 rounded-xl text-xs font-semibold transition border border-red-800"
+            className="bg-red-900/40 hover:bg-red-900/60 text-red-300 px-4 py-2 rounded-xl text-xs font-semibold transition border border-red-800 cursor-pointer"
           >
             Lock Session
           </button>
