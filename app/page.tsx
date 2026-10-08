@@ -133,13 +133,7 @@ export default function UniconLabsLandingPage() {
             alt="Unicon Labs Logo"
             className="h-10 w-auto object-contain"
           />
-          <div>
-            src="/unicorn-logo.png"
-            alt="Unicon Labs Logo"
-            className="h-12 w-auto object-contain"
-          />
           <div className="flex flex-col justify-center">
->>>>>>> 6975f270e407ce66a6f8800467bf61ce282e061d
             <div className="flex items-center space-x-2">
               <span className="text-base font-black tracking-wider uppercase text-blue-900">
                 {headerBrand}
@@ -151,31 +145,6 @@ export default function UniconLabsLandingPage() {
             <span className="block text-[10px] text-slate-500 font-bold uppercase tracking-widest">{headerSubtitle}</span>
           </div>
         </div>
-
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={() => router.push('/master-admin')}
-            className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold text-xs transition border border-blue-200 shadow-2xs cursor-pointer"
-          >
-            🛡️ Master Admin
-          </button>
-          <div className="flex items-center space-x-2">
-            <input
-              type="text"
-              placeholder="tenant-slug..."
-              value={clientSlugInput}
-              onChange={e => setClientSlugInput(e.target.value)}
-              className="w-36 bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:border-blue-600"
-            />
-            <button
-              onClick={handleClientLogin}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition shadow-md shadow-blue-600/30 cursor-pointer uppercase tracking-wide"
-            >
-              Login / Sign Up
-            </button>
-          </div>
-        </div>
-      </header>
 
         <div className="flex items-center space-x-3">
           <button
