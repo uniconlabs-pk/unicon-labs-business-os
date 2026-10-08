@@ -126,21 +126,20 @@ export default function UniconLabsLandingPage() {
     <div className="min-h-screen bg-white text-slate-800 flex flex-col font-sans select-none">
       
       {/* 1. SMART STICKY HEADER AREA */}
-      <header className="bg-white border-b border-blue-100 px-8 py-4 flex justify-between items-center sticky top-0 z-50 shadow-xs">
-        <div className="flex items-center space-x-3">
-          <div className="w-11 h-11 bg-blue-600 text-white rounded-2xl flex items-center justify-center font-black text-xl shadow-md shadow-blue-600/30">
-            ⚡
-          </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <span className="text-base font-black tracking-wider uppercase text-blue-900">
-                {headerBrand}
-              </span>
-              <span className="text-[10px] font-extrabold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-200">
-                {headerSlogan}
-              </span>
-            </div>
-            <span className="block text-[10px] text-slate-500 font-bold uppercase tracking-widest">{headerSubtitle}</span>
+      <header className="bg-white border-b border-blue-100 px-8 py-3 flex justify-between items-center sticky top-0 z-50 shadow-xs">
+        <div className="flex items-center space-x-4">
+          <img
+            src="/unicorn-logo.png"
+            alt="Unicon Labs Logo"
+            className="h-12 w-auto object-contain"
+          />
+          <div className="flex flex-col justify-center">
+            <span className="text-xl font-black tracking-wider text-[#1e293b] leading-tight">
+              UNICON LABS
+            </span>
+            <span className="text-xs text-slate-600 font-medium tracking-normal lowercase">
+              you think we build
+            </span>
           </div>
         </div>
 
