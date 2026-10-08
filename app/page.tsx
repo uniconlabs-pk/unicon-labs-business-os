@@ -126,11 +126,13 @@ export default function UniconLabsLandingPage() {
     <div className="min-h-screen bg-white text-slate-800 flex flex-col font-sans select-none">
       
       {/* 1. SMART STICKY HEADER AREA */}
-      <header className="bg-white border-b border-blue-100 px-8 py-4 flex justify-between items-center sticky top-0 z-50 shadow-xs">
+      <header className="bg-white border-b border-blue-100 px-8 py-3 flex justify-between items-center sticky top-0 z-50 shadow-xs">
         <div className="flex items-center space-x-3">
-          <div className="w-11 h-11 bg-blue-600 text-white rounded-2xl flex items-center justify-center font-black text-xl shadow-md shadow-blue-600/30">
-            ⚡
-          </div>
+          <img
+            src="/unicon-logo.png"
+            alt="Unicon Labs Logo"
+            className="h-10 w-auto object-contain"
+          />
           <div>
             <div className="flex items-center space-x-2">
               <span className="text-base font-black tracking-wider uppercase text-blue-900">
@@ -143,6 +145,31 @@ export default function UniconLabsLandingPage() {
             <span className="block text-[10px] text-slate-500 font-bold uppercase tracking-widest">{headerSubtitle}</span>
           </div>
         </div>
+
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={() => router.push('/master-admin')}
+            className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold text-xs transition border border-blue-200 shadow-2xs cursor-pointer"
+          >
+            🛡️ Master Admin
+          </button>
+          <div className="flex items-center space-x-2">
+            <input
+              type="text"
+              placeholder="tenant-slug..."
+              value={clientSlugInput}
+              onChange={e => setClientSlugInput(e.target.value)}
+              className="w-36 bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:border-blue-600"
+            />
+            <button
+              onClick={handleClientLogin}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition shadow-md shadow-blue-600/30 cursor-pointer uppercase tracking-wide"
+            >
+              Login / Sign Up
+            </button>
+          </div>
+        </div>
+      </header>
 
         <div className="flex items-center space-x-3">
           <button
