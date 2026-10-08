@@ -134,7 +134,6 @@ export default function UniconLabsLandingPage() {
             className="h-10 w-auto object-contain"
           />
           <div>
-=======
             src="/unicorn-logo.png"
             alt="Unicon Labs Logo"
             className="h-12 w-auto object-contain"
