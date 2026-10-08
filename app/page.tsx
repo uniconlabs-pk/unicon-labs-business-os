@@ -134,6 +134,13 @@ export default function UniconLabsLandingPage() {
             className="h-10 w-auto object-contain"
           />
           <div>
+=======
+            src="/unicorn-logo.png"
+            alt="Unicon Labs Logo"
+            className="h-12 w-auto object-contain"
+          />
+          <div className="flex flex-col justify-center">
+>>>>>>> 6975f270e407ce66a6f8800467bf61ce282e061d
             <div className="flex items-center space-x-2">
               <span className="text-base font-black tracking-wider uppercase text-blue-900">
                 {headerBrand}
