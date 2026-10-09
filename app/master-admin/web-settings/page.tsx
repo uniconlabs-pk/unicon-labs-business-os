@@ -54,16 +54,21 @@ export default function WebSettingsPage() {
   const [newProdDesc, setNewProdDesc] = useState('')
   const [newProdImage, setNewProdImage] = useState('📦')
 
-  // Product Edit States
+  // Product Edit & Drag States
   const [editingProductId, setEditingProductId] = useState<number | null>(null)
   const [editProdName, setEditProdName] = useState('')
   const [editProdDesc, setEditProdDesc] = useState('')
   const [editProdImage, setEditProdImage] = useState('')
+  const [draggedProductId, setDraggedProductId] = useState<number | null>(null)
 
   const [partners, setPartners] = useState(
     Array.from({ length: 18 }, (_, i) => ({ id: i + 1, name: `Partner Brand ${i + 1}`, logo: '🏢' }))
   )
   const [newPartnerName, setNewPartnerName] = useState('')
+  const [newPartnerLogo, setNewPartnerLogo] = useState('')
+  const [editingPartnerId, setEditingPartnerId] = useState<number | null>(null)
+  const [editPartnerName, setEditPartnerName] = useState('')
+  const [editPartnerLogo, setEditPartnerLogo] = useState('')
 
   const [blogs, setBlogs] = useState([
     { id: 1, title: 'Scaling Cloud POS Architecture in 2026', date: 'Oct 04, 2026', category: 'Engineering', desc: 'Discover how offline-first Supabase synchronization keeps retail stores running smoothly.' },
@@ -184,6 +189,60 @@ export default function WebSettingsPage() {
       }
     }
     reader.readAsDataURL(file)
+  }
+
+  const handleNewPartnerLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (uploadEvent) => {
+      const resultStr = uploadEvent.target?.result as string
+      if (resultStr) {
+        setNewPartnerLogo(resultStr)
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleEditPartnerLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (uploadEvent) => {
+      const resultStr = uploadEvent.target?.result as string
+      if (resultStr) {
+        setEditPartnerLogo(resultStr)
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
+  // Product Drag and Drop Handlers
+  const handleDragStart = (e: React.DragEvent, id: number) => {
+    setDraggedProductId(id)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleDrop = (e: React.DragEvent, targetId: number) => {
+    e.preventDefault()
+    if (draggedProductId === null || draggedProductId === targetId) return
+
+    const updatedProducts = [...products]
+    const draggedIndex = updatedProducts.findIndex(p => p.id === draggedProductId)
+    const targetIndex = updatedProducts.findIndex(p => p.id === targetId)
+
+    if (draggedIndex < 0 || targetIndex < 0) return
+
+    const [removed] = updatedProducts.splice(draggedIndex, 1)
+    updatedProducts.splice(targetIndex, 0, removed)
+
+    setProducts(updatedProducts)
+    setDraggedProductId(null)
   }
 
   const navTabs = [
@@ -512,15 +571,26 @@ export default function WebSettingsPage() {
             </div>
           )}
 
-          {/* 4. PRODUCTS DISPLAY SETTINGS */}
+          {/* 4. PRODUCTS DISPLAY SETTINGS WITH DRAG & DROP REORDERING */}
           {activeTab === 'products' && (
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
-              <h2 className="font-extrabold text-sm uppercase text-blue-400">Featured Products Display</h2>
+              <div className="flex justify-between items-center">
+                <h2 className="font-extrabold text-sm uppercase text-blue-400">Featured Products Display</h2>
+                <span className="text-[10px] text-slate-400 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">💡 Drag and drop ⠿ to reorder products permanently</span>
+              </div>
               <div className="space-y-3 text-xs">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {products.map((p) => (
-                    <div key={p.id} className="bg-slate-950 border border-slate-800 p-3.5 rounded-xl flex items-center justify-between">
+                    <div
+                      key={p.id}
+                      draggable
+                      onDragStart={e => handleDragStart(e, p.id)}
+                      onDragOver={handleDragOver}
+                      onDrop={e => handleDrop(e, p.id)}
+                      className="bg-slate-950 border border-slate-800 p-3.5 rounded-xl flex items-center justify-between cursor-grab active:cursor-grabbing hover:border-blue-500/50 transition"
+                    >
                       <div className="flex items-center space-x-3">
+                        <span className="text-slate-500 font-mono text-sm select-none">⠿</span>
                         {p.image && (p.image.startsWith('data:') || p.image.startsWith('http') || p.image.startsWith('/') || p.image.length > 50) ? (
                           <div className="w-10 h-10 rounded-lg overflow-hidden border border-slate-800 shrink-0 bg-slate-900 flex items-center justify-center">
                             <img src={p.image} alt="" className="w-full h-full object-cover" />
@@ -637,32 +707,115 @@ export default function WebSettingsPage() {
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
               <h2 className="font-extrabold text-sm uppercase text-blue-400">Respected Partners Directory ({partners.length})</h2>
               <div className="space-y-3 text-xs">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-60 overflow-y-auto pr-1">
-                  {partners.map((prt) => (
-                    <div key={prt.id} className="bg-slate-950 border border-slate-800 p-2.5 rounded-xl flex items-center justify-between">
-                      <span className="font-bold text-white truncate">{prt.name}</span>
-                      <button onClick={() => setPartners(partners.filter(x => x.id !== prt.id))} className="text-red-400 text-[10px] font-bold cursor-pointer">Remove</button>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-72 overflow-y-auto pr-1">
+                  {partners.map((prt: any) => (
+                    <div key={prt.id} className="bg-slate-950 border border-slate-800 p-3 rounded-xl flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        {prt.logo && (prt.logo.startsWith('data:') || prt.logo.startsWith('http') || prt.logo.startsWith('/') || prt.logo.length > 50) ? (
+                          <div className="w-10 h-10 rounded-lg overflow-hidden border border-slate-800 shrink-0 bg-slate-900 flex items-center justify-center">
+                            <img src={prt.logo} alt="" className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <span className="text-2xl shrink-0">{prt.logo || '🏢'}</span>
+                        )}
+                        <div>
+                          <h4 className="font-bold text-white uppercase">{prt.name}</h4>
+                          <span className="text-[10px] text-slate-500 font-mono">Partner ID #{prt.id}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2 shrink-0">
+                        <button
+                          onClick={() => {
+                            setEditingPartnerId(prt.id)
+                            setEditPartnerName(prt.name)
+                            setEditPartnerLogo(prt.logo || '🏢')
+                          }}
+                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-blue-300 font-bold rounded-lg cursor-pointer text-[11px]"
+                        >
+                          Edit
+                        </button>
+                        <button onClick={() => setPartners(partners.filter((x: any) => x.id !== prt.id))} className="text-red-400 hover:text-red-300 font-bold cursor-pointer text-[11px]">Remove</button>
+                      </div>
                     </div>
                   ))}
                 </div>
 
-                <div className="flex space-x-2 pt-2">
+                {/* Edit Partner Modal / Section */}
+                {editingPartnerId !== null && (
+                  <div className="p-4 bg-blue-950/30 border border-blue-800/60 rounded-xl space-y-3 mt-4">
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-blue-400 uppercase text-[11px]">✏️ Edit Partner ID #{editingPartnerId}</span>
+                      <button onClick={() => setEditingPartnerId(null)} className="text-slate-400 hover:text-white text-xs font-bold cursor-pointer">Cancel</button>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Partner Brand Name</label>
+                        <input type="text" value={editPartnerName} onChange={e => setEditPartnerName(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase">Partner Brand Logo (Upload Computer File, URL, or Emoji)</label>
+                        <div className="flex items-center space-x-2">
+                          {editPartnerLogo && (editPartnerLogo.startsWith('data:') || editPartnerLogo.startsWith('http') || editPartnerLogo.startsWith('/') || editPartnerLogo.length > 50) ? (
+                            <div className="w-12 h-10 rounded border border-slate-700 overflow-hidden shrink-0 bg-slate-900 flex items-center justify-center">
+                              <img src={editPartnerLogo} alt="" className="w-full h-full object-cover" />
+                            </div>
+                          ) : (
+                            <div className="w-12 h-10 rounded border border-slate-700 flex items-center justify-center text-lg bg-slate-900 shrink-0">{editPartnerLogo || '🏢'}</div>
+                          )}
+                          <input type="file" accept="image/*" onChange={handleEditPartnerLogoUpload} className="w-full text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-blue-600 file:text-white cursor-pointer" />
+                        </div>
+                        <input type="text" placeholder="Or paste image URL / Emoji..." value={editPartnerLogo} onChange={e => setEditPartnerLogo(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs font-mono text-white" />
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (!editPartnerName.trim()) return
+                        setPartners(partners.map((p: any) => p.id === editingPartnerId ? { ...p, name: editPartnerName.trim(), logo: editPartnerLogo.trim() || '🏢' } : p))
+                        setEditingPartnerId(null)
+                      }}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl cursor-pointer"
+                    >
+                      Update Partner Entry
+                    </button>
+                  </div>
+                )}
+
+                {/* Add New Partner Section */}
+                <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3 mt-4">
+                  <span className="font-bold text-blue-400 uppercase text-[11px] block">+ Add Respected Partner Brand</span>
                   <input
                     type="text"
                     placeholder="Partner Brand Name (e.g. Apex Corp)"
                     value={newPartnerName}
                     onChange={e => setNewPartnerName(e.target.value)}
-                    className="bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-white flex-1"
+                    className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white"
                   />
+
+                  <div className="space-y-1">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase">Partner Brand Logo (Upload Computer File, URL, or Emoji)</label>
+                    <div className="flex items-center space-x-2">
+                      {newPartnerLogo && (newPartnerLogo.startsWith('data:') || newPartnerLogo.startsWith('http') || newPartnerLogo.startsWith('/') || newPartnerLogo.length > 50) ? (
+                        <div className="w-12 h-10 rounded border border-slate-700 overflow-hidden shrink-0 bg-slate-900 flex items-center justify-center">
+                          <img src={newPartnerLogo} alt="" className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="w-12 h-10 rounded border border-slate-700 flex items-center justify-center text-lg bg-slate-900 shrink-0">{newPartnerLogo || '🏢'}</div>
+                      )}
+                      <input type="file" accept="image/*" onChange={handleNewPartnerLogoUpload} className="w-full text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-blue-600 file:text-white cursor-pointer" />
+                    </div>
+                    <input type="text" placeholder="Or paste image URL / Emoji..." value={newPartnerLogo} onChange={e => setNewPartnerLogo(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs font-mono text-white" />
+                  </div>
+
                   <button
                     onClick={() => {
                       if (!newPartnerName.trim()) return
-                      setPartners([...partners, { id: Date.now(), name: newPartnerName.trim(), logo: '🏢' }])
+                      setPartners([...partners, { id: Date.now(), name: newPartnerName.trim(), logo: newPartnerLogo.trim() || '🏢' }])
                       setNewPartnerName('')
+                      setNewPartnerLogo('🏢')
                     }}
                     className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl cursor-pointer"
                   >
-                    + Add Partner
+                    + Add Partner Entry
                   </button>
                 </div>
               </div>

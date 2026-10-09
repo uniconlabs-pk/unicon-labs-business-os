@@ -239,6 +239,13 @@ export default function UniconLabsLandingPage() {
         .animate-heartbeat {
           animation: heartbeat 1.5s infinite ease-in-out;
         }
+        @keyframes pulseGlow {
+          0%, 100% { opacity: 0.25; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(1.02); }
+        }
+        .animate-pulse-glow {
+          animation: pulseGlow 4s infinite ease-in-out;
+        }
       `}</style>
 
       {/* STICKY HEADER & NAV WRAPPER CONTAINER TO ENSURE 0% GAP */}
@@ -264,10 +271,14 @@ export default function UniconLabsLandingPage() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-5">
+            <div className="hidden lg:flex items-center space-x-1.5 text-xs font-bold text-slate-700 tracking-tight">
+              <span>For any immediate inquiry please call ( 9:00 AM - 6:00 PM / Mon-Sat ) :</span>
+              <span className="text-amber-500 font-black text-lg tracking-wide">+92 333 3776556</span>
+            </div>
             <button
               onClick={handleLoginClick}
-              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition shadow-md shadow-blue-600/30 cursor-pointer uppercase tracking-wide"
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition shadow-md shadow-blue-600/30 cursor-pointer uppercase tracking-wide shrink-0"
             >
               Login / Sign Up
             </button>
@@ -275,14 +286,25 @@ export default function UniconLabsLandingPage() {
         </header>
 
         {/* 2. STICKY HORIZONTAL MENU BAR */}
-        <nav className="bg-blue-900 text-white px-8 py-3">
+        <nav 
+          className="text-white px-8 py-3.5 border-b border-cyan-500/20 shadow-lg"
+          style={{
+            backgroundImage: `
+              radial-gradient(circle at 50% 50%, rgba(34, 211, 238, 0.15) 0%, transparent 70%),
+              linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #1e1b4b 100%),
+              repeating-linear-gradient(90deg, rgba(56, 189, 248, 0.03) 0px, rgba(56, 189, 248, 0.03) 1px, transparent 1px, transparent 30px)
+            `,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center'
+          }}
+        >
           <div className="max-w-7xl mx-auto flex justify-center space-x-8 text-xs font-black uppercase tracking-wider overflow-x-auto">
             {menuItems.map(item => (
               <a
                 key={item.id}
                 href={item.href}
                 onClick={(e) => handleMenuClick(e, item.label, item.href)}
-                className="hover:text-blue-300 transition py-1 hover:border-b-2 hover:border-blue-400 whitespace-nowrap cursor-pointer"
+                className="hover:text-cyan-300 transition-colors py-1 hover:border-b-2 hover:border-cyan-400 whitespace-nowrap cursor-pointer tracking-widest text-blue-100"
               >
                 {item.label}
               </a>
@@ -369,55 +391,89 @@ export default function UniconLabsLandingPage() {
         </div>
       </section>
 
-      {/* 4. FEATURED PRODUCTS DISPLAY ROW */}
-      <section id="products" className="px-8 py-20 max-w-7xl mx-auto w-full space-y-10">
-        <div className="text-center space-y-2">
-          <span className="text-xs font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">SOFTWARE ECOSYSTEM</span>
-          <h2 className="text-3xl font-black uppercase tracking-wide text-blue-950">Our Favorite Products</h2>
+      {/* 4. CORE OPERATIONS DISPLAY ROW */}
+      <section 
+        id="products" 
+        className="px-8 py-24 relative overflow-hidden text-white"
+        style={{
+          backgroundImage: `
+            radial-gradient(circle at 50% 30%, rgba(34, 211, 238, 0.2) 0%, transparent 60%),
+            linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #172554 100%),
+            repeating-linear-gradient(0deg, rgba(56, 189, 248, 0.03) 0px, rgba(56, 189, 248, 0.03) 1px, transparent 1px, transparent 40px),
+            repeating-linear-gradient(90deg, rgba(56, 189, 248, 0.03) 0px, rgba(56, 189, 248, 0.03) 1px, transparent 1px, transparent 40px)
+          `,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center'
+        }}
+      >
+        {/* Animated Digital Ecosystem Structure Background Overlay */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden select-none animate-pulse-glow">
+          <div className="absolute left-[10%] top-[15%] w-52 h-52 rounded-full border border-cyan-400/25 flex items-center justify-center">
+            <div className="w-26 h-26 rounded-full border border-cyan-400/35 flex items-center justify-center text-[10px] font-mono text-cyan-300">SYNC</div>
+          </div>
+          <div className="absolute right-[10%] bottom-[15%] w-60 h-60 rounded-full border border-blue-400/25 flex items-center justify-center">
+            <div className="w-30 h-30 rounded-full border border-blue-400/35 flex items-center justify-center text-[10px] font-mono text-blue-300">NODE</div>
+          </div>
+          <div className="absolute left-1/2 top-0 -translate-x-1/2 w-px h-full bg-gradient-to-b from-transparent via-cyan-400/30 to-transparent"></div>
+          <div className="absolute left-1/4 top-1/2 w-48 h-px bg-gradient-to-r from-transparent via-blue-400/30 to-transparent"></div>
+          <div className="absolute right-1/4 top-1/3 w-48 h-px bg-gradient-to-r from-transparent via-cyan-400/30 to-transparent"></div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-5">
-          {products.map((prod, idx) => (
-            <div key={prod.id || idx} className="bg-white border border-blue-100 rounded-3xl p-5 shadow-lg shadow-blue-900/5 flex flex-col justify-between hover:border-blue-500 hover:shadow-xl transition group">
-              <div className="space-y-4">
-                <div className="w-full h-32 bg-blue-50 rounded-2xl border border-blue-100 flex items-center justify-center overflow-hidden shadow-inner group-hover:scale-105 transition duration-300">
-                  {prod.image && (prod.image.startsWith('data:') || prod.image.startsWith('http') || prod.image.startsWith('/') || prod.image.length > 50) ? (
-                    <img src={prod.image} alt={prod.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-4xl">{prod.image || '📦'}</span>
-                  )}
+        <div className="max-w-7xl mx-auto w-full space-y-12 relative z-10">
+          <div className="text-center space-y-2">
+            <span className="text-xs font-black uppercase tracking-widest text-cyan-300 bg-blue-950/80 px-3 py-1 rounded-full border border-cyan-500/30">SOFTWARE ECOSYSTEM</span>
+            <h2 className="text-3xl font-black uppercase tracking-wide text-white">Our Core Operations</h2>
+            <p className="text-xs text-blue-200">Integrated multi-surface modules engineered for high-performance enterprise execution.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-5">
+            {products.map((prod, idx) => (
+              <div key={prod.id || idx} className="bg-slate-900/90 border border-cyan-500/30 rounded-3xl p-5 shadow-xl shadow-blue-950/50 flex flex-col justify-between hover:border-cyan-400 hover:shadow-cyan-500/20 transition group backdrop-blur-xs">
+                <div className="space-y-4">
+                  <div className="w-full h-32 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-center overflow-hidden shadow-inner group-hover:scale-105 transition duration-300">
+                    {prod.image && (prod.image.startsWith('data:') || prod.image.startsWith('http') || prod.image.startsWith('/') || prod.image.length > 50) ? (
+                      <img src={prod.image} alt={prod.name} className="w-full h-full object-fill" />
+                    ) : (
+                      <span className="text-4xl">{prod.image || '📦'}</span>
+                    )}
+                  </div>
+                  <h3 className="font-black text-sm uppercase text-cyan-300">{prod.name}</h3>
+                  <p className="text-blue-100 text-xs leading-relaxed text-justify">{prod.desc}</p>
                 </div>
-                <h3 className="font-black text-sm uppercase text-blue-950">{prod.name}</h3>
-                <p className="text-slate-600 text-xs leading-relaxed text-justify">{prod.desc}</p>
+                <div className="pt-6">
+                  <button
+                    onClick={() => alert(`Details for ${prod.name}`)}
+                    className="w-full py-2.5 bg-blue-600 hover:bg-cyan-500 text-white font-bold rounded-xl text-xs transition uppercase tracking-wider border border-blue-500 cursor-pointer shadow-md shadow-blue-600/30"
+                  >
+                    Read more...
+                  </button>
+                </div>
               </div>
-              <div className="pt-6">
-                <button
-                  onClick={() => alert(`Details for ${prod.name}`)}
-                  className="w-full py-2.5 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white font-bold rounded-xl text-xs transition uppercase tracking-wider border border-blue-200 cursor-pointer"
-                >
-                  Read more...
-                </button>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 
       {/* 5. OUR RESPECTED PARTNERS SECTION */}
       <section id="partners" className="bg-slate-50 border-y border-slate-200 px-8 py-20">
-        <div className="max-w-7xl mx-auto space-y-10">
+        <div className="max-w-7xl mx-auto space-y-12">
           <div className="text-center space-y-2">
             <span className="text-xs font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">CLIENT SUCCESS</span>
             <h2 className="text-3xl font-black uppercase tracking-wide text-blue-950">Our Respected Partners</h2>
             <p className="text-xs text-slate-500">Proudly empowering top-tier businesses and fast-growing enterprises worldwide.</p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-6 items-center">
             {partners.map(partner => (
-              <div key={partner.id} className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col items-center justify-center h-28 shadow-xs hover:border-blue-400 hover:shadow-md transition">
-                <span className="text-2xl mb-1">{partner.logo}</span>
-                <span className="font-extrabold text-[11px] text-slate-700 text-center truncate w-full">{partner.name}</span>
-                <span className="text-[9px] text-slate-400 uppercase">Verified Client</span>
+              <div key={partner.id} className="bg-white border border-slate-100 rounded-3xl p-5 flex flex-col items-center justify-center h-48 shadow-lg shadow-slate-200/60 hover:shadow-xl hover:border-blue-200 transition-all duration-300 group overflow-hidden">
+                {partner.logo && (partner.logo.startsWith('data:') || partner.logo.startsWith('http') || partner.logo.startsWith('/') || partner.logo.length > 50) ? (
+                  <div className="w-full h-32 flex items-center justify-center shrink-0 mb-1">
+                    <img src={partner.logo} alt={partner.name} className="w-full h-full object-contain" />
+                  </div>
+                ) : (
+                  <span className="text-8xl mb-1">{partner.logo || '🏢'}</span>
+                )}
+                <span className="font-black text-xs text-slate-800 text-center truncate w-full uppercase tracking-wide">{partner.name}</span>
               </div>
             ))}
           </div>
@@ -468,16 +524,42 @@ export default function UniconLabsLandingPage() {
       </section>
 
       {/* ABOUT US SECTION */}
-      <section id="about" className="bg-blue-900 text-white px-8 py-6 relative overflow-hidden">
+      <section 
+        id="about" 
+        className="text-white px-8 py-24 relative overflow-hidden"
+        style={{
+          backgroundImage: `
+            radial-gradient(circle at 20% 30%, rgba(34, 211, 238, 0.25) 0%, transparent 50%),
+            radial-gradient(circle at 80% 70%, rgba(59, 130, 246, 0.4) 0%, transparent 60%),
+            linear-gradient(120deg, #0f172a 0%, #1e3a8a 50%, #1e1b4b 100%),
+            repeating-linear-gradient(0deg, rgba(56, 189, 248, 0.05) 0px, rgba(56, 189, 248, 0.05) 1px, transparent 1px, transparent 40px),
+            repeating-linear-gradient(90deg, rgba(56, 189, 248, 0.05) 0px, rgba(56, 189, 248, 0.05) 1px, transparent 1px, transparent 40px)
+          `,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center'
+        }}
+      >
+        {/* Vibrant Digital Ecosystem Architecture Network Overlay */}
+        <div className="absolute inset-0 pointer-events-none opacity-30 flex items-center justify-between px-16 overflow-hidden select-none">
+          <div className="absolute left-10 top-1/4 w-32 h-32 rounded-full border border-cyan-400/30 flex items-center justify-center animate-pulse">
+            <div className="w-16 h-16 rounded-full border border-cyan-400/50 flex items-center justify-center text-[9px] font-mono text-cyan-300">SYNC</div>
+          </div>
+          <div className="absolute right-12 bottom-1/4 w-40 h-40 rounded-full border border-blue-400/30 flex items-center justify-center animate-pulse">
+            <div className="w-20 h-20 rounded-full border border-blue-400/50 flex items-center justify-center text-[9px] font-mono text-blue-300">CORE</div>
+          </div>
+          <div className="absolute left-1/3 top-10 h-24 w-px bg-gradient-to-b from-transparent via-cyan-400 to-transparent"></div>
+          <div className="absolute right-1/3 bottom-10 h-24 w-px bg-gradient-to-b from-transparent via-blue-400 to-transparent"></div>
+        </div>
+
         <div className="max-w-5xl mx-auto text-center space-y-4 flex flex-col items-center relative z-10">
           <div className="mb-2">
             <img
               src="/unicon-logo.png"
               alt="Unicon Labs Enlarged Logo"
-              className="h-20 w-auto object-contain filter drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] drop-shadow-[0_0_24px_rgba(56,189,248,0.7)]"
+              className="h-20 w-auto object-contain filter drop-shadow-[0_0_16px_rgba(34,211,238,1)] drop-shadow-[0_0_32px_rgba(56,189,248,0.8)]"
             />
           </div>
-          <h2 className="text-xs font-black uppercase tracking-widest text-blue-300">ABOUT UNICON LABS</h2>
+          <h2 className="text-xs font-black uppercase tracking-widest text-cyan-300">ABOUT UNICON LABS</h2>
           <h3 className="text-2xl font-black uppercase tracking-wide">Engineering Robust Software Solutions</h3>
           <p className="text-blue-100 text-xs md:text-sm max-w-3xl mx-auto leading-relaxed whitespace-pre-line">
             {aboutText}
@@ -486,26 +568,40 @@ export default function UniconLabsLandingPage() {
       </section>
 
       {/* 7. PROFESSIONAL FOOTER AREA */}
-      <footer id="contact" className="bg-blue-950 text-white border-t border-blue-900 px-8 py-12">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 pb-8 border-b border-blue-900 text-xs">
+      <footer 
+        id="contact" 
+        className="text-white border-t border-cyan-500/20 px-8 py-16 relative overflow-hidden"
+        style={{
+          backgroundImage: `
+            radial-gradient(circle at 85% 20%, rgba(34, 211, 238, 0.2) 0%, transparent 45%),
+            radial-gradient(circle at 15% 80%, rgba(59, 130, 246, 0.3) 0%, transparent 55%),
+            linear-gradient(135deg, #090d16 0%, #0f172a 50%, #1e1b4b 100%),
+            repeating-linear-gradient(0deg, rgba(56, 189, 248, 0.04) 0px, rgba(56, 189, 248, 0.04) 1px, transparent 1px, transparent 40px),
+            repeating-linear-gradient(90deg, rgba(56, 189, 248, 0.04) 0px, rgba(56, 189, 248, 0.04) 1px, transparent 1px, transparent 40px)
+          `,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center'
+        }}
+      >
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 pb-8 border-b border-cyan-500/20 text-xs relative z-10">
           <div className="space-y-3">
             <div className="flex items-center space-x-2">
-              <span className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center font-black">⚡</span>
-              <span className="font-black uppercase tracking-wider text-sm">{headerBrand}</span>
+              <span className="w-8 h-8 bg-cyan-600 rounded-xl flex items-center justify-center font-black shadow-lg shadow-cyan-500/30">⚡</span>
+              <span className="font-black uppercase tracking-wider text-sm text-cyan-300">{headerBrand}</span>
             </div>
-            <p className="text-blue-300 leading-relaxed">
+            <p className="text-blue-200 leading-relaxed">
               {headerSlogan}. Providing enterprise software ecosystems, web applications, and autonomous POS modules globally.
             </p>
           </div>
           <div className="space-y-2">
-            <h4 className="font-black uppercase tracking-wider text-blue-300 text-sm">Quick Links</h4>
+            <h4 className="font-black uppercase tracking-wider text-cyan-300 text-sm">Quick Links</h4>
             <ul className="space-y-1.5 text-blue-200">
               {menuItems.map(m => (
                 <li key={m.id}>
                   <a
                     href={m.href}
                     onClick={(e) => handleMenuClick(e, m.label, m.href)}
-                    className="hover:text-white transition cursor-pointer"
+                    className="hover:text-cyan-300 transition cursor-pointer"
                   >
                     {m.label}
                   </a>
@@ -514,7 +610,7 @@ export default function UniconLabsLandingPage() {
             </ul>
           </div>
           <div className="space-y-2">
-            <h4 className="font-black uppercase tracking-wider text-blue-300 text-sm">Operations</h4>
+            <h4 className="font-black uppercase tracking-wider text-cyan-300 text-sm">Operations</h4>
             <ul className="space-y-1.5 text-blue-200">
               <li>Adaptive POS Terminal</li>
               <li>Kitchen Display (KDS)</li>
@@ -523,22 +619,22 @@ export default function UniconLabsLandingPage() {
             </ul>
           </div>
           <div className="space-y-2">
-            <h4 className="font-black uppercase tracking-wider text-blue-300 text-sm">Headquarters</h4>
-            <p className="text-blue-200 leading-relaxed whitespace-pre-line">
+            <h4 className="font-black uppercase tracking-wider text-cyan-300 text-sm">Headquarters</h4>
+            <p className="text-blue-200 leading-relaxed whitespace-pre-line font-mono">
               {footerHQ}
             </p>
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-blue-400 font-medium">
+        <div className="max-w-7xl mx-auto pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-blue-300 font-medium relative z-10">
           <p>© 2026 {headerBrand}. All rights reserved.</p>
           <div className="flex items-center space-x-6 mt-4 md:mt-0">
-            <span>Privacy Policy</span>
-            <span>Terms of Service</span>
-            <span>Security Compliance</span>
+            <span className="hover:text-cyan-300 cursor-pointer">Privacy Policy</span>
+            <span className="hover:text-cyan-300 cursor-pointer">Terms of Service</span>
+            <span className="hover:text-cyan-300 cursor-pointer">Security Compliance</span>
             <button
               onClick={scrollToTop}
-              className="px-3 py-1.5 bg-blue-900 hover:bg-blue-800 text-white font-bold rounded-lg transition border border-blue-700 shadow cursor-pointer uppercase tracking-wider flex items-center space-x-1"
+              className="px-3.5 py-2 bg-blue-900/80 hover:bg-cyan-600 text-white font-bold rounded-xl transition border border-cyan-500/30 shadow-lg cursor-pointer uppercase tracking-wider flex items-center space-x-1"
             >
               <span>↑ Back to Top</span>
             </button>
