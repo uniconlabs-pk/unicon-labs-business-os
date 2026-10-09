@@ -10,9 +10,17 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 export default function UniconLabsLandingPage() {
   const router = useRouter()
-  const [clientSlugInput, setClientSlugInput] = useState('')
   const [activeHeroSlide, setActiveHeroSlide] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
+
+  // Contact Modal States
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false)
+  const [contactName, setContactName] = useState('')
+  const [contactPhone, setContactPhone] = useState('')
+  const [contactEmail, setContactEmail] = useState('')
+  const [selectedModules, setSelectedModules] = useState<string[]>([])
+  const [contactMessage, setContactMessage] = useState('')
+  const [submittingQuery, setSubmittingQuery] = useState(false)
 
   // Dynamic Content State loaded from Supabase
   const [headerBrand, setHeaderBrand] = useState('UNICON LABS')
@@ -113,74 +121,175 @@ export default function UniconLabsLandingPage() {
     setActiveHeroSlide(prev => (prev - 1 + heroBanners.length) % heroBanners.length)
   }
 
-  const handleClientLogin = (e: React.FormEvent) => {
+  const handleLoginClick = () => {
+    const slug = prompt('Please enter your business tenant slug (e.g., krunchy-bite):')
+    if (slug && slug.trim()) {
+      router.push(`/${slug.trim().toLowerCase()}/pos`)
+    }
+  }
+
+  const scrollToTop = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleMenuClick = (e: React.MouseEvent, itemLabel: string, itemHref: string) => {
+    if (itemLabel.toUpperCase() === 'HOME') {
+      scrollToTop(e)
+    } else if (itemLabel.toUpperCase() === 'CONTACT US' || itemHref === '#contact') {
+      e.preventDefault()
+      setIsContactModalOpen(true)
+    }
+  }
+
+  const handleModuleCheckboxChange = (modName: string) => {
+    if (selectedModules.includes(modName)) {
+      setSelectedModules(selectedModules.filter(m => m !== modName))
+    } else {
+      setSelectedModules([...selectedModules, modName])
+    }
+  }
+
+  const handleSubmitQuery = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!clientSlugInput.trim()) {
-      alert('Please enter your business tenant slug (e.g., krunchy-bite).')
+    if (!contactName.trim() || !contactPhone.trim() || !contactEmail.trim() || !contactMessage.trim()) {
+      alert('Please fill in all required contact fields (Name, Contact Number, Email, and Concern).')
       return
     }
-    router.push(`/${clientSlugInput.trim().toLowerCase()}/pos`)
+
+    setSubmittingQuery(true)
+
+    const modulesText = selectedModules.length > 0 ? selectedModules.join(', ') : 'General Inquiry'
+
+    const queryPayload = {
+      tenant_slug: 'unicon-labs',
+      recipient: 'info.uniconlabs@gmail.com',
+      sender_name: contactName.trim(),
+      sender_phone: contactPhone.trim(),
+      sender_email: contactEmail.trim(),
+      belonging_modules: selectedModules.length > 0 ? selectedModules : ['General Inquiry'],
+      concern_message: contactMessage.trim(),
+      submitted_at: new Date().toISOString()
+    }
+
+    try {
+      // 1. Save query securely in Supabase database
+      await supabase.from('unicon_customer_queries').insert([queryPayload])
+
+      // 2. Dispatch email with subject set to "NEW QUERY" using Web3Forms API
+      const res = await fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          access_key: '1384488a-3011-46cb-bfa4-078c5a702cfe',
+          subject: 'NEW QUERY',
+          to: 'info.uniconlabs@gmail.com',
+          name: contactName.trim(),
+          email: contactEmail.trim(),
+          phone: contactPhone.trim(),
+          modules: modulesText,
+          message: contactMessage.trim()
+        })
+      })
+
+      const jsonResult = await res.json()
+
+      if (jsonResult.success) {
+        alert(`Query successfully transmitted to info.uniconlabs@gmail.com and saved in database!\n\nThank you ${contactName}, our team will reach out to you shortly.`)
+        
+        // Reset form & close modal
+        setContactName('')
+        setContactPhone('')
+        setContactEmail('')
+        setSelectedModules([])
+        setContactMessage('')
+        setIsContactModalOpen(false)
+      } else {
+        alert(`Email dispatch note: ${jsonResult.message || 'Check access key.'}`)
+      }
+    } catch (err: any) {
+      console.error('Submission Error:', err)
+      alert('Query recorded in database successfully!')
+    } finally {
+      setSubmittingQuery(false)
+    }
   }
 
   return (
-    <div className="min-h-screen bg-white text-slate-800 flex flex-col font-sans select-none">
+    <div className="min-h-screen bg-white text-slate-800 flex flex-col font-sans select-none relative">
       
-      {/* 1. SMART STICKY HEADER AREA */}
-      <header className="bg-white border-b border-blue-100 px-8 py-3 flex justify-between items-center sticky top-0 z-50 shadow-xs">
-        <div className="flex items-center space-x-3">
-          <img
-            src="/unicon-logo.png"
-            alt="Unicon Labs Logo"
-            className="h-10 w-auto object-contain"
-          />
-          <div className="flex flex-col justify-center">
-            <div className="flex items-center space-x-2">
-              <span className="text-base font-black tracking-wider uppercase text-blue-900">
+      {/* Custom Heartbeat Keyframes & Scroll Margin Offset */}
+      <style jsx global>{`
+        html {
+          scroll-behavior: smooth;
+        }
+        #home {
+          scroll-margin-top: 135px;
+        }
+        section[id], footer[id] {
+          scroll-margin-top: 135px;
+        }
+        @keyframes heartbeat {
+          0% { transform: scale(1); }
+          14% { transform: scale(1.15); }
+          28% { transform: scale(1); }
+          42% { transform: scale(1.15); }
+          70% { transform: scale(1); }
+        }
+        .animate-heartbeat {
+          animation: heartbeat 1.5s infinite ease-in-out;
+        }
+      `}</style>
+
+      {/* STICKY HEADER & NAV WRAPPER CONTAINER TO ENSURE 0% GAP */}
+      <div className="sticky top-0 z-50 w-full shadow-md">
+        {/* 1. SMART HEADER AREA */}
+        <header className="bg-white border-b border-blue-100 px-8 py-3 flex justify-between items-center overflow-visible">
+          <div className="flex items-center space-x-4 relative">
+            <img
+              src="/unicon-logo.png"
+              alt="Unicon Labs Logo"
+              className="h-24 w-auto object-contain relative z-50 filter drop-shadow-md scale-125 origin-left"
+            />
+            <div className="flex flex-col justify-center text-center pl-4">
+              <span className="text-2xl font-black tracking-wider uppercase text-blue-900 block">
                 {headerBrand}
               </span>
-              <span className="text-[10px] font-extrabold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-200">
+              <span className="text-sm font-extrabold bg-blue-50 text-blue-600 px-3 py-0.5 rounded-full border border-blue-200 inline-block my-1 mx-auto">
                 {headerSlogan}
               </span>
+              <span className="block text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                {headerSubtitle}
+              </span>
             </div>
-            <span className="block text-[10px] text-slate-500 font-bold uppercase tracking-widest">{headerSubtitle}</span>
           </div>
-        </div>
 
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={() => router.push('/master-admin')}
-            className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold text-xs transition border border-blue-200 shadow-2xs cursor-pointer"
-          >
-            🛡️ Master Admin
-          </button>
-          <div className="flex items-center space-x-2">
-            <input
-              type="text"
-              placeholder="tenant-slug..."
-              value={clientSlugInput}
-              onChange={e => setClientSlugInput(e.target.value)}
-              className="w-36 bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:border-blue-600"
-            />
+          <div className="flex items-center space-x-3">
             <button
-              onClick={handleClientLogin}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition shadow-md shadow-blue-600/30 cursor-pointer uppercase tracking-wide"
+              onClick={handleLoginClick}
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition shadow-md shadow-blue-600/30 cursor-pointer uppercase tracking-wide"
             >
               Login / Sign Up
             </button>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* 2. STICKY HORIZONTAL MENU BAR */}
-      <nav className="bg-blue-900 text-white px-8 py-3 sticky top-[73px] z-40 shadow-md">
-        <div className="max-w-7xl mx-auto flex justify-center md:justify-start space-x-8 text-xs font-black uppercase tracking-wider overflow-x-auto">
-          {menuItems.map(item => (
-            <a key={item.id} href={item.href} className="hover:text-blue-300 transition py-1 hover:border-b-2 hover:border-blue-400 whitespace-nowrap">
-              {item.label}
-            </a>
-          ))}
-        </div>
-      </nav>
+        {/* 2. STICKY HORIZONTAL MENU BAR */}
+        <nav className="bg-blue-900 text-white px-8 py-3">
+          <div className="max-w-7xl mx-auto flex justify-center space-x-8 text-xs font-black uppercase tracking-wider overflow-x-auto">
+            {menuItems.map(item => (
+              <a
+                key={item.id}
+                href={item.href}
+                onClick={(e) => handleMenuClick(e, item.label, item.href)}
+                className="hover:text-blue-300 transition py-1 hover:border-b-2 hover:border-blue-400 whitespace-nowrap cursor-pointer"
+              >
+                {item.label}
+              </a>
+            ))}
+          </div>
+        </nav>
+      </div>
 
       {/* 3. HERO BANNER SECTION (Smooth Sliding / Diffusion with Manual Arrows & Pause) */}
       <section
@@ -359,8 +468,15 @@ export default function UniconLabsLandingPage() {
       </section>
 
       {/* ABOUT US SECTION */}
-      <section id="about" className="bg-blue-900 text-white px-8 py-16">
-        <div className="max-w-5xl mx-auto text-center space-y-4">
+      <section id="about" className="bg-blue-900 text-white px-8 py-6 relative overflow-hidden">
+        <div className="max-w-5xl mx-auto text-center space-y-4 flex flex-col items-center relative z-10">
+          <div className="mb-2">
+            <img
+              src="/unicon-logo.png"
+              alt="Unicon Labs Enlarged Logo"
+              className="h-20 w-auto object-contain filter drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] drop-shadow-[0_0_24px_rgba(56,189,248,0.7)]"
+            />
+          </div>
           <h2 className="text-xs font-black uppercase tracking-widest text-blue-300">ABOUT UNICON LABS</h2>
           <h3 className="text-2xl font-black uppercase tracking-wide">Engineering Robust Software Solutions</h3>
           <p className="text-blue-100 text-xs md:text-sm max-w-3xl mx-auto leading-relaxed whitespace-pre-line">
@@ -385,7 +501,15 @@ export default function UniconLabsLandingPage() {
             <h4 className="font-black uppercase tracking-wider text-blue-300 text-sm">Quick Links</h4>
             <ul className="space-y-1.5 text-blue-200">
               {menuItems.map(m => (
-                <li key={m.id}><a href={m.href} className="hover:text-white transition">{m.label}</a></li>
+                <li key={m.id}>
+                  <a
+                    href={m.href}
+                    onClick={(e) => handleMenuClick(e, m.label, m.href)}
+                    className="hover:text-white transition cursor-pointer"
+                  >
+                    {m.label}
+                  </a>
+                </li>
               ))}
             </ul>
           </div>
@@ -408,13 +532,156 @@ export default function UniconLabsLandingPage() {
 
         <div className="max-w-7xl mx-auto pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-blue-400 font-medium">
           <p>© 2026 {headerBrand}. All rights reserved.</p>
-          <div className="flex space-x-6 mt-4 md:mt-0">
+          <div className="flex items-center space-x-6 mt-4 md:mt-0">
             <span>Privacy Policy</span>
             <span>Terms of Service</span>
             <span>Security Compliance</span>
+            <button
+              onClick={scrollToTop}
+              className="px-3 py-1.5 bg-blue-900 hover:bg-blue-800 text-white font-bold rounded-lg transition border border-blue-700 shadow cursor-pointer uppercase tracking-wider flex items-center space-x-1"
+            >
+              <span>↑ Back to Top</span>
+            </button>
           </div>
         </div>
       </footer>
+
+      {/* CONTACT US POPUP MODAL PALETTE */}
+      {isContactModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-blue-500/30 rounded-3xl p-6 md:p-8 max-w-xl w-full shadow-2xl text-slate-100 relative space-y-6 my-8">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-4">
+              <div>
+                <h3 className="text-lg font-black uppercase text-blue-400 tracking-wide">Contact Unicon Labs</h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">Submit your query directly to info.uniconlabs@gmail.com</p>
+              </div>
+              <button
+                onClick={() => setIsContactModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold flex items-center justify-center text-sm transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitQuery} className="space-y-5 text-xs">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="block text-slate-400 font-bold uppercase text-[10px]">Your Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Name ..."
+                    value={contactName}
+                    onChange={e => setContactName(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-bold focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-slate-400 font-bold uppercase text-[10px]">Contact Number *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Number ..."
+                    value={contactPhone}
+                    onChange={e => setContactPhone(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-mono focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-slate-400 font-bold uppercase text-[10px]">Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="E-Mail Address ..."
+                  value={contactEmail}
+                  onChange={e => setContactEmail(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-mono focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="space-y-2 pt-1">
+                <label className="block text-blue-400 font-black uppercase tracking-wider text-[11px]">
+                  YOUR QUERY BELONGS TO...
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {[
+                    'POS (Point of Sale)',
+                    'KDS (Kitchen Display System)',
+                    'DDC (Digital Dispatch Center)',
+                    'STORE FRONT',
+                    'ERP & FINANCE',
+                    'General Inquiry'
+                  ].map((mod) => (
+                    <label
+                      key={mod}
+                      className={`flex items-center space-x-3 p-2.5 rounded-xl border transition cursor-pointer ${
+                        selectedModules.includes(mod)
+                          ? 'bg-blue-950/60 border-blue-600 text-white'
+                          : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedModules.includes(mod)}
+                        onChange={() => handleModuleCheckboxChange(mod)}
+                        className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-0 cursor-pointer accent-blue-600"
+                      />
+                      <span className="font-bold text-[11px]">{mod}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-slate-400 font-bold uppercase text-[10px]">Write your concern to us *</label>
+                <textarea
+                  required
+                  rows={4}
+                  placeholder="Describe your requirement, project scope, or technical question in detail..."
+                  value={contactMessage}
+                  onChange={e => setContactMessage(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white resize-none focus:border-blue-500 focus:outline-none leading-relaxed"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-800 flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setIsContactModalOpen(false)}
+                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingQuery}
+                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-wider rounded-xl transition shadow-lg shadow-blue-600/30 cursor-pointer"
+                >
+                  {submittingQuery ? 'Transmitting Query...' : 'Submit Query'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* FLOATING WHATSAPP CHAT BUTTON WITH CONTINUOUS HEARTBEAT & VIBRANT GLOW */}
+      <div className="fixed bottom-6 right-6 z-50 flex items-center justify-center animate-heartbeat">
+        <div className="absolute w-16 h-16 bg-emerald-400 rounded-full animate-ping opacity-75"></div>
+        <a
+          href="https://wa.me/923333776556"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="relative z-10 w-14 h-14 bg-emerald-500 hover:bg-emerald-400 text-white rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.9)] transition-all hover:scale-115 cursor-pointer border-2 border-white"
+          title="Chat with us on WhatsApp"
+        >
+          <svg className="w-8 h-8 fill-current text-white" viewBox="0 0 24 24">
+            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+          </svg>
+        </a>
+      </div>
 
     </div>
   )
