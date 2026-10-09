@@ -28,9 +28,9 @@ export default function UniconLabsLandingPage() {
   ])
   const [heroSlideInterval, setHeroSlideInterval] = useState(4500)
   const [heroBanners, setHeroBanners] = useState([
-    { id: 1, title: 'POWERING AUTONOMOUS ENTERPRISE ECOSYSTEMS', subtitle: 'Next-generation multi-tenant Business OS designed for scale, speed, and real-time offline sync.', tag: 'FLAGSHIP PLATFORM', bgImage: '' },
-    { id: 2, title: 'INTELLIGENT POINT OF SALE & KITCHEN DISPLAY', subtitle: 'Streamline multi-tender settlement, split payments, FBR fiscal integration, and instant KOT ticket routing.', tag: 'OPERATIONAL EXCELLENCE', bgImage: '' },
-    { id: 3, title: 'REAL-TIME LOGISTICS & DISPATCH QUEUE', subtitle: 'Effortlessly manage delivery fleets, rider assignments, and automated customer notifications.', tag: 'SUPPLY CHAIN', bgImage: '' },
+    { id: 1, title: 'POWERING AUTONOMOUS ENTERPRISE ECOSYSTEMS', subtitle: 'Next-generation multi-tenant Business OS designed for scale, speed, and real-time offline sync.', tag: 'FLAGSHIP PLATFORM', bgImage: '', textBgOpacity: 80 },
+    { id: 2, title: 'INTELLIGENT POINT OF SALE & KITCHEN DISPLAY', subtitle: 'Streamline multi-tender settlement, split payments, FBR fiscal integration, and instant KOT ticket routing.', tag: 'OPERATIONAL EXCELLENCE', bgImage: '', textBgOpacity: 80 },
+    { id: 3, title: 'REAL-TIME LOGISTICS & DISPATCH QUEUE', subtitle: 'Effortlessly manage delivery fleets, rider assignments, and automated customer notifications.', tag: 'SUPPLY CHAIN', bgImage: '', textBgOpacity: 80 },
   ])
   const [products, setProducts] = useState([
     { id: 1, name: 'Adaptive POS Terminal', desc: 'Feature-rich multi-surface touchscreen cash register and terminal engine.', image: '🖥️' },
@@ -202,12 +202,17 @@ export default function UniconLabsLandingPage() {
                     : 'opacity-0 translate-x-20 scale-95 filter blur-sm pointer-events-none'
                 }`}
                 style={{
-                  backgroundImage: hb.bgImage ? `linear-gradient(rgba(15, 23, 42, 0.82), rgba(15, 23, 42, 0.88)), url('${hb.bgImage}')` : 'none',
+                  backgroundImage: hb.bgImage ? `url('${hb.bgImage}')` : 'none',
                   backgroundSize: 'cover',
                   backgroundPosition: 'center'
                 }}
               >
-                <div className="max-w-5xl mx-auto text-center space-y-6 relative z-10">
+                <div 
+                  className="max-w-5xl mx-auto text-center space-y-6 relative z-10 p-8 rounded-3xl border border-white/10 backdrop-blur-xs transition-all shadow-xl"
+                  style={{
+                    backgroundColor: `rgba(15, 23, 42, ${(hb.textBgOpacity ?? 80) / 100})`
+                  }}
+                >
                   {hb.tag && (
                     <div className="inline-block bg-blue-800/80 text-blue-200 border border-blue-700 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-widest shadow-inner">
                       {hb.tag}
@@ -266,11 +271,15 @@ export default function UniconLabsLandingPage() {
           {products.map((prod, idx) => (
             <div key={prod.id || idx} className="bg-white border border-blue-100 rounded-3xl p-5 shadow-lg shadow-blue-900/5 flex flex-col justify-between hover:border-blue-500 hover:shadow-xl transition group">
               <div className="space-y-4">
-                <div className="w-full h-32 bg-blue-50 rounded-2xl border border-blue-100 flex items-center justify-center text-4xl shadow-inner group-hover:scale-105 transition duration-300">
-                  {prod.image}
+                <div className="w-full h-32 bg-blue-50 rounded-2xl border border-blue-100 flex items-center justify-center overflow-hidden shadow-inner group-hover:scale-105 transition duration-300">
+                  {prod.image && (prod.image.startsWith('data:') || prod.image.startsWith('http') || prod.image.startsWith('/') || prod.image.length > 50) ? (
+                    <img src={prod.image} alt={prod.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-4xl">{prod.image || '📦'}</span>
+                  )}
                 </div>
                 <h3 className="font-black text-sm uppercase text-blue-950">{prod.name}</h3>
-                <p className="text-slate-600 text-xs leading-relaxed">{prod.desc}</p>
+                <p className="text-slate-600 text-xs leading-relaxed text-justify">{prod.desc}</p>
               </div>
               <div className="pt-6">
                 <button

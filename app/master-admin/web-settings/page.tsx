@@ -33,14 +33,15 @@ export default function WebSettingsPage() {
 
   const [heroSlideInterval, setHeroSlideInterval] = useState(4500)
   const [heroBanners, setHeroBanners] = useState([
-    { id: 1, title: 'POWERING AUTONOMOUS ENTERPRISE ECOSYSTEMS', subtitle: 'Next-generation multi-tenant Business OS designed for scale, speed, and real-time offline sync.', tag: 'FLAGSHIP PLATFORM', bgImage: '' },
-    { id: 2, title: 'INTELLIGENT POINT OF SALE & KITCHEN DISPLAY', subtitle: 'Streamline multi-tender settlement, split payments, FBR fiscal integration, and instant KOT ticket routing.', tag: 'OPERATIONAL EXCELLENCE', bgImage: '' },
-    { id: 3, title: 'REAL-TIME LOGISTICS & DISPATCH QUEUE', subtitle: 'Effortlessly manage delivery fleets, rider assignments, and automated customer notifications.', tag: 'SUPPLY CHAIN', bgImage: '' },
+    { id: 1, title: 'POWERING AUTONOMOUS ENTERPRISE ECOSYSTEMS', subtitle: 'Next-generation multi-tenant Business OS designed for scale, speed, and real-time offline sync.', tag: 'FLAGSHIP PLATFORM', bgImage: '', textBgOpacity: 80 },
+    { id: 2, title: 'INTELLIGENT POINT OF SALE & KITCHEN DISPLAY', subtitle: 'Streamline multi-tender settlement, split payments, FBR fiscal integration, and instant KOT ticket routing.', tag: 'OPERATIONAL EXCELLENCE', bgImage: '', textBgOpacity: 80 },
+    { id: 3, title: 'REAL-TIME LOGISTICS & DISPATCH QUEUE', subtitle: 'Effortlessly manage delivery fleets, rider assignments, and automated customer notifications.', tag: 'SUPPLY CHAIN', bgImage: '', textBgOpacity: 80 },
   ])
   const [newHeroTitle, setNewHeroTitle] = useState('')
   const [newHeroSubtitle, setNewHeroSubtitle] = useState('')
   const [newHeroTag, setNewHeroTag] = useState('')
   const [newHeroImage, setNewHeroImage] = useState('')
+  const [newHeroTextBgOpacity, setNewHeroTextBgOpacity] = useState(80)
 
   const [products, setProducts] = useState([
     { id: 1, name: 'Adaptive POS Terminal', desc: 'Feature-rich multi-surface touchscreen cash register and terminal engine.', image: '🖥️' },
@@ -52,6 +53,12 @@ export default function WebSettingsPage() {
   const [newProdName, setNewProdName] = useState('')
   const [newProdDesc, setNewProdDesc] = useState('')
   const [newProdImage, setNewProdImage] = useState('📦')
+
+  // Product Edit States
+  const [editingProductId, setEditingProductId] = useState<number | null>(null)
+  const [editProdName, setEditProdName] = useState('')
+  const [editProdDesc, setEditProdDesc] = useState('')
+  const [editProdImage, setEditProdImage] = useState('')
 
   const [partners, setPartners] = useState(
     Array.from({ length: 18 }, (_, i) => ({ id: i + 1, name: `Partner Brand ${i + 1}`, logo: '🏢' }))
@@ -148,6 +155,32 @@ export default function WebSettingsPage() {
       const resultStr = uploadEvent.target?.result as string
       if (resultStr) {
         setNewHeroImage(resultStr)
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleNewProdImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (uploadEvent) => {
+      const resultStr = uploadEvent.target?.result as string
+      if (resultStr) {
+        setNewProdImage(resultStr)
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleEditProdImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (uploadEvent) => {
+      const resultStr = uploadEvent.target?.result as string
+      if (resultStr) {
+        setEditProdImage(resultStr)
       }
     }
     reader.readAsDataURL(file)
@@ -379,6 +412,24 @@ export default function WebSettingsPage() {
                             className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-slate-300 resize-none text-xs"
                             placeholder="Banner Subtitle"
                           />
+                          <div className="space-y-1 bg-slate-900 p-3 rounded-lg border border-slate-800">
+                            <div className="flex justify-between items-center">
+                              <span className="font-bold text-slate-400 uppercase text-[10px]">Text Background Transparency</span>
+                              <span className="font-mono text-xs text-blue-400 font-bold">{hb.textBgOpacity ?? 80}%</span>
+                            </div>
+                            <input
+                              type="range"
+                              min="0"
+                              max="100"
+                              value={hb.textBgOpacity ?? 80}
+                              onChange={e => {
+                                const updated = [...heroBanners]
+                                updated[idx].textBgOpacity = Number(e.target.value)
+                                setHeroBanners(updated)
+                              }}
+                              className="w-full accent-blue-600 cursor-pointer"
+                            />
+                          </div>
                         </div>
 
                         <div className="space-y-2 bg-slate-900 p-3 rounded-lg border border-slate-800">
@@ -422,6 +473,21 @@ export default function WebSettingsPage() {
                   <input type="text" placeholder="Badge Tag (e.g. INNOVATION)" value={newHeroTag} onChange={e => setNewHeroTag(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
                   
                   <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase">Text Background Transparency</label>
+                      <span className="font-mono text-xs text-blue-400 font-bold">{newHeroTextBgOpacity}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={newHeroTextBgOpacity}
+                      onChange={e => setNewHeroTextBgOpacity(Number(e.target.value))}
+                      className="w-full accent-blue-600 cursor-pointer"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
                     <label className="block text-[10px] font-bold text-slate-400 uppercase">Banner Image (Upload or URL)</label>
                     <input type="file" accept="image/*" onChange={handleNewHeroImageUpload} className="w-full text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-blue-600 file:text-white cursor-pointer" />
                     <input type="text" placeholder="Or paste image URL..." value={newHeroImage} onChange={e => setNewHeroImage(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs font-mono text-white" />
@@ -430,11 +496,12 @@ export default function WebSettingsPage() {
                   <button
                     onClick={() => {
                       if (!newHeroTitle.trim()) return
-                      setHeroBanners([...heroBanners, { id: Date.now(), title: newHeroTitle.trim(), subtitle: newHeroSubtitle.trim(), tag: newHeroTag.trim() || 'FEATURED', bgImage: newHeroImage.trim() }])
+                      setHeroBanners([...heroBanners, { id: Date.now(), title: newHeroTitle.trim(), subtitle: newHeroSubtitle.trim(), tag: newHeroTag.trim() || 'FEATURED', bgImage: newHeroImage.trim(), textBgOpacity: newHeroTextBgOpacity }])
                       setNewHeroTitle('')
                       setNewHeroSubtitle('')
                       setNewHeroTag('')
                       setNewHeroImage('')
+                      setNewHeroTextBgOpacity(80)
                     }}
                     className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl cursor-pointer"
                   >
@@ -451,25 +518,103 @@ export default function WebSettingsPage() {
               <h2 className="font-extrabold text-sm uppercase text-blue-400">Featured Products Display</h2>
               <div className="space-y-3 text-xs">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {products.map((p, idx) => (
+                  {products.map((p) => (
                     <div key={p.id} className="bg-slate-950 border border-slate-800 p-3.5 rounded-xl flex items-center justify-between">
                       <div className="flex items-center space-x-3">
-                        <span className="text-2xl">{p.image}</span>
+                        {p.image && (p.image.startsWith('data:') || p.image.startsWith('http') || p.image.startsWith('/') || p.image.length > 50) ? (
+                          <div className="w-10 h-10 rounded-lg overflow-hidden border border-slate-800 shrink-0 bg-slate-900 flex items-center justify-center">
+                            <img src={p.image} alt="" className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <span className="text-2xl shrink-0">{p.image || '📦'}</span>
+                        )}
                         <div>
                           <h4 className="font-bold text-white uppercase">{p.name}</h4>
                           <p className="text-slate-400 text-[11px] line-clamp-1">{p.desc}</p>
                         </div>
                       </div>
-                      <button onClick={() => setProducts(products.filter(item => item.id !== p.id))} className="text-red-400 hover:text-red-300 font-bold cursor-pointer">Delete</button>
+                      <div className="flex items-center space-x-2 shrink-0">
+                        <button
+                          onClick={() => {
+                            setEditingProductId(p.id)
+                            setEditProdName(p.name)
+                            setEditProdDesc(p.desc)
+                            setEditProdImage(p.image)
+                          }}
+                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-blue-300 font-bold rounded-lg cursor-pointer text-[11px]"
+                        >
+                          Edit
+                        </button>
+                        <button onClick={() => setProducts(products.filter(item => item.id !== p.id))} className="text-red-400 hover:text-red-300 font-bold cursor-pointer text-[11px]">Delete</button>
+                      </div>
                     </div>
                   ))}
                 </div>
+
+                {/* Edit Product Modal / Drawer Section */}
+                {editingProductId !== null && (
+                  <div className="p-4 bg-blue-950/30 border border-blue-800/60 rounded-xl space-y-3 mt-4">
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-blue-400 uppercase text-[11px]">✏️ Edit Product ID #{editingProductId}</span>
+                      <button onClick={() => setEditingProductId(null)} className="text-slate-400 hover:text-white text-xs font-bold cursor-pointer">Cancel</button>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Product Name</label>
+                        <input type="text" value={editProdName} onChange={e => setEditProdName(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Short Description</label>
+                        <input type="text" value={editProdDesc} onChange={e => setEditProdDesc(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase">Product Image (Upload Computer File, URL, or Emoji)</label>
+                        <div className="flex items-center space-x-2">
+                          {editProdImage && (editProdImage.startsWith('data:') || editProdImage.startsWith('http') || editProdImage.startsWith('/') || editProdImage.length > 50) ? (
+                            <div className="w-12 h-10 rounded border border-slate-700 overflow-hidden shrink-0 bg-slate-900 flex items-center justify-center">
+                              <img src={editProdImage} alt="" className="w-full h-full object-cover" />
+                            </div>
+                          ) : (
+                            <div className="w-12 h-10 rounded border border-slate-700 flex items-center justify-center text-lg bg-slate-900 shrink-0">{editProdImage || '📦'}</div>
+                          )}
+                          <input type="file" accept="image/*" onChange={handleEditProdImageUpload} className="w-full text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-blue-600 file:text-white cursor-pointer" />
+                        </div>
+                        <input type="text" placeholder="Or paste image URL / Emoji..." value={editProdImage} onChange={e => setEditProdImage(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs font-mono text-white" />
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (!editProdName.trim()) return
+                        setProducts(products.map(p => p.id === editingProductId ? { ...p, name: editProdName.trim(), desc: editProdDesc.trim(), image: editProdImage.trim() || '📦' } : p))
+                        setEditingProductId(null)
+                      }}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl cursor-pointer"
+                    >
+                      Update Product Tile
+                    </button>
+                  </div>
+                )}
 
                 <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3 mt-4">
                   <span className="font-bold text-blue-400 uppercase text-[11px] block">+ Add Featured Product Tile</span>
                   <input type="text" placeholder="Product Name..." value={newProdName} onChange={e => setNewProdName(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
                   <input type="text" placeholder="Short Description..." value={newProdDesc} onChange={e => setNewProdDesc(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
-                  <input type="text" placeholder="Emoji / Image URL (e.g. ⚡)" value={newProdImage} onChange={e => setNewProdImage(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white font-mono" />
+                  
+                  <div className="space-y-1">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase">Product Image (Upload Computer File, URL, or Emoji)</label>
+                    <div className="flex items-center space-x-2">
+                      {newProdImage && (newProdImage.startsWith('data:') || newProdImage.startsWith('http') || newProdImage.startsWith('/') || newProdImage.length > 50) ? (
+                        <div className="w-12 h-10 rounded border border-slate-700 overflow-hidden shrink-0 bg-slate-900 flex items-center justify-center">
+                          <img src={newProdImage} alt="" className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="w-12 h-10 rounded border border-slate-700 flex items-center justify-center text-lg bg-slate-900 shrink-0">{newProdImage || '📦'}</div>
+                      )}
+                      <input type="file" accept="image/*" onChange={handleNewProdImageUpload} className="w-full text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-blue-600 file:text-white cursor-pointer" />
+                    </div>
+                    <input type="text" placeholder="Or paste image URL / Emoji..." value={newProdImage} onChange={e => setNewProdImage(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs font-mono text-white" />
+                  </div>
+
                   <button
                     onClick={() => {
                       if (!newProdName.trim()) return
@@ -493,7 +638,7 @@ export default function WebSettingsPage() {
               <h2 className="font-extrabold text-sm uppercase text-blue-400">Respected Partners Directory ({partners.length})</h2>
               <div className="space-y-3 text-xs">
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-60 overflow-y-auto pr-1">
-                  {partners.map((prt, idx) => (
+                  {partners.map((prt) => (
                     <div key={prt.id} className="bg-slate-950 border border-slate-800 p-2.5 rounded-xl flex items-center justify-between">
                       <span className="font-bold text-white truncate">{prt.name}</span>
                       <button onClick={() => setPartners(partners.filter(x => x.id !== prt.id))} className="text-red-400 text-[10px] font-bold cursor-pointer">Remove</button>
@@ -530,7 +675,7 @@ export default function WebSettingsPage() {
               <h2 className="font-extrabold text-sm uppercase text-blue-400">Daily Blogs Management</h2>
               <div className="space-y-3 text-xs">
                 <div className="space-y-2">
-                  {blogs.map((b, idx) => (
+                  {blogs.map((b) => (
                     <div key={b.id} className="bg-slate-950 border border-slate-800 p-3.5 rounded-xl flex justify-between items-center">
                       <div>
                         <span className="text-[10px] bg-blue-950 text-blue-300 px-2 py-0.5 rounded font-bold uppercase">{b.category}</span>
