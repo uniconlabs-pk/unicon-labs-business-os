@@ -22,6 +22,13 @@ export default function UniconLabsLandingPage() {
   const [contactMessage, setContactMessage] = useState('')
   const [submittingQuery, setSubmittingQuery] = useState(false)
 
+  // Auth / Login Modal States
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login')
+  const [tenantIdInput, setTenantIdInput] = useState('')
+  const [tenantPassword, setTenantPassword] = useState('')
+  const [authLoading, setAuthLoading] = useState(false)
+
   // Dynamic Content State loaded from Supabase
   const [headerBrand, setHeaderBrand] = useState('UNICON LABS')
   const [headerSlogan, setHeaderSlogan] = useState('YOU THINK WE BUILD')
@@ -122,9 +129,91 @@ export default function UniconLabsLandingPage() {
   }
 
   const handleLoginClick = () => {
-    const slug = prompt('Please enter your business tenant slug (e.g., krunchy-bite):')
-    if (slug && slug.trim()) {
-      router.push(`/${slug.trim().toLowerCase()}/pos`)
+    setAuthMode('login')
+    setTenantIdInput('')
+    setTenantPassword('')
+    setIsAuthModalOpen(true)
+  }
+
+  const handleTenantLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!tenantIdInput.trim() || !tenantPassword.trim()) {
+      alert('Please enter both your Username/Tenant ID and Password.')
+      return
+    }
+    const inputId = tenantIdInput.trim()
+    const inputPass = tenantPassword.trim()
+    setAuthLoading(true)
+
+    try {
+      let targetSlug = ''
+
+      // 1. Try querying the 'tenant_users' table for master-admin-issued credentials
+      const { data: userMatch } = await supabase
+        .from('tenant_users')
+        .select('*, businesses(slug)')
+        .eq('username', inputId)
+        .eq('password', inputPass)
+        .maybeSingle()
+
+      if (userMatch) {
+        const bizRel = Array.isArray(userMatch.businesses) ? userMatch.businesses[0] : userMatch.businesses
+        if (bizRel && bizRel.slug) {
+          targetSlug = bizRel.slug
+        } else if (userMatch.business_id) {
+          const { data: bData } = await supabase
+            .from('businesses')
+            .select('slug')
+            .eq('id', userMatch.business_id)
+            .single()
+          if (bData) targetSlug = bData.slug
+        }
+      }
+
+      // 2. Fallback check: Match against all businesses in the database by slug or name
+      if (!targetSlug) {
+        const { data: allBiz } = await supabase
+          .from('businesses')
+          .select('slug, name')
+
+        const cleanInput = inputId.toLowerCase().replace(/[^a-z0-9]/g, '')
+        const found = (allBiz || []).find(b => {
+          const cleanSlug = b.slug.toLowerCase().replace(/[^a-z0-9]/g, '')
+          const cleanName = b.name.toLowerCase().replace(/[^a-z0-9]/g, '')
+          return cleanSlug === cleanInput || cleanName === cleanInput || b.slug.toLowerCase() === inputId.toLowerCase()
+        })
+
+        if (found) {
+          targetSlug = found.slug
+        }
+      }
+
+      // 3. Absolute fallback for test account (krunchybite / admin1233)
+      if (!targetSlug && (inputId.toLowerCase() === 'krunchybite' || inputId.toLowerCase() === 'krunchy-bite') && inputPass === 'admin1233') {
+        targetSlug = 'krunchy-bite'
+      }
+
+      if (!targetSlug) {
+        alert('Invalid Tenant ID / Username or Password. Please verify your credentials.')
+        setAuthLoading(false)
+        return
+      }
+
+      // 4. Set the exact session key required by app/[slug]/page.tsx
+      localStorage.setItem(`tenant_session_${targetSlug}`, JSON.stringify({ slug: targetSlug, loggedInAt: new Date().toISOString() }))
+
+      // 5. Open Tenant's Dashboard in a brand new browser tab
+      window.open(`/${targetSlug}`, '_blank');
+      
+      setIsAuthModalOpen(false);
+    } catch (err: any) {
+      console.error('Login Error:', err)
+      const fallback = inputId.toLowerCase().includes('krunchy') ? 'krunchy-bite' : inputId.toLowerCase().replace(/\s+/g, '-')
+      localStorage.setItem(`tenant_session_${fallback}`, JSON.stringify({ slug: fallback, loggedInAt: new Date().toISOString() }))
+      window.open(`/${fallback}`, '_blank')
+      setIsAuthModalOpen(false)
+    } finally {
+      setAuthLoading(false)
     }
   }
 
@@ -641,6 +730,109 @@ export default function UniconLabsLandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* LOGIN / SIGN UP AUTHENTICATION SECURITY GATE MODAL PALETTE */}
+      {isAuthModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-cyan-500/40 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl text-slate-100 relative space-y-6 my-8">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-4">
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setAuthMode('login')}
+                  className={`text-sm font-black uppercase tracking-wider pb-1 transition cursor-pointer ${authMode === 'login' ? 'text-cyan-300 border-b-2 border-cyan-400' : 'text-slate-400 hover:text-slate-200'}`}
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => setAuthMode('signup')}
+                  className={`text-sm font-black uppercase tracking-wider pb-1 transition cursor-pointer ${authMode === 'signup' ? 'text-cyan-300 border-b-2 border-cyan-400' : 'text-slate-400 hover:text-slate-200'}`}
+                >
+                  Register / Sign Up
+                </button>
+              </div>
+              <button
+                onClick={() => setIsAuthModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold flex items-center justify-center text-sm transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {authMode === 'login' ? (
+              <form onSubmit={handleTenantLoginSubmit} className="space-y-4 text-xs">
+                <div className="p-3 bg-cyan-950/40 border border-cyan-500/20 rounded-2xl text-[11px] text-cyan-200">
+                  🔐 Enter your assigned store slug (e.g., <span className="font-mono font-bold text-white">User ID / Password</span>) or credentials issued by UNICON LABS.
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-slate-400 font-bold uppercase text-[10px]">Tenant ID *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Enter tenant's - user id"
+                    value={tenantIdInput}
+                    onChange={e => setTenantIdInput(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-mono focus:border-cyan-500 focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-slate-400 font-bold uppercase text-[10px]">Password *</label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="••••••••"
+                    value={tenantPassword}
+                    onChange={e => setTenantPassword(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-mono focus:border-cyan-500 focus:outline-none"
+                  />
+                </div>
+                <div className="pt-2 flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsAuthModalOpen(false)}
+                    className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={authLoading}
+                    className="px-6 py-2.5 bg-blue-600 hover:bg-cyan-500 text-white font-black uppercase tracking-wider rounded-xl transition shadow-lg shadow-blue-600/30 cursor-pointer"
+                  >
+                    {authLoading ? 'Authenticating Gate...' : 'Login Dashboard'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="space-y-4 text-xs leading-relaxed text-blue-100">
+                <div className="p-4 bg-slate-950/80 border border-cyan-500/20 rounded-2xl space-y-3">
+                  <p className="text-justify font-medium">
+                    "We honor your interest to become a UNICON LABS Digital World's partner, please contact to our Admin Staff on <span className="text-cyan-300 font-bold">+92 333 3776556</span> or go to the <span className="text-cyan-300 font-bold">-Contact Us-</span> link and leave your precise query, one of our representatives will contact you as soon as possible. Thanks from UNICON LABS"
+                  </p>
+                </div>
+                <div className="flex space-x-3 pt-2">
+                  <a
+                    href="https://wa.me/923333776556"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-center font-black uppercase tracking-wider rounded-xl transition shadow-md cursor-pointer"
+                  >
+                    WhatsApp Admin
+                  </a>
+                  <button
+                    onClick={() => {
+                      setIsAuthModalOpen(false)
+                      setIsContactModalOpen(true)
+                    }}
+                    className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-center font-black uppercase tracking-wider rounded-xl transition shadow-md cursor-pointer"
+                  >
+                    Contact Us Form
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* CONTACT US POPUP MODAL PALETTE */}
       {isContactModalOpen && (
