@@ -763,7 +763,7 @@ export default function UniconLabsLandingPage() {
 
             {/* WhatsApp Icon */}
             <a
-              href="https://wa.me/923333776556"
+              href="https://whatsapp.com/channel/0029Vb8k8InBqbr5LZvWxu1H"
               target="_blank"
               rel="noopener noreferrer"
               className="w-11 h-11 rounded-2xl bg-slate-900/90 border border-cyan-500/30 flex items-center justify-center text-emerald-400 hover:text-white hover:bg-emerald-600 hover:border-emerald-500 hover:scale-110 transition-all duration-300 shadow-lg cursor-pointer group"
