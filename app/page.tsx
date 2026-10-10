@@ -724,7 +724,7 @@ export default function UniconLabsLandingPage() {
           <div className="flex items-center space-x-4">
             {/* YouTube Icon */}
             <a
-              href="https://youtube.com"
+              href="https://www.youtube.com/@uniconlabs"
               target="_blank"
               rel="noopener noreferrer"
               className="w-11 h-11 rounded-2xl bg-slate-900/90 border border-cyan-500/30 flex items-center justify-center text-red-500 hover:text-white hover:bg-red-600 hover:border-red-500 hover:scale-110 transition-all duration-300 shadow-lg cursor-pointer group"
@@ -737,7 +737,7 @@ export default function UniconLabsLandingPage() {
 
             {/* Facebook Icon */}
             <a
-              href="https://facebook.com"
+              href="https://www.facebook.com/uniconlabs.os"
               target="_blank"
               rel="noopener noreferrer"
               className="w-11 h-11 rounded-2xl bg-slate-900/90 border border-cyan-500/30 flex items-center justify-center text-blue-500 hover:text-white hover:bg-blue-600 hover:border-blue-500 hover:scale-110 transition-all duration-300 shadow-lg cursor-pointer group"
@@ -750,7 +750,7 @@ export default function UniconLabsLandingPage() {
 
             {/* Instagram Icon */}
             <a
-              href="https://instagram.com"
+              href="https://www.instagram.com/uniconlabs"
               target="_blank"
               rel="noopener noreferrer"
               className="w-11 h-11 rounded-2xl bg-slate-900/90 border border-cyan-500/30 flex items-center justify-center text-pink-500 hover:text-white hover:bg-gradient-to-tr hover:from-amber-500 hover:via-pink-600 hover:to-purple-600 hover:border-pink-500 hover:scale-110 transition-all duration-300 shadow-lg cursor-pointer group"
