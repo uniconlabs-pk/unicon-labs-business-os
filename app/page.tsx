@@ -146,7 +146,6 @@ export default function UniconLabsLandingPage() {
     try {
       let targetSlug = ''
 
-      // 1. Try querying the 'tenant_users' table for master-admin-issued credentials
       const { data: userMatch } = await supabase
         .from('tenant_users')
         .select('*, businesses(slug)')
@@ -168,7 +167,6 @@ export default function UniconLabsLandingPage() {
         }
       }
 
-      // 2. Fallback check: Match against all businesses in the database by slug or name
       if (!targetSlug) {
         const { data: allBiz } = await supabase
           .from('businesses')
@@ -186,7 +184,6 @@ export default function UniconLabsLandingPage() {
         }
       }
 
-      // 3. Absolute fallback for test account (krunchybite / admin1233)
       if (!targetSlug && (inputId.toLowerCase() === 'krunchybite' || inputId.toLowerCase() === 'krunchy-bite') && inputPass === 'admin1233') {
         targetSlug = 'krunchy-bite'
       }
@@ -197,12 +194,8 @@ export default function UniconLabsLandingPage() {
         return
       }
 
-      // 4. Set the exact session key required by app/[slug]/page.tsx
       localStorage.setItem(`tenant_session_${targetSlug}`, JSON.stringify({ slug: targetSlug, loggedInAt: new Date().toISOString() }))
-
-      // 5. Open Tenant's Dashboard in a brand new browser tab
       window.open(`/${targetSlug}`, '_blank');
-      
       setIsAuthModalOpen(false);
     } catch (err: any) {
       console.error('Login Error:', err)
@@ -260,10 +253,8 @@ export default function UniconLabsLandingPage() {
     }
 
     try {
-      // 1. Save query securely in Supabase database
       await supabase.from('unicon_customer_queries').insert([queryPayload])
 
-      // 2. Dispatch email with subject set to "NEW QUERY" using Web3Forms API
       const res = await fetch('https://api.web3forms.com/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
@@ -283,8 +274,6 @@ export default function UniconLabsLandingPage() {
 
       if (jsonResult.success) {
         alert(`Query successfully transmitted to info.uniconlabs@gmail.com and saved in database!\n\nThank you ${contactName}, our team will reach out to you shortly.`)
-        
-        // Reset form & close modal
         setContactName('')
         setContactPhone('')
         setContactEmail('')
@@ -335,35 +324,43 @@ export default function UniconLabsLandingPage() {
         }
       `}</style>
 
-      {/* STICKY HEADER & NAV WRAPPER CONTAINER TO ENSURE 0% GAP */}
+      {/* STICKY HEADER & NAV WRAPPER CONTAINER */}
       <div className="sticky top-0 z-50 w-full shadow-md">
         {/* 1. SMART HEADER AREA */}
-        <header className="bg-white border-b border-blue-100 px-8 py-3 flex justify-between items-center overflow-visible">
-          <div className="flex items-center space-x-3 relative">
-            <img
-              src="/unicon-logo.png"
-              alt="Unicon Labs Logo"
-              className="h-16 md:h-20 w-auto object-contain relative z-50 scale-110 origin-left"
-            />
-          </div>
-
-          <div className="flex items-center space-x-5">
-            <div className="hidden lg:flex items-center space-x-1.5 text-xs font-bold text-slate-700 tracking-tight">
-              <span>For any immediate inquiry please call ( 9:00 AM - 6:00 PM / Mon-Sat ) :</span>
-              <span className="text-amber-500 font-black text-lg tracking-wide">+92 333 3776556</span>
+        <header className="bg-white border-b border-blue-100 px-4 md:px-8 py-3 w-full">
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3 md:gap-4">
+            <div className="flex items-center space-x-3 relative w-full md:w-auto justify-center md:justify-start">
+              <img
+                src="/unicon-logo.png"
+                alt="Unicon Labs Logo"
+                className="h-16 md:h-20 w-auto object-contain relative z-50 scale-110"
+              />
             </div>
-            <button
-              onClick={handleLoginClick}
-              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition shadow-md shadow-blue-600/30 cursor-pointer uppercase tracking-wide shrink-0"
-            >
-              Login / Sign Up
-            </button>
+
+            {/* Mobile-only inquiry banner text right between logo and login button */}
+            <div className="flex lg:hidden flex-col items-center text-center text-xs font-bold text-slate-700 tracking-tight my-1">
+              <span>For immediate inquiry:</span>
+              <span className="text-amber-500 font-black text-sm tracking-wide">+92 333 3776556</span>
+            </div>
+
+            <div className="flex items-center w-full md:w-auto justify-between md:justify-end md:space-x-4 flex-wrap lg:flex-nowrap">
+              <div className="hidden lg:flex items-center space-x-1.5 text-[11px] font-bold text-slate-700 tracking-tight whitespace-nowrap">
+                <span>For any immediate inquiry please call ( 9:00 AM - 6:00 PM / Mon-Sat ) :</span>
+                <span className="text-amber-500 font-black text-xs tracking-wide">+92 333 3776556</span>
+              </div>
+              <button
+                onClick={handleLoginClick}
+                className="w-full md:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition shadow-md shadow-blue-600/30 cursor-pointer uppercase tracking-wide shrink-0"
+              >
+                Login / Sign Up
+              </button>
+            </div>
           </div>
         </header>
 
         {/* 2. STICKY HORIZONTAL MENU BAR */}
         <nav 
-          className="text-white px-8 py-3.5 border-b border-cyan-500/20 shadow-lg"
+          className="text-white px-4 md:px-8 py-3.5 border-b border-cyan-500/20 shadow-lg overflow-x-auto whitespace-nowrap [-webkit-overflow-scrolling:touch]"
           style={{
             backgroundImage: `
               radial-gradient(circle at 50% 50%, rgba(34, 211, 238, 0.15) 0%, transparent 70%),
@@ -374,13 +371,13 @@ export default function UniconLabsLandingPage() {
             backgroundPosition: 'center'
           }}
         >
-          <div className="max-w-7xl mx-auto flex justify-center space-x-8 text-xs font-black uppercase tracking-wider overflow-x-auto">
+          <div className="max-w-7xl mx-auto flex items-center justify-start md:justify-center space-x-6 md:space-x-8 text-xs font-black uppercase tracking-wider min-w-max px-2">
             {menuItems.map(item => (
               <a
                 key={item.id}
                 href={item.href}
                 onClick={(e) => handleMenuClick(e, item.label, item.href)}
-                className="hover:text-cyan-300 transition-colors py-1 hover:border-b-2 hover:border-cyan-400 whitespace-nowrap cursor-pointer tracking-widest text-blue-100"
+                className="hover:text-cyan-300 transition-colors py-1 hover:border-b-2 hover:border-cyan-400 whitespace-nowrap cursor-pointer tracking-widest text-blue-100 shrink-0"
               >
                 {item.label}
               </a>
@@ -389,14 +386,13 @@ export default function UniconLabsLandingPage() {
         </nav>
       </div>
 
-      {/* 3. HERO BANNER SECTION (Smooth Sliding / Diffusion with Manual Arrows & Pause) */}
+      {/* 3. HERO BANNER SECTION (Mobile titles removed) */}
       <section
         id="home"
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
         className="bg-gradient-to-b from-blue-900 to-blue-950 text-white px-8 py-24 relative overflow-hidden min-h-[420px] flex items-center justify-center"
       >
-        {/* Render Carousel Slides with Smooth Sliding & Diffusion Animation */}
         <div className="absolute inset-0 w-full h-full flex items-center justify-center">
           {heroBanners.map((hb, idx) => {
             const isActive = idx === activeHeroSlide
@@ -420,8 +416,9 @@ export default function UniconLabsLandingPage() {
                     backgroundColor: `rgba(15, 23, 42, ${(hb.textBgOpacity ?? 80) / 100})`
                   }}
                 >
+                  {/* Hidden on mobile view, visible on desktop */}
                   {hb.tag && (
-                    <div className="inline-block bg-blue-800/80 text-blue-200 border border-blue-700 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-widest shadow-inner">
+                    <div className="hidden md:inline-block bg-blue-800/80 text-blue-200 border border-blue-700 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-widest shadow-inner">
                       {hb.tag}
                     </div>
                   )}
@@ -439,7 +436,6 @@ export default function UniconLabsLandingPage() {
           })}
         </div>
 
-        {/* Manual Navigation Arrows */}
         <button
           onClick={handlePrevSlide}
           className="absolute left-6 top-1/2 -translate-y-1/2 z-30 w-11 h-11 bg-white/10 hover:bg-white/25 backdrop-blur-md rounded-full flex items-center justify-center text-white text-lg font-bold transition shadow-lg cursor-pointer border border-white/20"
@@ -455,7 +451,6 @@ export default function UniconLabsLandingPage() {
           ›
         </button>
 
-        {/* Slide Indicators / Dots */}
         <div className="absolute bottom-6 left-0 right-0 z-30 flex justify-center space-x-2">
           {heroBanners.map((_, idx) => (
             <button
@@ -467,10 +462,10 @@ export default function UniconLabsLandingPage() {
         </div>
       </section>
 
-      {/* 4. CORE OPERATIONS DISPLAY ROW */}
+      {/* 4. CORE OPERATIONS DISPLAY ROW (Mobile: 2 cards in a row, title removed, top margin reduced) */}
       <section 
         id="products" 
-        className="px-8 py-24 relative overflow-hidden text-white"
+        className="px-4 md:px-8 pt-7 md:py-24 relative overflow-hidden text-white"
         style={{
           backgroundImage: `
             radial-gradient(circle at 50% 30%, rgba(34, 211, 238, 0.2) 0%, transparent 60%),
@@ -482,7 +477,6 @@ export default function UniconLabsLandingPage() {
           backgroundPosition: 'center'
         }}
       >
-        {/* Animated Digital Ecosystem Structure Background Overlay */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden select-none animate-pulse-glow">
           <div className="absolute left-[10%] top-[15%] w-52 h-52 rounded-full border border-cyan-400/25 flex items-center justify-center">
             <div className="w-26 h-26 rounded-full border border-cyan-400/35 flex items-center justify-center text-[10px] font-mono text-cyan-300">SYNC</div>
@@ -495,31 +489,31 @@ export default function UniconLabsLandingPage() {
           <div className="absolute right-1/4 top-1/3 w-48 h-px bg-gradient-to-r from-transparent via-cyan-400/30 to-transparent"></div>
         </div>
 
-        <div className="max-w-7xl mx-auto w-full space-y-12 relative z-10">
+        <div className="max-w-7xl mx-auto w-full space-y-8 relative z-10">
           <div className="text-center space-y-2">
-            <span className="text-xs font-black uppercase tracking-widest text-cyan-300 bg-blue-950/80 px-3 py-1 rounded-full border border-cyan-500/30">SOFTWARE ECOSYSTEM</span>
+            <span className="hidden md:inline-block text-xs font-black uppercase tracking-widest text-cyan-300 bg-blue-950/80 px-3 py-1 rounded-full border border-cyan-500/30">SOFTWARE ECOSYSTEM</span>
             <h2 className="text-3xl font-black uppercase tracking-wide text-white">Our Core Operations</h2>
             <p className="text-xs text-blue-200">Integrated multi-surface modules engineered for high-performance enterprise execution.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-5">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-5">
             {products.map((prod, idx) => (
-              <div key={prod.id || idx} className="bg-slate-900/90 border border-cyan-500/30 rounded-3xl p-5 shadow-xl shadow-blue-950/50 flex flex-col justify-between hover:border-cyan-400 hover:shadow-cyan-500/20 transition group backdrop-blur-xs">
-                <div className="space-y-4">
-                  <div className="w-full h-32 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-center overflow-hidden shadow-inner group-hover:scale-105 transition duration-300">
+              <div key={prod.id || idx} className="bg-slate-900/90 border border-cyan-500/30 rounded-3xl p-3 md:p-5 shadow-xl shadow-blue-950/50 flex flex-col justify-between hover:border-cyan-400 hover:shadow-cyan-500/20 transition group backdrop-blur-xs">
+                <div className="space-y-3 md:space-y-4">
+                  <div className="w-full h-24 md:h-32 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-center overflow-hidden shadow-inner group-hover:scale-105 transition duration-300">
                     {prod.image && (prod.image.startsWith('data:') || prod.image.startsWith('http') || prod.image.startsWith('/') || prod.image.length > 50) ? (
                       <img src={prod.image} alt={prod.name} className="w-full h-full object-fill" />
                     ) : (
-                      <span className="text-4xl">{prod.image || '📦'}</span>
+                      <span className="text-3xl md:text-4xl">{prod.image || '📦'}</span>
                     )}
                   </div>
-                  <h3 className="font-black text-sm uppercase text-cyan-300">{prod.name}</h3>
-                  <p className="text-blue-100 text-xs leading-relaxed text-justify">{prod.desc}</p>
+                  <h3 className="font-black text-xs md:text-sm uppercase text-cyan-300">{prod.name}</h3>
+                  <p className="text-blue-100 text-[11px] md:text-xs leading-relaxed text-justify">{prod.desc}</p>
                 </div>
-                <div className="pt-6">
+                <div className="pt-4 md:pt-6">
                   <button
                     onClick={() => alert(`Details for ${prod.name}`)}
-                    className="w-full py-2.5 bg-blue-600 hover:bg-cyan-500 text-white font-bold rounded-xl text-xs transition uppercase tracking-wider border border-blue-500 cursor-pointer shadow-md shadow-blue-600/30"
+                    className="w-full py-2 bg-blue-600 hover:bg-cyan-500 text-white font-bold rounded-xl text-[11px] md:text-xs transition uppercase tracking-wider border border-blue-500 cursor-pointer shadow-md shadow-blue-600/30"
                   >
                     Read more...
                   </button>
@@ -530,39 +524,76 @@ export default function UniconLabsLandingPage() {
         </div>
       </section>
 
-      {/* 5. OUR RESPECTED PARTNERS SECTION */}
-      <section id="partners" className="bg-slate-50 border-y border-slate-200 px-8 py-20">
-        <div className="max-w-7xl mx-auto space-y-12">
+      {/* 5. OUR RESPECTED PARTNERS SECTION (Mobile: 3 partners in a row, title removed, top margin reduced) */}
+      <section id="partners" className="bg-slate-50 border-y border-slate-200 px-4 md:px-8 pt-6 md:py-20">
+        <div className="max-w-7xl mx-auto space-y-8 md:space-y-12">
           <div className="text-center space-y-2">
-            <span className="text-xs font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">CLIENT SUCCESS</span>
+            <span className="hidden md:inline-block text-xs font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">CLIENT SUCCESS</span>
             <h2 className="text-3xl font-black uppercase tracking-wide text-blue-950">Our Respected Partners</h2>
             <p className="text-xs text-slate-500">Proudly empowering top-tier businesses and fast-growing enterprises worldwide.</p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-6 items-center">
+          <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-6 gap-3 md:gap-6 items-center">
             {partners.map(partner => (
-              <div key={partner.id} className="bg-white border border-slate-100 rounded-3xl p-5 flex flex-col items-center justify-center h-48 shadow-lg shadow-slate-200/60 hover:shadow-xl hover:border-blue-200 transition-all duration-300 group overflow-hidden">
+              <div key={partner.id} className="bg-white border border-slate-100 rounded-2xl md:rounded-3xl p-3 md:p-5 flex flex-col items-center justify-center h-36 md:h-48 shadow-lg shadow-slate-200/60 hover:shadow-xl hover:border-blue-200 transition-all duration-300 group overflow-hidden">
                 {partner.logo && (partner.logo.startsWith('data:') || partner.logo.startsWith('http') || partner.logo.startsWith('/') || partner.logo.length > 50) ? (
-                  <div className="w-full h-32 flex items-center justify-center shrink-0 mb-1">
+                  <div className="w-full h-20 md:h-32 flex items-center justify-center shrink-0 mb-1">
                     <img src={partner.logo} alt={partner.name} className="w-full h-full object-contain" />
                   </div>
                 ) : (
-                  <span className="text-8xl mb-1">{partner.logo || '🏢'}</span>
+                  <span className="text-5xl md:text-8xl mb-1">{partner.logo || '🏢'}</span>
                 )}
-                <span className="font-black text-xs text-slate-800 text-center truncate w-full uppercase tracking-wide">{partner.name}</span>
+                <span className="font-black text-[10px] md:text-xs text-slate-800 text-center truncate w-full uppercase tracking-wide">{partner.name}</span>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* 6. DAILY BLOGS SECTION */}
-      <section id="blogs" className="px-8 py-20 max-w-7xl mx-auto w-full space-y-10">
+      {/* 6. DAILY BLOGS SECTION (Mobile: 2 blogs in a row, title removed, top margin reduced, bottom right link) */}
+      <section id="blogs" className="px-4 md:px-8 pt-6 md:py-20 max-w-7xl mx-auto w-full space-y-8">
         <div className="flex justify-between items-end">
           <div className="space-y-2">
-            <span className="text-xs font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">INSIGHTS & UPDATES</span>
+            <span className="hidden md:inline-block text-xs font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">INSIGHTS & UPDATES</span>
             <h2 className="text-3xl font-black uppercase tracking-wide text-blue-950">Daily Blogs</h2>
           </div>
+          <button
+            onClick={() => alert('Opening full blog archive...')}
+            className="hidden md:flex text-xs font-black text-blue-600 hover:text-blue-800 uppercase tracking-wider items-center space-x-1 cursor-pointer"
+          >
+            <span>Read all blogs...</span>
+            <span>→</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+          {blogs.map((blog, idx) => (
+            <div key={blog.id || idx} className="bg-white border border-blue-100 rounded-3xl p-3 md:p-5 shadow-lg shadow-blue-900/5 flex flex-col justify-between hover:border-blue-400 transition group">
+              <div className="space-y-3">
+                <div className="w-full h-24 md:h-36 bg-blue-900 rounded-2xl flex items-center justify-center text-2xl md:text-3xl text-white font-black shadow-inner group-hover:bg-blue-600 transition">
+                  📰
+                </div>
+                <div className="flex justify-between items-center text-[9px] md:text-[10px] text-slate-400 font-bold uppercase">
+                  <span>{blog.category}</span>
+                  <span>{blog.date}</span>
+                </div>
+                <h3 className="font-black text-xs md:text-sm uppercase text-blue-950 leading-snug">{blog.title}</h3>
+                <p className="text-slate-600 text-[11px] md:text-xs leading-relaxed line-clamp-3">{blog.desc}</p>
+              </div>
+              <div className="pt-3 md:pt-4 mt-3 md:mt-4 border-t border-slate-100">
+                <button
+                  onClick={() => alert(`Opening article: ${blog.title}`)}
+                  className="text-[11px] md:text-xs font-extrabold text-blue-600 hover:text-blue-800 uppercase tracking-wide flex items-center space-x-1 cursor-pointer"
+                >
+                  <span>Read more...</span>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Mobile View Bottom Right "Read all blogs..." Link */}
+        <div className="flex md:hidden justify-end pt-2">
           <button
             onClick={() => alert('Opening full blog archive...')}
             className="text-xs font-black text-blue-600 hover:text-blue-800 uppercase tracking-wider flex items-center space-x-1 cursor-pointer"
@@ -570,32 +601,6 @@ export default function UniconLabsLandingPage() {
             <span>Read all blogs...</span>
             <span>→</span>
           </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {blogs.map((blog, idx) => (
-            <div key={blog.id || idx} className="bg-white border border-blue-100 rounded-3xl p-5 shadow-lg shadow-blue-900/5 flex flex-col justify-between hover:border-blue-400 transition group">
-              <div className="space-y-3">
-                <div className="w-full h-36 bg-blue-900 rounded-2xl flex items-center justify-center text-3xl text-white font-black shadow-inner group-hover:bg-blue-600 transition">
-                  📰
-                </div>
-                <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold uppercase">
-                  <span>{blog.category}</span>
-                  <span>{blog.date}</span>
-                </div>
-                <h3 className="font-black text-sm uppercase text-blue-950 leading-snug">{blog.title}</h3>
-                <p className="text-slate-600 text-xs leading-relaxed">{blog.desc}</p>
-              </div>
-              <div className="pt-4 mt-4 border-t border-slate-100">
-                <button
-                  onClick={() => alert(`Opening article: ${blog.title}`)}
-                  className="text-xs font-extrabold text-blue-600 hover:text-blue-800 uppercase tracking-wide flex items-center space-x-1 cursor-pointer"
-                >
-                  <span>Read more...</span>
-                </button>
-              </div>
-            </div>
-          ))}
         </div>
       </section>
 
@@ -615,7 +620,6 @@ export default function UniconLabsLandingPage() {
           backgroundPosition: 'center'
         }}
       >
-        {/* Vibrant Digital Ecosystem Architecture Network Overlay */}
         <div className="absolute inset-0 pointer-events-none opacity-30 flex items-center justify-between px-16 overflow-hidden select-none">
           <div className="absolute left-10 top-1/4 w-32 h-32 rounded-full border border-cyan-400/30 flex items-center justify-center animate-pulse">
             <div className="w-16 h-16 rounded-full border border-cyan-400/50 flex items-center justify-center text-[9px] font-mono text-cyan-300">SYNC</div>
@@ -709,7 +713,6 @@ export default function UniconLabsLandingPage() {
             <span className="text-sm font-black uppercase tracking-wider text-cyan-300">Connect with us on :</span>
           </div>
           <div className="flex items-center space-x-4">
-            {/* YouTube Icon */}
             <a
               href="https://youtube.com/@uniconlabs"
               target="_blank"
@@ -722,7 +725,6 @@ export default function UniconLabsLandingPage() {
               </svg>
             </a>
 
-            {/* Facebook Icon */}
             <a
               href="https://facebook.com/uniconlabs.os"
               target="_blank"
@@ -735,7 +737,6 @@ export default function UniconLabsLandingPage() {
               </svg>
             </a>
 
-            {/* Instagram Icon */}
             <a
               href="https://instagram.com/uniconlabs"
               target="_blank"
@@ -748,7 +749,6 @@ export default function UniconLabsLandingPage() {
               </svg>
             </a>
 
-            {/* WhatsApp Icon */}
             <a
               href="https://whatsapp.com/channel/0029Vb8k8InBqbr5LZvWxu1H"
               target="_blank"
@@ -763,15 +763,22 @@ export default function UniconLabsLandingPage() {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto pt-4 pb-2 flex flex-col md:flex-row justify-between items-center text-xs text-blue-300 font-medium relative z-10">
-          <p>© 2026 {headerBrand}. All rights reserved.</p>
-          <div className="flex items-center space-x-6 mt-4 md:mt-0">
-            <span className="hover:text-cyan-300 cursor-pointer">Privacy Policy</span>
-            <span className="hover:text-cyan-300 cursor-pointer">Terms of Service</span>
-            <span className="hover:text-cyan-300 cursor-pointer">Security Compliance</span>
+        {/* FOOTER BOTTOM LINKS WITH "BACK TO TOP" PLACED IN A NEW CENTRALIZED ROW */}
+        <div className="max-w-7xl mx-auto pt-4 pb-2 flex flex-col items-center text-xs text-blue-300 font-medium relative z-10 gap-3">
+          <div className="flex flex-col md:flex-row justify-between items-center w-full">
+            <p>© 2026 {headerBrand}. All rights reserved.</p>
+            <div className="flex flex-wrap justify-center items-center gap-4 md:space-x-6 mt-3 md:mt-0">
+              <span className="hover:text-cyan-300 cursor-pointer">Privacy Policy</span>
+              <span className="hover:text-cyan-300 cursor-pointer">Terms of Service</span>
+              <span className="hover:text-cyan-300 cursor-pointer">Security Compliance</span>
+            </div>
+          </div>
+          
+          {/* Back to top button moved to its own centralized row right below policy links */}
+          <div className="pt-2 flex justify-center w-full">
             <button
               onClick={scrollToTop}
-              className="px-3.5 py-2 bg-blue-900/80 hover:bg-cyan-600 text-white font-bold rounded-xl transition border border-cyan-500/30 shadow-lg cursor-pointer uppercase tracking-wider flex items-center space-x-1"
+              className="px-4 py-2 bg-blue-900/80 hover:bg-cyan-600 text-white font-bold rounded-xl transition border border-cyan-500/30 shadow-lg cursor-pointer uppercase tracking-wider flex items-center space-x-1"
             >
               <span>↑ Back to Top</span>
             </button>
@@ -1003,7 +1010,7 @@ export default function UniconLabsLandingPage() {
         </div>
       )}
 
-      {/* FLOATING WHATSAPP CHAT BUTTON WITH CONTINUOUS HEARTBEAT & VIBRANT GLOW */}
+      {/* FLOATING WHATSAPP CHAT BUTTON */}
       <div className="fixed bottom-6 right-6 z-50 flex items-center justify-center animate-heartbeat">
         <div className="absolute w-16 h-16 bg-emerald-400 rounded-full animate-ping opacity-75"></div>
         <a
