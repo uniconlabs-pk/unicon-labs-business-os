@@ -32,7 +32,6 @@ export default function UniconLabsLandingPage() {
   // Dynamic Content State loaded from Supabase
   const [headerBrand, setHeaderBrand] = useState('UNICON LABS')
   const [headerSlogan, setHeaderSlogan] = useState('YOU THINK WE BUILD')
-  const [headerSubtitle, setHeaderSubtitle] = useState('Enterprise Software Company')
   const [menuItems, setMenuItems] = useState([
     { id: 1, label: 'HOME', href: '#home' },
     { id: 2, label: 'Products', href: '#products' },
@@ -100,7 +99,6 @@ export default function UniconLabsLandingPage() {
   const applySettings = (s: any) => {
     if (s.headerBrand) setHeaderBrand(s.headerBrand)
     if (s.headerSlogan) setHeaderSlogan(s.headerSlogan)
-    if (s.headerSubtitle) setHeaderSubtitle(s.headerSubtitle)
     if (s.menuItems) setMenuItems(s.menuItems)
     if (s.heroSlideInterval) setHeroSlideInterval(s.heroSlideInterval)
     if (s.heroBanners && s.heroBanners.length > 0) setHeroBanners(s.heroBanners)
@@ -341,23 +339,12 @@ export default function UniconLabsLandingPage() {
       <div className="sticky top-0 z-50 w-full shadow-md">
         {/* 1. SMART HEADER AREA */}
         <header className="bg-white border-b border-blue-100 px-8 py-3 flex justify-between items-center overflow-visible">
-          <div className="flex items-center space-x-4 relative">
+          <div className="flex items-center space-x-3 relative">
             <img
               src="/unicon-logo.png"
               alt="Unicon Labs Logo"
-              className="h-24 w-auto object-contain relative z-50 filter drop-shadow-md scale-125 origin-left"
+              className="h-16 md:h-20 w-auto object-contain relative z-50 scale-110 origin-left"
             />
-            <div className="flex flex-col justify-center text-center pl-4">
-              <span className="text-2xl font-black tracking-wider uppercase text-blue-900 block">
-                {headerBrand}
-              </span>
-              <span className="text-sm font-extrabold bg-blue-50 text-blue-600 px-3 py-0.5 rounded-full border border-blue-200 inline-block my-1 mx-auto">
-                {headerSlogan}
-              </span>
-              <span className="block text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-                {headerSubtitle}
-              </span>
-            </div>
           </div>
 
           <div className="flex items-center space-x-5">
@@ -643,7 +630,7 @@ export default function UniconLabsLandingPage() {
         <div className="max-w-5xl mx-auto text-center space-y-4 flex flex-col items-center relative z-10">
           <div className="mb-2">
             <img
-              src="/unicon-logo.png"
+              src="/unicon-logo1.png"
               alt="Unicon Labs Enlarged Logo"
               className="h-20 w-auto object-contain filter drop-shadow-[0_0_16px_rgba(34,211,238,1)] drop-shadow-[0_0_32px_rgba(56,189,248,0.8)]"
             />
@@ -724,7 +711,7 @@ export default function UniconLabsLandingPage() {
           <div className="flex items-center space-x-4">
             {/* YouTube Icon */}
             <a
-              href="https://www.youtube.com/@uniconlabs"
+              href="https://youtube.com/@uniconlabs"
               target="_blank"
               rel="noopener noreferrer"
               className="w-11 h-11 rounded-2xl bg-slate-900/90 border border-cyan-500/30 flex items-center justify-center text-red-500 hover:text-white hover:bg-red-600 hover:border-red-500 hover:scale-110 transition-all duration-300 shadow-lg cursor-pointer group"
@@ -737,7 +724,7 @@ export default function UniconLabsLandingPage() {
 
             {/* Facebook Icon */}
             <a
-              href="https://www.facebook.com/uniconlabs.os"
+              href="https://facebook.com/uniconlabs.os"
               target="_blank"
               rel="noopener noreferrer"
               className="w-11 h-11 rounded-2xl bg-slate-900/90 border border-cyan-500/30 flex items-center justify-center text-blue-500 hover:text-white hover:bg-blue-600 hover:border-blue-500 hover:scale-110 transition-all duration-300 shadow-lg cursor-pointer group"
@@ -750,7 +737,7 @@ export default function UniconLabsLandingPage() {
 
             {/* Instagram Icon */}
             <a
-              href="https://www.instagram.com/uniconlabs"
+              href="https://instagram.com/uniconlabs"
               target="_blank"
               rel="noopener noreferrer"
               className="w-11 h-11 rounded-2xl bg-slate-900/90 border border-cyan-500/30 flex items-center justify-center text-pink-500 hover:text-white hover:bg-gradient-to-tr hover:from-amber-500 hover:via-pink-600 hover:to-purple-600 hover:border-pink-500 hover:scale-110 transition-all duration-300 shadow-lg cursor-pointer group"
@@ -1006,7 +993,7 @@ export default function UniconLabsLandingPage() {
                 <button
                   type="submit"
                   disabled={submittingQuery}
-                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-wider rounded-xl transition shadow-lg shadow-blue-600/30 cursor-pointer"
+                  className="px-6 py-2.5 bg-blue-600 hover:bg-cyan-500 text-white font-black uppercase tracking-wider rounded-xl transition shadow-lg shadow-blue-600/30 cursor-pointer"
                 >
                   {submittingQuery ? 'Transmitting Query...' : 'Submit Query'}
                 </button>
