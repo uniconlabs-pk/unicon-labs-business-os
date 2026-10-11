@@ -2039,7 +2039,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                 </p>
               </div>
             ) : catalogViewMode === 'grid' ? (
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 overflow-y-auto flex-1 content-start">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 overflow-y-auto flex-1 content-start" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', maxHeight: '100%' }}>
                 {filteredProducts.length > 0 ? filteredProducts.map(item => {
                   const dealSummary = getDealItemsSummary(item)
                   return (
