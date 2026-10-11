@@ -344,9 +344,9 @@ export default function UniconLabsLandingPage() {
             </div>
 
             <div className="flex items-center w-full md:w-auto justify-between md:justify-end md:space-x-4 flex-wrap lg:flex-nowrap">
-              <div className="hidden lg:flex items-center space-x-1.5 text-[11px] font-bold text-slate-700 tracking-tight whitespace-nowrap">
+              <div className="hidden lg:flex items-center space-x-0.5 text-[11px] font-bold text-slate-700 tracking-tight whitespace-nowrap">
                 <span>For any immediate inquiry please call ( 9:00 AM - 6:00 PM / Mon-Sat ) :</span>
-                <span className="text-amber-500 font-black text-xs tracking-wide">+92 333 3776556</span>
+                <span className="text-amber-500 font-black text-lg tracking-wide">+92 333 3776556</span>
               </div>
               <button
                 onClick={handleLoginClick}
@@ -406,7 +406,7 @@ export default function UniconLabsLandingPage() {
                 }`}
                 style={{
                   backgroundImage: hb.bgImage ? `url('${hb.bgImage}')` : 'none',
-                  backgroundSize: 'cover',
+                  backgroundSize: '100% 100%',
                   backgroundPosition: 'center'
                 }}
               >
@@ -416,11 +416,6 @@ export default function UniconLabsLandingPage() {
                     backgroundColor: `rgba(15, 23, 42, ${(hb.textBgOpacity ?? 80) / 100})`
                   }}
                 >
-                  {hb.tag && (
-                    <div className="hidden md:inline-block bg-blue-800/80 text-blue-200 border border-blue-700 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-widest shadow-inner">
-                      {hb.tag}
-                    </div>
-                  )}
                   
                   <h1 className="text-3xl md:text-5xl font-black tracking-tight uppercase leading-tight max-w-4xl mx-auto">
                     {hb.title}
@@ -490,7 +485,6 @@ export default function UniconLabsLandingPage() {
 
         <div className="max-w-7xl mx-auto w-full space-y-8 relative z-10">
           <div className="text-center space-y-2">
-            <span className="hidden md:inline-block text-xs font-black uppercase tracking-widest text-cyan-300 bg-blue-950/80 px-3 py-1 rounded-full border border-cyan-500/30">SOFTWARE ECOSYSTEM</span>
             <h2 className="text-3xl font-black uppercase tracking-wide text-white">Our Core Operations</h2>
             <p className="text-xs text-blue-200">Integrated multi-surface modules engineered for high-performance enterprise execution.</p>
           </div>
@@ -524,10 +518,9 @@ export default function UniconLabsLandingPage() {
       </section>
 
       {/* 5. OUR RESPECTED PARTNERS SECTION (Fluid Auto-Fit Grid) */}
-      <section id="partners" className="bg-slate-50 border-y border-slate-200 px-4 md:px-8 pt-6 md:py-20">
+      <section id="partners" className="bg-slate-50 border-y border-slate-200 px-4 md:px-8 pt-6 pb-12 md:py-20">
         <div className="max-w-7xl mx-auto space-y-8 md:space-y-12">
           <div className="text-center space-y-2">
-            <span className="hidden md:inline-block text-xs font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">CLIENT SUCCESS</span>
             <h2 className="text-3xl font-black uppercase tracking-wide text-blue-950">Our Respected Partners</h2>
             <p className="text-xs text-slate-500">Proudly empowering top-tier businesses and fast-growing enterprises worldwide.</p>
           </div>
@@ -549,25 +542,15 @@ export default function UniconLabsLandingPage() {
         </div>
       </section>
 
-      {/* 6. DAILY BLOGS SECTION (Fluid Auto-Fit Grid) */}
-      <section id="blogs" className="px-4 md:px-8 pt-6 md:py-20 max-w-7xl mx-auto w-full space-y-8">
-        <div className="flex justify-between items-end">
-          <div className="space-y-2">
-            <span className="hidden md:inline-block text-xs font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">INSIGHTS & UPDATES</span>
-            <h2 className="text-3xl font-black uppercase tracking-wide text-blue-950">Daily Blogs</h2>
-          </div>
-          <button
-            onClick={() => alert('Opening full blog archive...')}
-            className="hidden md:flex text-xs font-black text-blue-600 hover:text-blue-800 uppercase tracking-wider items-center space-x-1 cursor-pointer"
-          >
-            <span>Read all blogs...</span>
-            <span>→</span>
-          </button>
+      {/* 6. DAILY BLOGS SECTION */}
+      <section id="blogs" className="px-4 md:px-8 pt-4 md:pt-14 pb-4 max-w-7xl mx-auto w-full space-y-6">
+        <div className="space-y-2 text-center">
+          <h2 className="text-3xl font-black uppercase tracking-wide text-blue-950">Daily Blogs</h2>
         </div>
 
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-3 md:gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 justify-items-center">
           {blogs.map((blog, idx) => (
-            <div key={blog.id || idx} className="bg-white border border-blue-100 rounded-3xl p-3 md:p-5 shadow-lg shadow-blue-900/5 flex flex-col justify-between hover:border-blue-400 transition group">
+            <div key={blog.id || idx} className="bg-white border border-blue-100 rounded-2xl md:rounded-3xl p-3 md:p-5 shadow-lg shadow-blue-900/5 flex flex-col justify-between hover:border-blue-400 transition group w-full max-w-xs">
               <div className="space-y-3">
                 <div className="w-full h-24 md:h-36 bg-blue-900 rounded-2xl flex items-center justify-center text-2xl md:text-3xl text-white font-black shadow-inner group-hover:bg-blue-600 transition">
                   📰
@@ -591,11 +574,11 @@ export default function UniconLabsLandingPage() {
           ))}
         </div>
 
-        {/* Mobile View Bottom Right "Read all blogs..." Link */}
-        <div className="flex md:hidden justify-end pt-2">
+        {/* "Read all blogs..." Link positioned perfectly in the bottom right corner */}
+        <div className="flex justify-end pt-2">
           <button
             onClick={() => alert('Opening full blog archive...')}
-            className="text-xs font-black text-blue-600 hover:text-blue-800 uppercase tracking-wider flex items-center space-x-1 cursor-pointer"
+            className="text-xs font-black text-green-600 hover:text-blue-500 tracking-wider flex items-center space-x-1 cursor-pointer"
           >
             <span>Read all blogs...</span>
             <span>→</span>
