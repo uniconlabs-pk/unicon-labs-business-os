@@ -194,15 +194,18 @@ export default function UniconLabsLandingPage() {
         return
       }
 
+      // Save session and navigate in the same window to bypass Safari popup restrictions
       localStorage.setItem(`tenant_session_${targetSlug}`, JSON.stringify({ slug: targetSlug, loggedInAt: new Date().toISOString() }))
-      window.open(`/${targetSlug}`, '_blank');
-      setIsAuthModalOpen(false);
+      setIsAuthModalOpen(false)
+      
+      // Use Next.js router or window.location for reliable navigation on iPad Safari
+      router.push(`/${targetSlug}`)
     } catch (err: any) {
       console.error('Login Error:', err)
       const fallback = inputId.toLowerCase().includes('krunchy') ? 'krunchy-bite' : inputId.toLowerCase().replace(/\s+/g, '-')
       localStorage.setItem(`tenant_session_${fallback}`, JSON.stringify({ slug: fallback, loggedInAt: new Date().toISOString() }))
-      window.open(`/${fallback}`, '_blank')
       setIsAuthModalOpen(false)
+      router.push(`/${fallback}`)
     } finally {
       setAuthLoading(false)
     }
