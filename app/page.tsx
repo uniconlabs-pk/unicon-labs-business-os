@@ -194,18 +194,15 @@ export default function UniconLabsLandingPage() {
         return
       }
 
-      // Save session and navigate in the same window to bypass Safari popup restrictions
       localStorage.setItem(`tenant_session_${targetSlug}`, JSON.stringify({ slug: targetSlug, loggedInAt: new Date().toISOString() }))
-      setIsAuthModalOpen(false)
-      
-      // Use Next.js router or window.location for reliable navigation on iPad Safari
-      router.push(`/${targetSlug}`)
+      window.open(`/${targetSlug}`, '_blank');
+      setIsAuthModalOpen(false);
     } catch (err: any) {
       console.error('Login Error:', err)
       const fallback = inputId.toLowerCase().includes('krunchy') ? 'krunchy-bite' : inputId.toLowerCase().replace(/\s+/g, '-')
       localStorage.setItem(`tenant_session_${fallback}`, JSON.stringify({ slug: fallback, loggedInAt: new Date().toISOString() }))
+      window.open(`/${fallback}`, '_blank')
       setIsAuthModalOpen(false)
-      router.push(`/${fallback}`)
     } finally {
       setAuthLoading(false)
     }
@@ -389,7 +386,7 @@ export default function UniconLabsLandingPage() {
         </nav>
       </div>
 
-      {/* 3. HERO BANNER SECTION (Mobile titles removed) */}
+      {/* 3. HERO BANNER SECTION */}
       <section
         id="home"
         onMouseEnter={() => setIsPaused(true)}
@@ -419,7 +416,6 @@ export default function UniconLabsLandingPage() {
                     backgroundColor: `rgba(15, 23, 42, ${(hb.textBgOpacity ?? 80) / 100})`
                   }}
                 >
-                  {/* Hidden on mobile view, visible on desktop */}
                   {hb.tag && (
                     <div className="hidden md:inline-block bg-blue-800/80 text-blue-200 border border-blue-700 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-widest shadow-inner">
                       {hb.tag}
@@ -465,7 +461,7 @@ export default function UniconLabsLandingPage() {
         </div>
       </section>
 
-      {/* 4. CORE OPERATIONS DISPLAY ROW (Mobile: 2 cards in a row, title removed, top margin reduced) */}
+      {/* 4. CORE OPERATIONS DISPLAY ROW (Fluid Auto-Fit Grid) */}
       <section 
         id="products" 
         className="px-4 md:px-8 pt-7 md:py-24 relative overflow-hidden text-white"
@@ -499,7 +495,7 @@ export default function UniconLabsLandingPage() {
             <p className="text-xs text-blue-200">Integrated multi-surface modules engineered for high-performance enterprise execution.</p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-5">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3 md:gap-5">
             {products.map((prod, idx) => (
               <div key={prod.id || idx} className="bg-slate-900/90 border border-cyan-500/30 rounded-3xl p-3 md:p-5 shadow-xl shadow-blue-950/50 flex flex-col justify-between hover:border-cyan-400 hover:shadow-cyan-500/20 transition group backdrop-blur-xs">
                 <div className="space-y-3 md:space-y-4">
@@ -527,7 +523,7 @@ export default function UniconLabsLandingPage() {
         </div>
       </section>
 
-      {/* 5. OUR RESPECTED PARTNERS SECTION (Mobile: 3 partners in a row, title removed, top margin reduced) */}
+      {/* 5. OUR RESPECTED PARTNERS SECTION (Fluid Auto-Fit Grid) */}
       <section id="partners" className="bg-slate-50 border-y border-slate-200 px-4 md:px-8 pt-6 md:py-20">
         <div className="max-w-7xl mx-auto space-y-8 md:space-y-12">
           <div className="text-center space-y-2">
@@ -536,7 +532,7 @@ export default function UniconLabsLandingPage() {
             <p className="text-xs text-slate-500">Proudly empowering top-tier businesses and fast-growing enterprises worldwide.</p>
           </div>
 
-          <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-6 gap-3 md:gap-6 items-center">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(110px,1fr))] gap-3 md:gap-6 items-center">
             {partners.map(partner => (
               <div key={partner.id} className="bg-white border border-slate-100 rounded-2xl md:rounded-3xl p-3 md:p-5 flex flex-col items-center justify-center h-36 md:h-48 shadow-lg shadow-slate-200/60 hover:shadow-xl hover:border-blue-200 transition-all duration-300 group overflow-hidden">
                 {partner.logo && (partner.logo.startsWith('data:') || partner.logo.startsWith('http') || partner.logo.startsWith('/') || partner.logo.length > 50) ? (
@@ -553,7 +549,7 @@ export default function UniconLabsLandingPage() {
         </div>
       </section>
 
-      {/* 6. DAILY BLOGS SECTION (Mobile: 2 blogs in a row, title removed, top margin reduced, bottom right link) */}
+      {/* 6. DAILY BLOGS SECTION (Fluid Auto-Fit Grid) */}
       <section id="blogs" className="px-4 md:px-8 pt-6 md:py-20 max-w-7xl mx-auto w-full space-y-8">
         <div className="flex justify-between items-end">
           <div className="space-y-2">
@@ -569,7 +565,7 @@ export default function UniconLabsLandingPage() {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-3 md:gap-6">
           {blogs.map((blog, idx) => (
             <div key={blog.id || idx} className="bg-white border border-blue-100 rounded-3xl p-3 md:p-5 shadow-lg shadow-blue-900/5 flex flex-col justify-between hover:border-blue-400 transition group">
               <div className="space-y-3">
@@ -797,15 +793,15 @@ export default function UniconLabsLandingPage() {
               <div className="flex space-x-3">
                 <button
                   onClick={() => setAuthMode('login')}
-                  className={`text-sm font-black tracking-wider pb-1 transition cursor-pointer ${authMode === 'login' ? 'text-cyan-300 border-b-2 border-cyan-400' : 'text-slate-400 hover:text-slate-200'}`}
+                  className={`text-sm font-black uppercase tracking-wider pb-1 transition cursor-pointer ${authMode === 'login' ? 'text-cyan-300 border-b-2 border-cyan-400' : 'text-slate-400 hover:text-slate-200'}`}
                 >
-                  LOGIN
+                  🔒 Tenant Sign-In
                 </button>
                 <button
                   onClick={() => setAuthMode('signup')}
-                  className={`text-sm font-black tracking-wider pb-1 transition cursor-pointer ${authMode === 'signup' ? 'text-cyan-300 border-b-2 border-cyan-400' : 'text-slate-400 hover:text-slate-200'}`}
+                  className={`text-sm font-black uppercase tracking-wider pb-1 transition cursor-pointer ${authMode === 'signup' ? 'text-cyan-300 border-b-2 border-cyan-400' : 'text-slate-400 hover:text-slate-200'}`}
                 >
-                  SIGN-UP
+                  Partner Sign Up
                 </button>
               </div>
               <button
@@ -819,14 +815,14 @@ export default function UniconLabsLandingPage() {
             {authMode === 'login' ? (
               <form onSubmit={handleTenantLoginSubmit} className="space-y-4 text-xs">
                 <div className="p-3 bg-cyan-950/40 border border-cyan-500/20 rounded-2xl text-[11px] text-cyan-200">
-                  🔐 Enter your assigned store slug (e.g., <span className="font-mono font-bold text-white">User-ID/Password</span>) or credentials issued by UNICON LABS.
+                  🔐 Enter your assigned store slug (e.g., <span className="font-mono font-bold text-white">krunchybite</span>) and credentials issued by Master Admin.
                 </div>
                 <div className="space-y-1.5">
                   <label className="block text-slate-400 font-bold uppercase text-[10px]">Tenant ID *</label>
                   <input
                     type="text"
                     required
-                    placeholder="Enter Tenant's - User ID"
+                    placeholder="Enter tenant's - user id"
                     value={tenantIdInput}
                     onChange={e => setTenantIdInput(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-mono focus:border-cyan-500 focus:outline-none"
