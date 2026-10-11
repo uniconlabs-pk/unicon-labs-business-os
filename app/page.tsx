@@ -794,15 +794,15 @@ export default function UniconLabsLandingPage() {
               <div className="flex space-x-3">
                 <button
                   onClick={() => setAuthMode('login')}
-                  className={`text-sm font-black uppercase tracking-wider pb-1 transition cursor-pointer ${authMode === 'login' ? 'text-cyan-300 border-b-2 border-cyan-400' : 'text-slate-400 hover:text-slate-200'}`}
+                  className={`text-sm font-black tracking-wider pb-1 transition cursor-pointer ${authMode === 'login' ? 'text-cyan-300 border-b-2 border-cyan-400' : 'text-slate-400 hover:text-slate-200'}`}
                 >
-                  🔒 Tenant Sign-In
+                  LOGIN
                 </button>
                 <button
                   onClick={() => setAuthMode('signup')}
-                  className={`text-sm font-black uppercase tracking-wider pb-1 transition cursor-pointer ${authMode === 'signup' ? 'text-cyan-300 border-b-2 border-cyan-400' : 'text-slate-400 hover:text-slate-200'}`}
+                  className={`text-sm font-black tracking-wider pb-1 transition cursor-pointer ${authMode === 'signup' ? 'text-cyan-300 border-b-2 border-cyan-400' : 'text-slate-400 hover:text-slate-200'}`}
                 >
-                  Partner Sign Up
+                  SIGN-UP
                 </button>
               </div>
               <button
@@ -816,14 +816,14 @@ export default function UniconLabsLandingPage() {
             {authMode === 'login' ? (
               <form onSubmit={handleTenantLoginSubmit} className="space-y-4 text-xs">
                 <div className="p-3 bg-cyan-950/40 border border-cyan-500/20 rounded-2xl text-[11px] text-cyan-200">
-                  🔐 Enter your assigned store slug (e.g., <span className="font-mono font-bold text-white">krunchybite</span>) and credentials issued by Master Admin.
+                  🔐 Enter your assigned store slug (e.g., <span className="font-mono font-bold text-white">User-ID/Password</span>) or credentials issued by UNICON LABS.
                 </div>
                 <div className="space-y-1.5">
                   <label className="block text-slate-400 font-bold uppercase text-[10px]">Tenant ID *</label>
                   <input
                     type="text"
                     required
-                    placeholder="Enter tenant's - user id"
+                    placeholder="Enter Tenant's - User ID"
                     value={tenantIdInput}
                     onChange={e => setTenantIdInput(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-mono focus:border-cyan-500 focus:outline-none"
