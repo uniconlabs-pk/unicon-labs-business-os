@@ -61,7 +61,7 @@ export default function UniconLabsLandingPage() {
     { id: 2, title: 'Optimizing Kitchen Workflow with KDS', date: 'Sep 28, 2026', category: 'Operations', desc: 'Best practices for reducing order preparation times in high-volume restaurants.' },
   ])
   const [aboutText, setAboutText] = useState('Founded with a vision to revolutionize enterprise operations, Unicon Labs specializes in building end-to-end digital ecosystems. From multi-tenant POS hardware integrations to cloud synchronization and automated financial auditing, we provide the infrastructure businesses need to thrive.')
-  const [footerHQ, setFooterHQ] = useState('Software Development Enterprise\nDigital Ecosystems & Modules\nEmail: care.uniconlabs@gmail.com')
+  const [footerHQ, setFooterHQ] = useState('Software Development Enterprise\nDigital Ecosystems & Modules\nEmail: info.uniconlabs@gmail.com')
 
   // Fetch settings on load & subscribe to real-time changes
   useEffect(() => {
@@ -305,6 +305,11 @@ export default function UniconLabsLandingPage() {
         section[id], footer[id] {
           scroll-margin-top: 135px;
         }
+        @media (max-width: 768px) {
+          #home, section[id], footer[id] {
+            scroll-margin-top: 240px;
+          }
+        }
         @keyframes heartbeat {
           0% { transform: scale(1); }
           14% { transform: scale(1.15); }
@@ -344,7 +349,7 @@ export default function UniconLabsLandingPage() {
             </div>
 
             <div className="flex items-center w-full md:w-auto justify-between md:justify-end md:space-x-4 flex-wrap lg:flex-nowrap">
-              <div className="hidden lg:flex items-center space-x-0.5 text-[11px] font-bold text-slate-700 tracking-tight whitespace-nowrap">
+              <div className="hidden lg:flex items-center space-x-1.5 text-[11px] font-bold text-slate-700 tracking-tight whitespace-nowrap">
                 <span>For any immediate inquiry please call ( 9:00 AM - 6:00 PM / Mon-Sat ) :</span>
                 <span className="text-amber-500 font-black text-lg tracking-wide">+92 333 3776556</span>
               </div>
@@ -416,7 +421,6 @@ export default function UniconLabsLandingPage() {
                     backgroundColor: `rgba(15, 23, 42, ${(hb.textBgOpacity ?? 80) / 100})`
                   }}
                 >
-                  
                   <h1 className="text-3xl md:text-5xl font-black tracking-tight uppercase leading-tight max-w-4xl mx-auto">
                     {hb.title}
                   </h1>
@@ -456,10 +460,10 @@ export default function UniconLabsLandingPage() {
         </div>
       </section>
 
-      {/* 4. CORE OPERATIONS DISPLAY ROW (Fluid Auto-Fit Grid) */}
+      {/* 4. CORE OPERATIONS DISPLAY ROW */}
       <section 
         id="products" 
-        className="px-4 md:px-8 pt-7 md:py-24 relative overflow-hidden text-white"
+        className="px-4 md:px-8 pt-7 pb-16 md:py-24 relative overflow-hidden text-white"
         style={{
           backgroundImage: `
             radial-gradient(circle at 50% 30%, rgba(34, 211, 238, 0.2) 0%, transparent 60%),
@@ -517,7 +521,7 @@ export default function UniconLabsLandingPage() {
         </div>
       </section>
 
-      {/* 5. OUR RESPECTED PARTNERS SECTION (Fluid Auto-Fit Grid) */}
+      {/* 5. OUR RESPECTED PARTNERS SECTION */}
       <section id="partners" className="bg-slate-50 border-y border-slate-200 px-4 md:px-8 pt-6 pb-12 md:py-20">
         <div className="max-w-7xl mx-auto space-y-8 md:space-y-12">
           <div className="text-center space-y-2">
@@ -578,7 +582,7 @@ export default function UniconLabsLandingPage() {
         <div className="flex justify-end pt-2">
           <button
             onClick={() => alert('Opening full blog archive...')}
-            className="text-xs font-black text-green-600 hover:text-blue-500 tracking-wider flex items-center space-x-1 cursor-pointer"
+            className="text-xs font-black text-blue-600 hover:text-blue-800 uppercase tracking-wider flex items-center space-x-1 cursor-pointer"
           >
             <span>Read all blogs...</span>
             <span>→</span>
@@ -745,7 +749,7 @@ export default function UniconLabsLandingPage() {
           </div>
         </div>
 
-        {/* FOOTER BOTTOM LINKS WITH "BACK TO TOP" PLACED IN A NEW CENTRALIZED ROW */}
+        {/* FOOTER BOTTOM LINKS WITH "BACK TO TOP" */}
         <div className="max-w-7xl mx-auto pt-4 pb-2 flex flex-col items-center text-xs text-blue-300 font-medium relative z-10 gap-3">
           <div className="flex flex-col md:flex-row justify-between items-center w-full">
             <p>© 2026 {headerBrand}. All rights reserved.</p>
@@ -756,7 +760,6 @@ export default function UniconLabsLandingPage() {
             </div>
           </div>
           
-          {/* Back to top button moved to its own centralized row right below policy links */}
           <div className="pt-2 flex justify-center w-full">
             <button
               onClick={scrollToTop}
@@ -798,7 +801,7 @@ export default function UniconLabsLandingPage() {
             {authMode === 'login' ? (
               <form onSubmit={handleTenantLoginSubmit} className="space-y-4 text-xs">
                 <div className="p-3 bg-cyan-950/40 border border-cyan-500/20 rounded-2xl text-[11px] text-cyan-200">
-                  🔐 Enter your assigned store slug (e.g., <span className="font-mono font-bold text-white">User ID/Password</span>) or credentials issued by UNICON LABS.
+                  Enter your assigned store slug (e.g., <span className="font-mono font-bold text-white">User ID/Password</span>) or credentials issued by UNICON LABS.
                 </div>
                 <div className="space-y-1.5">
                   <label className="block text-slate-400 font-bold uppercase text-[10px]">Tenant ID *</label>
