@@ -873,8 +873,8 @@ export default function UniconLabsLandingPage() {
 
       {/* CONTACT US POPUP MODAL PALETTE */}
       {isContactModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-blue-500/30 rounded-3xl p-6 md:p-8 max-w-xl w-full shadow-2xl text-slate-100 relative space-y-6 my-8">
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-blue-500/30 rounded-3xl p-5 sm:p-8 w-[95%] sm:max-w-xl max-h-[92vh] overflow-y-auto shadow-2xl text-slate-100 relative space-y-5 my-auto">
             <div className="flex justify-between items-center border-b border-slate-800 pb-4">
               <div>
                 <h3 className="text-lg font-black uppercase text-blue-400 tracking-wide">Contact Unicon Labs</h3>
