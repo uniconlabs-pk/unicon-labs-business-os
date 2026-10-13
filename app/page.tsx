@@ -340,7 +340,7 @@ export default function UniconLabsLandingPage() {
               <img
                 src="/unicon-logo.png"
                 alt="Unicon Labs Logo"
-                className="h-20 sm:h-24 md:h-20 w-auto object-contain relative z-50"
+                className="h-18 sm:h-20 md:h-20 w-auto object-contain relative z-50"
               />
             </div>
 
