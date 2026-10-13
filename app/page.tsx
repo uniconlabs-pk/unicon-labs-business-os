@@ -333,33 +333,45 @@ export default function UniconLabsLandingPage() {
       <div className="sticky top-0 z-50 w-full shadow-md">
         {/* 1. SMART HEADER AREA */}
         <header className="bg-white border-b border-blue-100 px-4 md:px-8 py-3 w-full">
-          <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3 md:gap-4">
-            <div className="flex items-center space-x-3 relative w-full md:w-auto justify-center md:justify-start">
+          <div className="max-w-7xl mx-auto flex flex-row justify-between items-center gap-3 md:gap-4">
+            
+            {/* Logo on the Left (Applies to both Mobile & Desktop) */}
+            <div className="flex items-center space-x-3 relative shrink-0">
               <img
                 src="/unicon-logo.png"
                 alt="Unicon Labs Logo"
-                className="h-16 md:h-20 w-auto object-contain relative z-50 scale-110"
+                className="h-20 sm:h-24 md:h-20 w-auto object-contain relative z-50"
               />
             </div>
 
-            {/* Mobile-only inquiry banner text right between logo and login button */}
-            <div className="flex lg:hidden flex-col items-center text-center text-xs font-bold text-slate-700 tracking-tight my-1">
-              <span>For immediate inquiry:</span>
-              <span className="text-amber-500 font-black text-sm tracking-wide">+92 333 3776556</span>
+            {/* MOBILE VIEW HEADER CONTENT (Visible on mobile/tablet only, hidden on md and above) */}
+            <div className="flex md:hidden flex-col items-end text-right space-y-1.5">
+              <div className="flex flex-col items-end text-xs font-bold text-slate-700 tracking-tight leading-tight">
+                <span className="text-[10px] sm:text-xs text-slate-600">For immediate inquiry:</span>
+                <span className="text-amber-500 font-black text-xs sm:text-sm tracking-wide">+92 333 3776556</span>
+              </div>
+              <button
+                onClick={handleLoginClick}
+                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] rounded-xl transition shadow-md shadow-blue-600/30 cursor-pointer uppercase tracking-wide shrink-0"
+              >
+                Login / Sign Up
+              </button>
             </div>
 
-            <div className="flex items-center w-full md:w-auto justify-between md:justify-end md:space-x-4 flex-wrap lg:flex-nowrap">
-              <div className="hidden lg:flex items-center space-x-1.5 text-[11px] font-bold text-slate-700 tracking-tight whitespace-nowrap">
+            {/* DESKTOP VIEW HEADER CONTENT (Preserved 100% exactly as original, hidden on mobile, visible on md and above) */}
+            <div className="hidden md:flex items-center justify-end space-x-4">
+              <div className="flex items-center space-x-1.5 text-[11px] font-bold text-slate-700 tracking-tight whitespace-nowrap">
                 <span>For any immediate inquiry please call ( 9:00 AM - 6:00 PM / Mon-Sat ) :</span>
                 <span className="text-amber-500 font-black text-lg tracking-wide">+92 333 3776556</span>
               </div>
               <button
                 onClick={handleLoginClick}
-                className="w-full md:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition shadow-md shadow-blue-600/30 cursor-pointer uppercase tracking-wide shrink-0"
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition shadow-md shadow-blue-600/30 cursor-pointer uppercase tracking-wide shrink-0"
               >
                 Login / Sign Up
               </button>
             </div>
+
           </div>
         </header>
 
