@@ -14,6 +14,7 @@ export default function WebSettingsPage() {
   const [saving, setSaving] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
   const [isSidebarHovered, setIsSidebarHovered] = useState(false)
+  const [authorized, setAuthorized] = useState(false)
 
   // CMS States
   const [headerBrand, setHeaderBrand] = useState('UNICON LABS')
@@ -81,9 +82,18 @@ export default function WebSettingsPage() {
   const [aboutText, setAboutText] = useState('Founded with a vision to revolutionize enterprise operations, Unicon Labs specializes in building end-to-end digital ecosystems. From multi-tenant POS hardware integrations to cloud synchronization and automated financial auditing, we provide the infrastructure businesses need to thrive.')
   const [footerHQ, setFooterHQ] = useState('Software Development Enterprise\nDigital Ecosystems & Modules\nEmail: care.uniconlabs@gmail.com')
 
-  // Load existing settings from Supabase on mount
+  // Load existing settings and verify authorization from Supabase on mount
   useEffect(() => {
-    async function fetchSettings() {
+    async function verifyAndFetch() {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError || !session) {
+        router.push('/master-admin')
+        return
+      }
+
+      setAuthorized(true)
+
       const { data, error } = await supabase
         .from('unicon_global_settings')
         .select('settings')
@@ -106,8 +116,8 @@ export default function WebSettingsPage() {
       }
       setLoadingData(false)
     }
-    fetchSettings()
-  }, [])
+    verifyAndFetch()
+  }, [router])
 
   const handleSaveChanges = async () => {
     setSaving(true)
@@ -256,8 +266,8 @@ export default function WebSettingsPage() {
     { key: 'footer', label: 'Footer Area', icon: '📌' },
   ] as const
 
-  if (loadingData) {
-    return <div className="min-h-screen bg-slate-950 flex items-center justify-center font-bold text-white">Loading CMS Settings...</div>
+  if (loadingData || !authorized) {
+    return <div className="min-h-screen bg-slate-950 flex items-center justify-center font-bold text-white">Verifying Security & Loading CMS Settings...</div>
   }
 
   return (
