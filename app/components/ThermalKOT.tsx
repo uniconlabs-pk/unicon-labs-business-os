@@ -19,20 +19,29 @@ interface ThermalKOTProps {
 export default function ThermalKOT({ kotData, business, slug }: ThermalKOTProps) {
   if (!kotData) return null
 
+  const currentSlug = slug || 'krunchy-bite'
+  const orderPrefix = currentSlug.split('-').map(w => w[0]).join('').toUpperCase() || 'ORD'
+  const rawOrderNum = kotData.orderNumber ? String(kotData.orderNumber) : '100012'
+  const numericOrderNum = rawOrderNum.replace(/[^0-9]/g, '')
+  const formattedOrderNumber = `${orderPrefix}-${numericOrderNum || '100012'}`
+
+  const tenantSlogan = currentSlug.toLowerCase().includes('mirchi') 
+    ? 'SPICE IS THE REAL TASTE' 
+    : 'TASTY - JUICY - SPICY'
+
   return (
     <div className="bg-white text-black font-sans text-xs p-2 leading-tight select-none w-[80mm]">
       <div className="text-center mb-2">
         <img 
-          src={`/tenants/${slug || 'default'}/logo-thermal.png`} 
+          src={`/tenants/${currentSlug}/logo-thermal.png`} 
           alt="Thermal Logo" 
-          className="w-24 h-24 mx-auto object-contain mb-1 grayscale contrast-200" 
+          className="w-44 h-auto mx-auto object-contain mb-1 grayscale contrast-200" 
           onError={(e) => { e.currentTarget.style.display = 'none'; }}
         />
-        <h1 className="font-black text-xl tracking-wider uppercase text-black">{business?.name || 'KRUNCHY BITE'}</h1>
         <div className="bg-black text-white text-[9px] font-black uppercase px-3 py-0.5 rounded tracking-widest inline-block my-1">
-          TASTY - JUICY - SPICY
+          {tenantSlogan}
         </div>
-          
+        
         <div className="font-black text-lg tracking-widest uppercase mt-2">- KOT -</div>
         <div className="font-bold text-xs tracking-wide">( KITCHEN ORDER TICKET )</div>
       </div>
@@ -44,7 +53,7 @@ export default function ThermalKOT({ kotData, business, slug }: ThermalKOTProps)
         </div>
         <div className="flex justify-between">
           <span>Order Number:</span>
-          <span className="font-mono font-bold">{kotData.orderNumber}</span>
+          <span className="font-mono font-bold">{formattedOrderNumber}</span>
         </div>
         <div className="flex justify-between">
           <span>KOT Number:</span>
@@ -84,8 +93,13 @@ export default function ThermalKOT({ kotData, business, slug }: ThermalKOTProps)
           {kotData.items.map((i: any, k: number) => (
             <div key={k} className="space-y-0.5">
               <div className="font-black text-sm text-black">
-                {i.qty}x {i.name} {i.selectedVariant ? `[${i.selectedVariant.name}]` : ''}
+                {i.qty}x {i.name}
               </div>
+              {i.selectedVariant && (
+                <div className="pl-4 text-[11px] text-gray-800 font-bold">
+                  &nbsp;&nbsp;&nbsp;&nbsp;{i.selectedVariant.name}
+                </div>
+              )}
               {i.dealComponents && i.dealComponents.length > 0 && (
                 <div className="pl-4 text-xs text-gray-900 space-y-0.5 font-medium">
                   {i.dealComponents.map((dc: any, dcK: number) => (

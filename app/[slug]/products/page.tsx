@@ -453,6 +453,15 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
     if (!file) return
 
     setUploadingImage(true)
+
+    // If there is an existing image URL, delete the old file from Supabase storage first
+    if (prodImage && prodImage.includes('/storage/v1/object/public/products/')) {
+      const oldPathParts = prodImage.split('/storage/v1/object/public/products/')
+      if (oldPathParts[1]) {
+        await supabase.storage.from('products').remove([oldPathParts[1]])
+      }
+    }
+
     const fileExt = file.name.split('.').pop()
     const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`
     const filePath = `${slug}/${fileName}`
@@ -643,6 +652,15 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
 
   const handleDeleteProduct = async (id: string) => {
     if (!confirm('Are you sure you want to delete this item?')) return
+
+    const targetProd = products.find(p => p.id === id)
+    if (targetProd?.image_url && targetProd.image_url.includes('/storage/v1/object/public/products/')) {
+      const pathParts = targetProd.image_url.split('/storage/v1/object/public/products/')
+      if (pathParts[1]) {
+        await supabase.storage.from('products').remove([pathParts[1]])
+      }
+    }
+
     const { error } = await supabase.from('products').delete().eq('id', id).eq('business_id', business.id)
     if (!error) {
       setProducts(products.filter(p => p.id !== id))
@@ -1457,7 +1475,21 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
                       <img src={prodImage} alt="Preview" className="w-full h-full object-contain" />
                     </div>
                     <span className="text-[10px] text-gray-500 truncate flex-1">{prodImage}</span>
-                    <button type="button" onClick={() => setProdImage('')} className="text-red-500 font-bold text-xs px-2">Remove</button>
+                    <button 
+                      type="button" 
+                      onClick={async () => {
+                        if (prodImage && prodImage.includes('/storage/v1/object/public/products/')) {
+                          const pathParts = prodImage.split('/storage/v1/object/public/products/')
+                          if (pathParts[1]) {
+                            await supabase.storage.from('products').remove([pathParts[1]])
+                          }
+                        }
+                        setProdImage('')
+                      }} 
+                      className="text-red-500 font-bold text-xs px-2 cursor-pointer"
+                    >
+                      Remove
+                    </button>
                   </div>
                 )}
               </div>

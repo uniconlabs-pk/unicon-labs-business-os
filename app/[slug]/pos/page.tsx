@@ -34,34 +34,28 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
   const [loading, setLoading] = useState(true)
   const [serviceType, setServiceType] = useState<'DINE-IN' | 'TAKEAWAY' | 'DELIVERY' | 'COUNTER'>('TAKEAWAY')
   
-  // Interface Theme State (Light Mode / Dark Mode Switcher)
   const [isDarkMode, setIsDarkMode] = useState(false)
   
-  // Waiter Attribution State
   const [waiters, setWaiters] = useState<any[]>([])
   const [selectedWaiter, setSelectedWaiter] = useState<any>(null)
 
-  // Customer & Delivery Metadata State
   const [customerName, setCustomerName] = useState('Walk-In Customer')
   const [customerPhone, setCustomerPhone] = useState('')
   const [deliveryAddress, setDeliveryAddress] = useState('')
   const [deliveryNote, setDeliveryNote] = useState('')
   const [crmStatus, setCrmStatus] = useState<'idle' | 'searching' | 'found' | 'new'>('idle')
 
-  // Assign Waiter Search & Text State for Smart Type Matching
   const [waiterSearchInput, setWaiterSearchInput] = useState('')
   const [showWaiterDropdown, setShowWaiterDropdown] = useState(false)
   const [waiterHighlightIndex, setWaiterHighlightIndex] = useState(-1)
   const waiterDropdownRef = useRef<HTMLDivElement>(null)
 
-  // New Customer Modal State (with optional address field and exact field sequence)
   const [showNewCustomerModal, setShowNewCustomerModal] = useState(false)
   const [newCustNameInput, setNewCustNameInput] = useState('')
   const [newCustEmailInput, setNewCustEmailInput] = useState('')
   const [newCustAddressInput, setNewCustAddressInput] = useState('')
   const [savingNewCustomer, setSavingNewCustomer] = useState(false)
 
-  // Security Gate & Staff Authentication States (with sessionStorage hydration)
   const [authenticatedStaff, setAuthenticatedStaff] = useState<any>(null)
   const [showSecurityGate, setShowSecurityGate] = useState(true)
   
@@ -70,10 +64,31 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
   const [activeZone, setActiveZone] = useState('ALL')
   const [selectedTable, setSelectedTable] = useState<any>(null)
 
-  const [tableCarts, setTableCarts] = useState<{ [key: string]: any[] }>({})
+  // Hydrate tableCarts from localStorage for browser refresh persistence
+  const [tableCarts, setTableCarts] = useState<{ [key: string]: any[] }>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`pos_table_carts_${slug}`)
+      if (saved) {
+        try { return JSON.parse(saved) } catch (e) { return {} }
+      }
+    }
+    return {}
+  })
+
   const [tableOrderNumbers, setTableOrderNumbers] = useState<{ [key: string]: { code: string, intVal: number } }>({})
   const [reservations, setReservations] = useState<any[]>([])
-  const [generalCart, setGeneralCart] = useState<any[]>([])
+
+  // Hydrate generalCart from localStorage for browser refresh persistence
+  const [generalCart, setGeneralCart] = useState<any[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`pos_general_cart_${slug}`)
+      if (saved) {
+        try { return JSON.parse(saved) } catch (e) { return [] }
+      }
+    }
+    return []
+  })
+
   const [generalOrderNumber, setGeneralOrderNumber] = useState<{ code: string, intVal: number } | null>(null)
 
   const [categories, setCategories] = useState<any[]>([])
@@ -81,15 +96,12 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
   const [addOnsProducts, setAddOnsProducts] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Catalog View Switcher States
   const [catalogViewMode, setCatalogViewMode] = useState<'grid' | 'list'>('grid')
   const [selectedListItem, setSelectedListItem] = useState<any>(null)
 
-  // Mirroring Dashboard Category Filter / Drilldown States
   const [selectedMotherCategoryFilter, setSelectedMotherCategoryFilter] = useState('ALL')
   const [selectedSubCategoryFilter, setSelectedSubCategoryFilter] = useState<string | null>(null)
 
-  // Favorites / Fast-Moving Items management (Supabase persisted)
   const [favorites, setFavorites] = useState<any[]>([])
   const [isFavoriteManagerOpen, setIsFavoriteManagerOpen] = useState(false)
   const [favSearchQuery, setFavSearchQuery] = useState('')
@@ -101,16 +113,13 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
   const [selectedAddons, setSelectedAddons] = useState<any[]>([])
   const [addonVariants, setAddonVariants] = useState<{ [addonId: string]: any }>({})
 
-  // Recall & Refund Sliding Drawer Modal States
   const [showRecallModal, setShowRecallModal] = useState(false)
   const [showRefundModal, setShowRefundModal] = useState(false)
 
-  // Service Charges, Discount, and Delivery Charges State
   const [serviceCharges, setServiceCharges] = useState<number>(0)
   const [discountAmount, setDiscountAmount] = useState<number>(0)
   const [deliveryCharges, setDeliveryCharges] = useState<number>(0)
 
-  // Settlement & Tender/Split Payment State
   const [showSettlementModal, setShowSettlementModal] = useState(false)
   const [isSplitPayment, setIsSplitPayment] = useState(false)
   const [singleMethod, setSingleMethod] = useState<'CASH' | 'CARD' | 'DIGITAL WALLET' | 'BANK TRANSFER' | 'CASH ON DELIVERY'>('CASH')
@@ -121,13 +130,24 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     { method: 'CARD', amount: 0 }
   ])
 
-  // Explicitly declared print state variables
   const [printOrderData, setPrintOrderData] = useState<any>(null)
   const [printKotData, setPrintKotData] = useState<any>(null)
 
   const [currentTime, setCurrentTime] = useState(new Date())
 
-  // Dynamic available payment methods based strictly on Service Type
+  // Persist table carts & general cart to localStorage on change
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`pos_table_carts_${slug}`, JSON.stringify(tableCarts))
+    }
+  }, [tableCarts, slug])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`pos_general_cart_${slug}`, JSON.stringify(generalCart))
+    }
+  }, [generalCart, slug])
+
   const availableTenderMethods = useMemo(() => {
     if (serviceType === 'DELIVERY') {
       return ['CASH ON DELIVERY', 'CARD', 'DIGITAL WALLET', 'BANK TRANSFER', 'CASH'] as const
@@ -135,7 +155,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     return ['CASH', 'CARD', 'DIGITAL WALLET', 'BANK TRANSFER'] as const
   }, [serviceType])
 
-  // Context-aware payment fallback: ONLY trigger when serviceType changes
   useEffect(() => {
     if (serviceType === 'DELIVERY') {
       setSingleMethod('CASH ON DELIVERY')
@@ -147,14 +166,12 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     }
   }, [serviceType])
 
-  // 1. Current Active Cart
   const currentCart = useMemo(() => {
     return profile?.modules?.hasTables && serviceType === 'DINE-IN' && selectedTable
       ? (tableCarts[selectedTable.id] || [])
       : generalCart
   }, [profile?.modules?.hasTables, serviceType, selectedTable, tableCarts, generalCart])
 
-  // 2. Active Order Number Session Lock
   const activeOrderMeta = useMemo(() => {
     const baseSeq = Number(business?.next_order_seq ?? 100000)
     const hasItems = currentCart.length > 0
@@ -186,7 +203,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
   const activeOrderNumber = activeOrderMeta?.code || 'PENDING'
   const activeOrderInt = activeOrderMeta?.intVal || Number(business?.next_order_seq ?? 100000)
 
-// Outside click & Escape key listener for Assign Waiter dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (waiterDropdownRef.current && !waiterDropdownRef.current.contains(event.target as Node)) {
@@ -206,14 +222,12 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     }
   }, [showWaiterDropdown])
 
-  // Filtered list of waiters matching the typed input
   const matchingWaiters = useMemo(() => {
     if (!waiterSearchInput.trim()) return waiters
     const query = waiterSearchInput.toLowerCase()
     return waiters.filter(w => (w.full_name || w.name || '').toLowerCase().includes(query))
   }, [waiters, waiterSearchInput])
 
-  // Zone Grouping Memoized
   const posGroupedZones = useMemo(() => {
     if (activeZone !== 'ALL') {
       return [{
@@ -247,7 +261,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     })).filter(g => g.tables.length > 0)
   }, [activeZone, tables, zones, business?.zone_arrangement])
 
-  // Category Tree Memoized
   const categoryTree = useMemo(() => {
     const flatList = categories || []
     const buildTree = (list: any[], parentId: string | null = null, depth = 1): any[] => {
@@ -300,7 +313,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     }
   }, [categories])
 
-  // DYNAMIC TAX & DUAL-TIER CALCULATION LOGIC (TOP-LEVEL HOOKS)
   const isManualTaxActive = Boolean(business?.enable_manual_tax)
   const isDualTaxActive = Boolean(business?.enable_dual_tax_tier)
   const manualTaxTerm = business?.manual_tax_term || 'EXCLUSIVE'
@@ -332,9 +344,9 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
   const grandTotal = useMemo(() => {
     if (manualTaxTerm === 'INCLUSIVE') {
-      return Math.max(0, taxableAmount) // Inclusive does not inflate gross total
+      return Math.max(0, taxableAmount)
     }
-    return Math.max(0, taxableAmount + calculatedTax) // Exclusive adds tax on top
+    return Math.max(0, taxableAmount + calculatedTax)
   }, [manualTaxTerm, taxableAmount, calculatedTax])
 
   const businessGstRate = activeTaxRate
@@ -346,7 +358,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     return () => clearInterval(timer)
   }, [])
 
-  // 1. Existing Session Hydration Effect
   useEffect(() => {
     const storedStaff = sessionStorage.getItem(`unicon_staff_session_${slug}`)
     if (storedStaff) {
@@ -360,7 +371,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     }
   }, [slug])
 
-  // 2. New Strict Single-Session Lock Registration Effect
   useEffect(() => {
     if (!business?.id || !authenticatedStaff?.id) return
 
@@ -376,7 +386,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     registerStrictSession()
   }, [business?.id, authenticatedStaff?.id])
 
-  // 3. Real-Time Force Logout Listener: Instantly lock POS terminal if admin force-logs out this staff member
   useEffect(() => {
     if (!business?.id || !authenticatedStaff?.id) return
 
@@ -412,7 +421,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     }
   }, [business?.id, authenticatedStaff?.id, slug])
 
-  // Beacon unload cleanup listener so closing tab or exiting releases session instantly
   useEffect(() => {
     const handleBeforeUnload = () => {
       const storedStaff = sessionStorage.getItem(`unicon_staff_session_${slug}`)
@@ -526,7 +534,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       }
       setBusiness(biz)
 
-      // Dynamically set browser tab title to "POS - [Tenant Name]"
       if (biz.name) {
         document.title = `POS - ${biz.name}`
       }
@@ -534,7 +541,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       const tenantProfile = getBusinessProfile(biz.business_type)
       setProfile(tenantProfile)
 
-      // Fetching from staff_profiles table with robust filtering for waiters
       const { data: staffList, error: staffErr } = await supabase
         .from('staff_profiles')
         .select('id, full_name, role, department')
@@ -569,7 +575,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         const addons = productData.filter((p: any) => p.category?.toUpperCase() === 'ADD ONS' || p.category?.toUpperCase() === 'ADD-ONS')
         setAddOnsProducts(addons)
 
-        // Load permanent favorites from database column `pos_favorites`
         if (biz.pos_favorites && Array.isArray(biz.pos_favorites) && biz.pos_favorites.length > 0) {
           const mappedFavs = biz.pos_favorites.map((id: string) => productData.find((p: any) => p.id === id)).filter(Boolean)
           setFavorites(mappedFavs)
@@ -600,7 +605,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
             setZones(orderedZones)
           }
 
-          // Select the very first table in the very first primary zone by sequence
           const firstZoneName = orderedZones[0]
           const firstZoneTables = tableData
             .filter(t => (t.zone || t.zone_name || 'MAIN HALL') === firstZoneName)
@@ -630,7 +634,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     fetchTenantData()
   }, [slug, router])
 
-  // REAL-TIME WEBSOCKET SUBSCRIPTION FOR LIVE SYNC ACROSS POS TERMINAL
   useEffect(() => {
     if (!business?.id) return
 
@@ -652,7 +655,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
           }
         }
       )
-      // --- EXACT ADDITION: Real-time listener for staff_profiles ---
       .on(
         'postgres_changes',
         {
@@ -880,6 +882,16 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     setCrmStatus('idle')
     setSelectedWaiter(null)
     setWaiterSearchInput('')
+    if (typeof window !== 'undefined') {
+      if (profile?.modules?.hasTables && serviceType === 'DINE-IN' && selectedTable) {
+        const updatedCarts = { ...tableCarts }
+        delete updatedCarts[selectedTable.id]
+        setTableCarts(updatedCarts)
+        localStorage.setItem(`pos_table_carts_${slug}`, JSON.stringify(updatedCarts))
+      } else {
+        localStorage.removeItem(`pos_general_cart_${slug}`)
+      }
+    }
   }
 
   const syncCustomerProfile = async () => {
@@ -1182,6 +1194,50 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     triggerPrintKot(kotPayload)
   }
 
+  const handleServeBillToCustomer = async () => {
+    if (currentCart.length === 0) {
+      alert('Cannot serve bill for an empty cart.')
+      return
+    }
+
+    const assignedOrderCode = activeOrderNumber !== 'PENDING' ? activeOrderNumber : 'KB-PENDING'
+    const generatedSerial = `SN-${Math.floor(100000 + Math.random() * 900000)}`
+
+    const receiptPayload = {
+      storeName: business?.name || 'KRUNCHY BITE',
+      address: business?.address || '',
+      phone: business?.phone || '',
+      strn: business?.manual_strn || business?.strn || '',
+      orderNo: assignedOrderCode,
+      serial_number: generatedSerial,
+      date: new Date().toLocaleString(),
+      staff: authenticatedStaff?.full_name || 'Staff',
+      waiter: (serviceType === 'DINE-IN' && selectedWaiter) ? (selectedWaiter?.full_name || selectedWaiter?.name || null) : null,
+      customerName: customerName.trim() || 'Walk-In Customer',
+      customerPhone: customerPhone.trim(),
+      deliveryAddress: deliveryAddress.trim(),
+      deliveryNote: deliveryNote.trim(),
+      serviceType,
+      items: currentCart,
+      subtotal: subtotal,
+      serviceCharges: serviceCharges,
+      discountAmount: discountAmount,
+      deliveryCharges: deliveryCharges,
+      calculatedTax: calculatedTax,
+      tax_rate: activeTaxRate,
+      tax_label: business?.manual_tax_type || 'GST',
+      tax_term: manualTaxTerm,
+      grandTotal: grandTotal,
+      primaryPaymentMethod: 'UN PAID',
+      paymentStatusLabel: 'Payment Status:',
+      cash_received: 0,
+      change_returned: 0,
+      fbrPosId: null
+    }
+
+    triggerPrintReceipt(receiptPayload)
+  }
+
   const handleSendToDispatch = async () => {
     if (currentCart.length === 0) return
     if (!validateDeliveryRequirement()) return
@@ -1398,6 +1454,9 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       const updatedCarts = { ...tableCarts }
       delete updatedCarts[selectedTable.id]
       setTableCarts(updatedCarts)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`pos_table_carts_${slug}`, JSON.stringify(updatedCarts))
+      }
 
       setTableOrderNumbers(prev => {
         const copy = { ...prev }
@@ -1407,6 +1466,9 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     } else {
       setGeneralCart([])
       setGeneralOrderNumber(null)
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(`pos_general_cart_${slug}`)
+      }
     }
 
     const receiptPayload = {
@@ -1551,7 +1613,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         />
       )}
 
-      {/* HEADER BAR */}
       <header className="bg-slate-900 text-white border-b border-slate-800 px-6 py-4 flex justify-between items-center shrink-0 shadow-sm">
         <div className="flex items-center space-x-3">
           <div className="w-16 h-16 bg-slate-800 border border-slate-700 text-white rounded-xl flex items-center justify-center font-black text-lg shadow-inner overflow-hidden">
@@ -1652,10 +1713,8 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         </div>
       </header>
 
-      {/* MAIN WORKSPACE */}
       <div className="flex-1 flex overflow-hidden">
         
-        {/* COLUMN 1: DINE-IN TABLES OR FAVORITE/FAST-MOVING ITEMS WITH UNICON BADGE FOOTER */}
         <aside className={`w-80 border-r flex flex-col shrink-0 shadow-2xs transition-colors duration-300 ${isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-gray-200 text-gray-800'}`}>
           <div className={`p-3 border-b space-y-2 transition-colors ${isDarkMode ? 'border-slate-800' : 'border-gray-200'}`}>
             <div className={`grid grid-cols-3 gap-1 p-1 rounded-xl text-[11px] font-bold ${isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-gray-100 text-gray-600'}`}>
@@ -1869,7 +1928,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
             )}
           </div>
 
-          {/* PERMANENT UNICON LABS BRANDING BADGE FOOTER */}
           <div className={`p-3 border-t shrink-0 flex justify-center items-center ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
             <img 
               src="/unicon_badge.jpg" 
@@ -1879,7 +1937,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
           </div>
         </aside>
 
-        {/* COLUMN 2: PRODUCT CATALOG */}
         <section className={`flex-1 flex flex-col overflow-hidden transition-colors duration-300 ${isDarkMode ? 'bg-slate-950' : 'bg-gray-100'}`}>
           
           <div className={`p-3 border-b flex flex-col gap-2 shadow-2xs transition-colors ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
@@ -1913,7 +1970,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                 )}
               </div>
 
-              {/* Light/Dark Mode Toggle Switch */}
               <button
                 type="button"
                 onClick={() => setIsDarkMode(!isDarkMode)}
@@ -2039,7 +2095,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                 </p>
               </div>
             ) : catalogViewMode === 'grid' ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 overflow-y-auto flex-1 content-start" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', maxHeight: '100%' }}>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 overflow-y-auto flex-1 content-start justify-start" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 180px))', maxHeight: '100%' }}>
                 {filteredProducts.length > 0 ? filteredProducts.map(item => {
                   const dealSummary = getDealItemsSummary(item)
                   return (
@@ -2098,7 +2154,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-10 gap-4 flex-1 overflow-hidden">
-                {/* Column A: Left Side (60% width = md:col-span-6) - Scrollable list only */}
                 <div className={`md:col-span-6 border rounded-2xl overflow-y-auto divide-y shadow-2xs h-full ${isDarkMode ? 'bg-slate-900 border-slate-800 divide-slate-800 text-slate-100' : 'bg-white border-gray-200 divide-gray-100 text-gray-900'}`}>
                   {filteredProducts.length > 0 ? filteredProducts.map(item => {
                     const isSelected = selectedListItem?.id === item.id
@@ -2135,7 +2190,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                   )}
                 </div>
 
-                {/* Column B: Right Side (40% width = md:col-span-4) - Fixed, Scrollbar-free */}
                 <div className={`md:col-span-4 border rounded-2xl p-5 flex flex-col justify-between shadow-2xs h-full overflow-hidden ${isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-gray-200 text-gray-900'}`}>
                   {selectedListItem ? (
                     <div className="space-y-3 overflow-y-auto pr-1 flex-1">
@@ -2154,7 +2208,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                         <p className="text-[10px] uppercase font-bold text-gray-400">{selectedListItem.category || 'General'}</p>
                         <p className={`text-xs pt-1 leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>{selectedListItem.description || 'No detailed description available for this item.'}</p>
                         
-                        {/* Expanded Includes Box without height restriction */}
                         {getDealItemsSummary(selectedListItem) && (
                           <div className={`text-[11px] p-2.5 rounded-xl border space-y-1 mt-2 ${isDarkMode ? 'text-emerald-300 bg-emerald-950/40 border-emerald-900/60' : 'text-emerald-800 bg-emerald-50 border-emerald-200'}`}>
                             <span className="font-black uppercase block">🍔 Includes in Deal/Combo:</span>
@@ -2189,7 +2242,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
           </div>
         </section>
 
-        {/* COLUMN 3: ACTIVE CART & CHECKOUT */}
         <aside className={`w-96 border-l flex flex-col shrink-0 shadow-2xs transition-colors duration-300 ${isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-gray-200 text-gray-800'}`}>
           {!profile.modules.hasTables && (
             <div className={`px-4 py-3 border-b flex justify-between items-center text-[11px] ${isDarkMode ? 'bg-slate-800/80 border-slate-800 text-slate-200' : 'bg-slate-50 border-gray-200 text-slate-900'}`}>
@@ -2198,7 +2250,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
             </div>
           )}
 
-          {/* CUSTOMER DETAILS & ASSIGN WAITER BLOCK */}
           <div className={`p-3 border-b space-y-2 text-xs transition-colors ${isDarkMode ? 'border-slate-800 bg-slate-800/40' : 'border-gray-200 bg-gray-50/80'}`}>
             <div className="flex justify-between items-center">
               <div className="flex items-center space-x-1.5">
@@ -2245,7 +2296,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
               />
             </div>
 
-            {/* ASSIGN WAITER FIELD */}
             {profile.modules.hasTables && serviceType === 'DINE-IN' && (
               <div className="relative" ref={waiterDropdownRef}>
                 <label className="block text-[10px] font-bold text-gray-400 mb-0.5 uppercase">Assign Waiter</label>
@@ -2286,7 +2336,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                     }
                   }}
                   onKeyDown={e => {
-                    const totalOptions = matchingWaiters.length + 1 // +1 for "-- No Waiter Assigned --"
+                    const totalOptions = matchingWaiters.length + 1
                     if (!showWaiterDropdown) {
                       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
                         setShowWaiterDropdown(true)
@@ -2547,6 +2597,16 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                 </button>
               )}
 
+              {serviceType === 'DINE-IN' && (
+                <button 
+                  onClick={handleServeBillToCustomer}
+                  disabled={currentCart.length === 0 || isTableLockedByReservation}
+                  className="w-full py-2.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-black rounded-xl text-xs transition uppercase tracking-wide cursor-pointer shadow-sm"
+                >
+                  🧾 Serve Bill to Customer
+                </button>
+              )}
+
               {effectiveModules.hasDispatchQueue && serviceType === 'DELIVERY' && (
                 <button 
                   onClick={handleSendToDispatch}
@@ -2571,7 +2631,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
       </div>
 
-      {/* MODAL: ADD NEW CUSTOMER RECORD */}
       {showNewCustomerModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <form onSubmit={handleSaveNewCustomer} className={`rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-2xl ${isDarkMode ? 'bg-slate-900 text-white border border-slate-800' : 'bg-white text-gray-900'}`}>
@@ -2646,7 +2705,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         </div>
       )}
 
-      {/* MODAL: CUSTOMIZE ITEM */}
       {showCustomizeModal && customizingItem && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className={`rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] overflow-hidden ${isDarkMode ? 'bg-slate-900 text-white border border-slate-800' : 'bg-white text-gray-900'}`}>
@@ -2803,7 +2861,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         </div>
       )}
 
-      {/* MODAL: SETTLEMENT, TENDER MODES, SPLIT PAYMENT */}
       {showSettlementModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className={`rounded-2xl p-6 w-full max-w-lg space-y-4 shadow-2xl ${isDarkMode ? 'bg-slate-900 text-white border border-slate-800' : 'bg-white text-gray-900'}`}>
@@ -2971,7 +3028,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         </div>
       )}
 
-      {/* SLIDING DRAWER / MODAL: RECALL / SEARCH */}
       {showRecallModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-end z-50">
           <div className={`w-full md:w-1/2 min-w-[50vw] h-full shadow-2xl flex flex-col ${isDarkMode ? 'bg-slate-900 text-white border-l border-slate-800' : 'bg-white text-gray-900 border-l border-gray-200'}`}>
@@ -2989,7 +3045,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         </div>
       )}
 
-      {/* SLIDING DRAWER / MODAL: REFUNDS */}
       {showRefundModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-end z-50">
           <div className={`w-full md:w-1/2 min-w-[50vw] h-full shadow-2xl flex flex-col ${isDarkMode ? 'bg-slate-900 text-white border-l border-slate-800' : 'bg-white text-gray-900 border-l border-gray-200'}`}>
@@ -3007,7 +3062,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         </div>
       )}
 
-      {/* HIDDEN THERMAL PRINT DOM STAGING */}
       <div className="hidden print:block print:w-[80mm] print:m-0 print:p-0">
         <style jsx global>{`
           @media print {
@@ -3094,7 +3148,9 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                 cashier_name: authenticatedStaff?.full_name || 'Staff',
                 customer_note: printOrderData.deliveryNote ? printOrderData.deliveryNote : undefined,
                 cash_received: printOrderData.cash_received,
-                change_returned: printOrderData.change_returned
+                change_returned: printOrderData.change_returned,
+                payment_method: printOrderData.primaryPaymentMethod,
+                paymentStatusLabel: printOrderData.paymentStatusLabel
               }}
               cart={(printOrderData.items || []).map((i: any) => ({
                 name: i.name,

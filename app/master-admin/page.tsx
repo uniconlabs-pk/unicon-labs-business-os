@@ -322,6 +322,7 @@ export default function MasterAdminPanel() {
       has_storefront: true,
       has_erp: true,
       has_dispatch_queue: true,
+      has_tables: newType === 'restaurant',
       address: newAddress,
       phone: newPhone,
       email: newEmail,

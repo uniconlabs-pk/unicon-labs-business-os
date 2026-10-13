@@ -1,5 +1,4 @@
 'use client'
-
 import React from 'react'
 
 interface ThermalReceiptProps {
@@ -38,6 +37,7 @@ interface ThermalReceiptProps {
     cash_received?: number | string
     change_returned?: number | string
     payment_method?: string
+    paymentStatusLabel?: string
     customer_name?: string
     customer_phone?: string
   }
@@ -91,23 +91,29 @@ function numberToWords(num: number): string {
 export default function ThermalReceipt({ business, order, cart, customer, serviceCharges: serviceChargesProp, discount: discountProp }: ThermalReceiptProps) {
   const currency = business.currency_symbol || 'Rs.'
   const slug = business.slug || 'krunchy-bite'
-  
-  const orderIdShort = order.id ? order.id : 'POS-1001'
-  const serialNumberText = order.serial_number || `SN-${order.id ? order.id.slice(0, 8).toUpperCase() : '1001'}`
+
+  const orderPrefix = slug.split('-').map(w => w[0]).join('').toUpperCase() || 'ORD'
+  const rawOrderId = order.id ? String(order.id) : '100012'
+  const numericOrderId = rawOrderId.replace(/[^0-9]/g, '')
+  const orderIdShort = `${orderPrefix}-${numericOrderId || '100012'}`
+
+  const serialNumberText = order.serial_number || `SN-${numericOrderId || '100012'}`
+
+  const tenantSlogan = slug.toLowerCase().includes('mirchi') 
+    ? 'SPICE IS THE REAL TASTE' 
+    : 'TASTY - JUICY - SPICY'
   
   const isDelivery = order.order_type?.toLowerCase() === 'delivery'
   const subtotal = order.subtotal !== undefined ? parseFloat(String(order.subtotal)) : cart.reduce((sum, item) => sum + (item.finalUnitPrice * item.quantity), 0)
   const deliveryCharges = isDelivery ? (order.delivery_charges !== undefined ? parseFloat(String(order.delivery_charges)) : 200) : 0
   const taxAmount = order.tax_amount !== undefined ? parseFloat(String(order.tax_amount)) : 0
   
-  // 1. Normalize Service Charges
   const explicitServiceCharges = serviceChargesProp !== undefined && serviceChargesProp !== null ? serviceChargesProp 
     : ((order as any).service_charges !== undefined && (order as any).service_charges !== null && (order as any).service_charges !== '' ? (order as any).service_charges 
     : ((order as any).serviceCharges !== undefined ? (order as any).serviceCharges : 0))
   
   const serviceCharges = parseFloat(String(explicitServiceCharges)) || 0
 
-  // 2. Normalize Discount
   const explicitDiscount = discountProp !== undefined && discountProp !== null ? discountProp 
     : (order.discount !== undefined && order.discount !== null && order.discount !== '' ? order.discount 
     : ((order as any).discount_amount !== undefined && (order as any).discount_amount !== null && (order as any).discount_amount !== '' ? (order as any).discount_amount 
@@ -135,7 +141,6 @@ export default function ThermalReceipt({ business, order, cart, customer, servic
   const amountInWords = `Rupees ${numberToWords(grandTotal)} only.`
   const formatPrice = (val: number) => val.toLocaleString('en-PK', { minimumFractionDigits: 0 })
 
-  // 3. Normalize Cash Received & Change Returned for recalled orders
   let parsedTenderBreakdown: any[] = []
   try {
     if (typeof order.tender_breakdown === 'string' && order.tender_breakdown.trim() !== '' && order.tender_breakdown !== '[]') {
@@ -171,16 +176,14 @@ export default function ThermalReceipt({ business, order, cart, customer, servic
   return (
     <div className="w-[80mm] m-0 p-2 bg-white text-black font-sans text-[11px] leading-tight select-none">
       
-      {/* 1. Brand Thermal Logo & Header */}
       <div className="text-center mb-1">
         <img 
           src={`/tenants/${slug}/logo-thermal.png`} 
           alt="Thermal Logo" 
-          className="w-40 h-40 mx-auto object-contain mb-1 grayscale contrast-200" 
+          className="w-44 h-auto mx-auto object-contain mb-1 grayscale contrast-200"
         />
-        <h1 className="font-black text-base tracking-wider uppercase text-black">{business.name}</h1>
         <div className="bg-black text-white text-[9px] font-black uppercase px-2 py-0.5 rounded tracking-widest inline-block my-0.5">
-          TASTY - JUICY - SPICY
+          {tenantSlogan}
         </div>
         {business.address && <p className="text-[10px] mt-0.5 leading-snug">{business.address}</p>}
         <p className="text-[10px] leading-snug">
@@ -195,13 +198,13 @@ export default function ThermalReceipt({ business, order, cart, customer, servic
 
       {/* 2. Order Metadata & Serial Token */}
       <div className="space-y-0.5 mb-2 pb-1.5 border-b border-black text-[11px]">
-        <div className="flex justify-between font-bold">
-          <span>Serial Number:</span>
-          <span className="font-mono">{serialNumberText}</span>
-        </div>
         <div className="flex justify-between">
           <span className="font-semibold">Date/Time:</span>
           <span className="font-mono">{new Date(order.created_at || Date.now()).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+        </div>
+        <div className="flex justify-between font-bold">
+          <span>Serial Number:</span>
+          <span className="font-mono">{serialNumberText}</span>
         </div>
         <div className="flex justify-between">
           <span className="font-semibold">Order Number:</span>
@@ -210,10 +213,6 @@ export default function ThermalReceipt({ business, order, cart, customer, servic
         <div className="flex justify-between">
           <span className="font-semibold">Merchant Name:</span>
           <span>{order.cashier_name || 'Sheraz Aftab'}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="font-semibold">Payment Mode:</span>
-          <span>{paymentMethod}</span>
         </div>
         <div className="flex justify-between">
           <span className="font-semibold">Order Type:</span>
@@ -231,6 +230,10 @@ export default function ThermalReceipt({ business, order, cart, customer, servic
             <span className="font-bold">{order.waiter}</span>
           </div>
         )}
+        <div className="flex justify-between">
+          <span className="font-semibold">{order.paymentStatusLabel || 'Payment Mode:'}</span>
+          <span className={paymentMethod === 'UN PAID' ? 'font-black uppercase' : ''}>{paymentMethod}</span>
+        </div>
         {order.rider && (
           <div className="flex justify-between">
             <span className="font-semibold">Assigned Rider:</span>
@@ -239,7 +242,6 @@ export default function ThermalReceipt({ business, order, cart, customer, servic
         )}
       </div>
 
-      {/* 3. Customer Details */}
       <div className="mb-2 pb-1.5 border-b border-black space-y-0.5 text-[11px]">
         <p className="font-black uppercase tracking-wider mb-0.5 text-black text-xs">CUSTOMER DETAIL</p>
         <div className="border-b border-black pb-1 mb-1">
@@ -260,7 +262,6 @@ export default function ThermalReceipt({ business, order, cart, customer, servic
         </div>
       </div>
 
-      {/* 4. Order Items Detail */}
       <div className="mb-2 pb-1.5 border-b border-black text-[11px]">
         <p className="font-black uppercase tracking-wider text-xs mb-1">ORDER DETAIL</p>
         <div className="flex justify-between font-black text-[11px] border-b border-dotted border-black pb-0.5 mb-1">
@@ -276,14 +277,13 @@ export default function ThermalReceipt({ business, order, cart, customer, servic
             </div>
             {item.selectedModifiers && item.selectedModifiers.map((m, mIdx) => (
               <p key={mIdx} className="text-[10px] pl-3 text-gray-800">
-                {m.optionName} {m.price > 0 ? `(+{formatPrice(m.price)})` : ''}
+                {m.optionName} {m.price > 0 ? `(+${formatPrice(m.price)})` : ''}
               </p>
             ))}
           </div>
         ))}
       </div>
 
-      {/* 5. Financial Summary */}
       <div className="border-t border-dotted border-black pt-1 space-y-0.5 text-[11px] mb-2 [break-inside:avoid] page-break-inside-avoid">
         <div className="flex justify-between font-black text-xs border-b border-dotted border-black pb-1 mb-1">
           <span>GROSS AMOUNT</span>
@@ -309,7 +309,6 @@ export default function ThermalReceipt({ business, order, cart, customer, servic
         </div>
       </div>
 
-      {/* 6. Total Amount & Amount in Words */}
       <div className="[break-inside:avoid] page-break-inside-avoid">
         <div className="border-t-2 border-b-2 border-black py-1.5 mb-1 flex justify-between items-center text-sm font-black">
           <span>TOTAL AMOUNT</span>
@@ -320,7 +319,6 @@ export default function ThermalReceipt({ business, order, cart, customer, servic
         </div>
       </div>
 
-      {/* 6b. Transaction Summary for CASH (Excluded for COD) */}
       {isCashPayment && !isCOD && (
         <div className="mb-2 pb-2 border-b border-black [break-inside:avoid] page-break-inside-avoid text-[11px]">
           <p className="font-black uppercase tracking-wider mb-1 text-black text-xs">TRANSACTION SUMMARY</p>
@@ -335,7 +333,6 @@ export default function ThermalReceipt({ business, order, cart, customer, servic
         </div>
       )}
 
-      {/* 7. Special Instruction Note */}
       {order.customer_note && order.customer_note.trim() !== '' && (
         <div className="mb-2 [break-inside:avoid] page-break-inside-avoid">
           <div className="bg-black text-white font-black uppercase text-[10px] px-2 py-0.5 mb-1 tracking-wider inline-block">
@@ -345,7 +342,6 @@ export default function ThermalReceipt({ business, order, cart, customer, servic
         </div>
       )}
 
-      {/* 8. Feedback QR Code */}
       <div className="text-center my-3 border-t border-black pt-2 [break-inside:avoid] page-break-inside-avoid">
         <div className="w-24 h-24 mx-auto border border-black p-1 bg-white flex items-center justify-center">
           <img src={`/tenants/${slug}/qr.png`} alt="Feedback QR" className="w-full h-full object-contain" />
@@ -353,11 +349,17 @@ export default function ThermalReceipt({ business, order, cart, customer, servic
         <p className="text-[10px] mt-1 font-bold text-black">You can share your feedback</p>
       </div>
 
-      {/* 9. Closing Footer */}
       <div className="text-center text-[10px] font-bold space-y-0.5 pt-2 border-t border-dotted border-black leading-relaxed [break-inside:avoid] page-break-inside-avoid">
         <p>Thank you for choosing {business.name}!</p>
         <p>See you again soon!</p>
         <p>.</p>
+        <div className="my-1">
+          <img 
+            src="/ul-trp-logo.png" 
+            alt="Unicon Labs Logo" 
+            className="w-15 h-auto mx-auto object-contain grayscale contrast-200"
+          />
+        </div>
         <p>Designed & Powered By:</p>
         <p>UNICON LABS</p>
         <p>http://www.unicon-labs.com</p>
