@@ -764,7 +764,7 @@ export default function UniconLabsLandingPage() {
         {/* FOOTER BOTTOM LINKS WITH "BACK TO TOP" */}
         <div className="max-w-7xl mx-auto pt-4 pb-2 flex flex-col items-center text-xs text-blue-300 font-medium relative z-10 gap-3">
           <div className="flex flex-col md:flex-row justify-between items-center w-full">
-            <p>© 2026 {headerBrand}. All rights reserved.</p>
+            <p>© 2026 <a href="/master-admin" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-300 underline cursor-pointer">{headerBrand}</a>. All rights reserved.</p>
             <div className="flex flex-wrap justify-center items-center gap-4 md:space-x-6 mt-3 md:mt-0">
               <span className="hover:text-cyan-300 cursor-pointer">Privacy Policy</span>
               <span className="hover:text-cyan-300 cursor-pointer">Terms of Service</span>
