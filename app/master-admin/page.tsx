@@ -90,6 +90,7 @@ export default function MasterAdminPanel() {
   const [resetTables, setResetTables] = useState(true)
   const [resetSequences, setResetSequences] = useState(true)
   const [resetReturns, setResetReturns] = useState(true)
+  const [resetCashLiquidity, setResetCashLiquidity] = useState(true) // 👈 ADDED
   const [isResetting, setIsResetting] = useState(false)
 
   // New Tenant Modal State
@@ -279,6 +280,9 @@ export default function MasterAdminPanel() {
       if (resetReturns) {
         await supabase.from('order_refunds').delete().eq('business_id', resettingTenant.id)
         await supabase.from('sales_returns').delete().eq('business_id', resettingTenant.id)
+      }
+      if (resetCashLiquidity) { // 👈 ADDED
+        await supabase.from('cash_liquidity_transactions').delete().eq('business_id', resettingTenant.id)
       }
       if (resetTables) {
         await supabase.from('tables').update({ status: 'available' }).eq('business_id', resettingTenant.id)
@@ -693,6 +697,12 @@ export default function MasterAdminPanel() {
                   <input type="checkbox" checked={resetReturns} onChange={e => setResetReturns(e.target.checked)} className="rounded bg-gray-800 border-gray-700 text-amber-500 focus:ring-0 w-4 h-4" />
                   <span className="text-white font-semibold">Delete all Sales Return Receipts / Refunds (`order_refunds`, `sales_returns`)</span>
                 </label>
+                {/* 👇 ADDED START */}
+                <label className="flex items-center space-x-3 cursor-pointer">
+                  <input type="checkbox" checked={resetCashLiquidity} onChange={e => setResetCashLiquidity(e.target.checked)} className="rounded bg-gray-800 border-gray-700 text-amber-500 focus:ring-0 w-4 h-4" />
+                  <span className="text-white font-semibold">Delete all Cash Liquidity Reports (`cash_liquidity_transactions`)</span>
+                </label>
+                {/* 👇 ADDED END */}
                 <label className="flex items-center space-x-3 cursor-pointer">
                   <input type="checkbox" checked={resetTables} onChange={e => setResetTables(e.target.checked)} className="rounded bg-gray-800 border-gray-700 text-amber-500 focus:ring-0 w-4 h-4" />
                   <span className="text-white font-semibold">Reset all dine-in tables back to 'available'</span>

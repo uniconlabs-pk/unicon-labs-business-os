@@ -1375,6 +1375,16 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
     const shouldRouteToDispatch = !effectiveModules.hasKDS && effectiveModules.hasDispatchQueue && serviceType === 'DELIVERY'
 
+    // 1. Determine exact initial settlement status based on rules:
+    // - Dine-In with a Waiter -> PENDING_CASH (Waiter Liability)
+    // - Delivery COD at POS -> PENDING_CASH (Pending Cash Clearing Pool)
+    // - Counter / Takeaway / Direct Cash -> SETTLED (Instant Cash Inflow)
+    // Delivery and Dine-In with waiter are strictly PENDING_CASH. Counter/Takeaway are SETTLED.
+    const isDineInWithWaiter = serviceType === 'DINE-IN' && selectedWaiter;
+    const isDeliveryOrder = serviceType === 'DELIVERY';
+    
+    const initialStatus = (isDineInWithWaiter || isDeliveryOrder) ? 'PENDING_CASH' : 'SETTLED';
+
     const orderPayload = {
       business_id: business.id,
       slug: slug,
@@ -1400,6 +1410,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       tender_breakdown: tenderBreakdownList,
       change_returned: changeReturned,
       serial_number: generatedSerial,
+      settlement_status: initialStatus,
       ...(shouldRouteToDispatch ? { dispatch_status: 'pending' } : {}),
       ...(isFbrSyncActive ? {
         fbr_pos_id: business.fbr_pos_id,
@@ -1419,6 +1430,22 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       console.error('Detailed save error message:', orderErr.message)
       alert(`Error saving order: ${orderErr.message || JSON.stringify(orderErr)}`)
       return
+    }
+
+    // 2. If it's an immediate settled sale (Counter/Takeaway paid with Cash/Card), 
+    // record the cash liquidity transaction instantly so it populates the Cash Liquidity Report!
+    if (initialStatus === 'SETTLED' && insertedOrder?.id) {
+      await supabase.from('cash_liquidity_transactions').insert([{
+        business_id: business.id,
+        invoice_id: insertedOrder.id,
+        staff_id: authenticatedStaff?.id || 'POS_COUNTER',
+        staff_name: authenticatedStaff?.full_name || 'Counter Cashier',
+        billed_amount: totalSnapshot,
+        amount_received: totalSnapshot - discountSnapshot,
+        discount_amount: discountSnapshot,
+        payment_method: paymentMethodSnapshot,
+        notes: 'Instant POS counter settlement'
+      }])
     }
 
     try {

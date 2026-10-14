@@ -29,9 +29,18 @@ export default function TenantDashboard({ params }: PageProps) {
   const [uploadingBanner, setUploadingBanner] = useState(false)
 
   // Reports & Database Full-Screen View State & Collapsible Menu State
-  const [activeReportView, setActiveReportView] = useState<'sales' | 'sales_returns' | 'customers' | 'staff' | null>(null)
+  const [activeReportView, setActiveReportView] = useState<'sales' | 'sales_returns' | 'cash_liquidity' | 'customers' | 'staff' | null>(null)
   const [isReportsMenuOpen, setIsReportsMenuOpen] = useState(false)
   
+  // Cash Liquidity Report & Batch Settlement States
+  const [cashLiquidityData, setCashLiquidityData] = useState<any[]>([])
+  const [loadingLiquidity, setLoadingLiquidity] = useState(false)
+  const [showSettlementModal, setShowSettlementModal] = useState(false)
+  const [selectedStaffForSettlement, setSelectedStaffForSettlement] = useState('')
+  const [pendingOrdersForStaff, setPendingOrdersForStaff] = useState<any[]>([])
+  const [settlementInputs, setSettlementInputs] = useState<{ [orderId: string]: { received: string; discount: string; notes: string } }>({})
+  const [processingSettlement, setProcessingSettlement] = useState(false)
+
   // Reports Filter States
   const [salesReportData, setSalesReportData] = useState<any[]>([])
   const [loadingSales, setLoadingSales] = useState(false)
@@ -76,7 +85,7 @@ export default function TenantDashboard({ params }: PageProps) {
   const [editHasErp, setEditHasErp] = useState(true)
   const [editHasTables, setEditHasTables] = useState(false)
 
-  // Staff Management Drawer State (Right slide-over, ~35% screen size)
+  // Staff Management Drawer State
   const [showStaffDrawer, setShowStaffDrawer] = useState(false)
   const [staffList, setStaffList] = useState<any[]>([])
   const [editingStaffId, setEditingStaffId] = useState<string | null>(null)
@@ -89,7 +98,7 @@ export default function TenantDashboard({ params }: PageProps) {
   const [savingStaff, setSavingStaff] = useState(false)
   const [badgePreviewStaff, setBadgePreviewStaff] = useState<any | null>(null)
 
-  // Active POS Sessions Management State (Step 2)
+  // Active POS Sessions Management State
   const [activeSessionsList, setActiveSessionsList] = useState<any[]>([])
   const [loadingSessions, setLoadingSessions] = useState(false)
 
@@ -98,7 +107,6 @@ export default function TenantDashboard({ params }: PageProps) {
   const [newStaffDept, setNewStaffDept] = useState('General')
   const [newStaffCustomToken, setNewStaffCustomToken] = useState('')
 
-  // Concern 1 & 2: Dynamic Departments & Roles States
   const [departments, setDepartments] = useState<string[]>(['General', 'Kitchen', 'Service', 'Management'])
   const [newDeptInput, setNewDeptInput] = useState('')
   const [roles, setRoles] = useState<string[]>(['Cashier', 'Chef / Kitchen', 'Store Manager', 'Admin', 'Waiter', 'Delivery Rider'])
@@ -125,7 +133,6 @@ export default function TenantDashboard({ params }: PageProps) {
   const [editNextKotSeq, setEditNextKotSeq] = useState<string>('100000')
   const [editNextSrrSeq, setEditNextSrrSeq] = useState<string>('100000')
 
-  // Fetch Active Sessions with direct staff profile join for instant, accurate details
   const fetchActiveSessions = async (businessId: string) => {
     if (!businessId) return
     setLoadingSessions(true)
@@ -159,7 +166,6 @@ export default function TenantDashboard({ params }: PageProps) {
     setLoadingSessions(false)
   }
 
-  // Force Logout Active Session Handler (Step 2)
   const handleForceLogoutSession = async (sessionId: string, staffName: string) => {
     if (!confirm(`Are you sure you want to force logout ${staffName || 'this staff member'}? This will immediately terminate their active POS session and release the device lock.`)) return
     
@@ -212,7 +218,6 @@ export default function TenantDashboard({ params }: PageProps) {
       setEditNextKotSeq(String(biz.next_kot_seq ?? 100000))
       setEditNextSrrSeq(String(biz.next_srr_seq ?? 100000))
 
-      // Dynamically update browser tab title to Tenant Name
       if (biz.name) {
         document.title = biz.name
       }
@@ -240,10 +245,7 @@ export default function TenantDashboard({ params }: PageProps) {
       })
 
       if (sData) setStaffList(sData)
-      
-      // Fetch active sessions on load
       fetchActiveSessions(biz.id)
-
       setLoading(false)
     }
 
@@ -282,6 +284,122 @@ export default function TenantDashboard({ params }: PageProps) {
     setLoadingSalesReturns(false)
   }
 
+  // Fetch Cash Liquidity Transactions
+  const fetchCashLiquidityReport = async () => {
+    if (!business?.id) return
+    setLoadingLiquidity(true)
+    const { data, error } = await supabase
+      .from('cash_liquidity_transactions')
+      .select('*')
+      .eq('business_id', business.id)
+      .order('created_at', { ascending: false })
+
+    if (!error && data) {
+      setCashLiquidityData(data)
+    }
+    setLoadingLiquidity(false)
+  }
+
+  // Fetch Pending Orders for a Specific Staff Member
+  const fetchPendingOrdersForStaff = async (staffName: string) => {
+    if (!business?.id || !staffName) return
+
+    const cleanTargetName = staffName.trim().toLowerCase()
+
+    // Query strictly for orders that are NOT settled at the database level to optimize performance and accuracy
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('business_id', business.id)
+      .neq('settlement_status', 'SETTLED')
+      .order('created_at', { ascending: false })
+
+    if (!error && data) {
+      const pendingForThisStaff = data.filter(ord => {
+        const orderWaiter = (ord.waiter_name || '').toLowerCase().trim()
+        const orderRider = (ord.rider_name || ord.rider || '').toLowerCase().trim()
+
+        // Match staff name against waiter or rider
+        const matchesStaff = (orderWaiter === cleanTargetName) || (orderRider === cleanTargetName) || orderWaiter.includes(cleanTargetName) || orderRider.includes(cleanTargetName)
+        if (!matchesStaff) return false
+
+        // Double check settlement status desync prevention
+        const isSettled = (ord.settlement_status || '').toUpperCase() === 'SETTLED'
+        if (isSettled) return false
+
+        return true
+      })
+
+      setPendingOrdersForStaff(pendingForThisStaff)
+      const initialMap: any = {}
+      pendingForThisStaff.forEach(ord => {
+        initialMap[ord.id] = {
+          received: String(ord.total_amount || 0),
+          discount: '0',
+          notes: ''
+        }
+      })
+      setSettlementInputs(initialMap)
+    } else {
+      console.error('Error fetching orders for staff settlement:', error?.message)
+    }
+  }
+
+  // Submit Batch Settlement
+  const handleProcessBatchSettlement = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedStaffForSettlement || pendingOrdersForStaff.length === 0) {
+      alert('Please select a staff member and at least one pending order.')
+      return
+    }
+
+    setProcessingSettlement(true)
+    try {
+      // Resolve staff name cleanly from staffList
+      const matchedStaffObj = staffList.find(st => st.id === selectedStaffForSettlement || st.full_name === selectedStaffForSettlement)
+      const staffIdToSave = matchedStaffObj ? matchedStaffObj.id : null
+      const staffNameVal = matchedStaffObj ? matchedStaffObj.full_name : selectedStaffForSettlement
+
+      for (const ord of pendingOrdersForStaff) {
+        const input = settlementInputs[ord.id]
+        if (!input) continue
+
+        // Prevent duplicate liquidity logging if order is already settled
+        if (ord.settlement_status === 'SETTLED') continue
+
+        const billed = parseFloat(ord.total_amount) || 0
+        const received = parseFloat(input.received) || 0
+        const discount = parseFloat(input.discount) || 0
+
+        await supabase.from('cash_liquidity_transactions').insert([{
+          business_id: business.id,
+          invoice_id: ord.id,
+          staff_id: staffIdToSave,
+          staff_name: staffNameVal,
+          billed_amount: billed,
+          amount_received: received,
+          discount_amount: discount,
+          payment_method: 'CASH',
+          notes: input.notes || 'Batch cash drop settlement'
+        }])
+
+        await supabase.from('orders').update({
+          settlement_status: 'SETTLED',
+          settled_at: new Date().toISOString(),
+          settlement_shortage: discount
+        }).eq('id', ord.id)
+      }
+
+      alert('Batch cash drop settled successfully! Ledgers updated.')
+      setShowSettlementModal(false)
+      fetchSalesReport()
+      if (activeReportView === 'cash_liquidity') fetchCashLiquidityReport()
+    } catch (err: any) {
+      alert(`Settlement failed: ${err.message}`)
+    }
+    setProcessingSettlement(false)
+  }
+
   // Fetch Customer Database Data
   const fetchCustomerDatabase = async () => {
     if (!business?.id) return
@@ -299,10 +417,11 @@ export default function TenantDashboard({ params }: PageProps) {
   }
 
   // Handle Opening Reports Full-Screen Views
-  const selectReportView = (type: 'sales' | 'sales_returns' | 'customers' | 'staff' | null) => {
+  const selectReportView = (type: 'sales' | 'sales_returns' | 'cash_liquidity' | 'customers' | 'staff' | null) => {
     setActiveReportView(type)
     if (type === 'sales') fetchSalesReport()
     if (type === 'sales_returns') fetchSalesReturnsReport()
+    if (type === 'cash_liquidity') fetchCashLiquidityReport()
     if (type === 'customers') fetchCustomerDatabase()
   }
 
@@ -459,7 +578,6 @@ export default function TenantDashboard({ params }: PageProps) {
           table: 'active_pos_sessions',
         },
         () => {
-          // Automatically refresh active sessions on any insert, update, or delete event across active sessions
           fetchActiveSessions(business.id)
         }
       )
@@ -1014,6 +1132,15 @@ export default function TenantDashboard({ params }: PageProps) {
               {isReportsMenuOpen && (
                 <div className="space-y-1 pl-4 pt-1 border-l-2 border-slate-700 ml-3.5 mt-1">
                   <button 
+                    onClick={() => selectReportView('cash_liquidity')}
+                    className={`w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg font-medium text-[11px] transition text-left cursor-pointer ${
+                      activeReportView === 'cash_liquidity' ? 'bg-emerald-600 text-white font-bold' : 'text-gray-300 hover:bg-slate-800 hover:text-white'
+                    }`}
+                  >
+                    <span>💵</span>
+                    <span>Cash Liquidity Report</span>
+                  </button>
+                  <button 
                     onClick={() => selectReportView('sales')}
                     className={`w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg font-medium text-[11px] transition text-left cursor-pointer ${
                       activeReportView === 'sales' ? 'bg-emerald-600 text-white font-bold' : 'text-gray-300 hover:bg-slate-800 hover:text-white'
@@ -1085,6 +1212,7 @@ export default function TenantDashboard({ params }: PageProps) {
               {activeReportView === null && 'Command Center & Operations'}
               {activeReportView === 'sales' && 'Advanced Sales Report & Audit Hub'}
               {activeReportView === 'sales_returns' && 'Sales Return Passes & Audit Hub'}
+              {activeReportView === 'cash_liquidity' && 'Cash Liquidity & Inflow Realization Hub'}
               {activeReportView === 'customers' && 'Customer Database & CRM Directory'}
               {activeReportView === 'staff' && 'Staff Directory & Security Badge Hub'}
             </h2>
@@ -1227,21 +1355,10 @@ export default function TenantDashboard({ params }: PageProps) {
                       <p className="text-[11px] text-gray-300 leading-relaxed">Customer-facing order portal.</p>
                     </a>
                   )}
-
-                  {effectiveModules.hasERP && (
-                    <a href={`/${slug}/finance`} className="bg-gray-900 text-white p-5 rounded-2xl shadow-md hover:bg-black transition group space-y-2.5 border border-blue-500/40">
-                      <div className="flex justify-between items-center">
-                        <div className="w-9 h-9 rounded-xl bg-blue-500 text-white flex items-center justify-center font-bold text-base shadow-inner">📊</div>
-                        <span className="text-[9px] font-mono bg-blue-400/20 text-blue-300 px-2 py-0.5 rounded font-bold uppercase">ERP Telemetry</span>
-                      </div>
-                      <h4 className="font-extrabold text-xs tracking-wide group-hover:underline">Finance & ERP Reports</h4>
-                      <p className="text-[11px] text-gray-300 leading-relaxed">Sales telemetry & ledgers.</p>
-                    </a>
-                  )}
                 </div>
               </div>
 
-              {/* ACTIVE POS SESSIONS & DEVICE LOCK CONTROL (MAIN SCREEN) */}
+              {/* ACTIVE POS SESSIONS & DEVICE LOCK CONTROL */}
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-black uppercase tracking-wider text-gray-900 flex items-center space-x-2">
@@ -1323,7 +1440,6 @@ export default function TenantDashboard({ params }: PageProps) {
                   <h3 className="text-xs font-black uppercase tracking-wider text-gray-900">
                     🛠 Inventory & Administrative Management
                   </h3>
-                  <span className="text-[11px] text-gray-400 font-medium">Configuration & auditing</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1336,7 +1452,6 @@ export default function TenantDashboard({ params }: PageProps) {
                     <p className="text-[11px] text-gray-500">Categories, items, prices, modifiers, variants & bundles.</p>
                   </a>
 
-                  {/* Staff & QR Security Management Trigger */}
                   <button 
                     onClick={() => { resetStaffForm(); fetchActiveSessions(business.id); setShowStaffDrawer(true); }}
                     className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:border-black transition group space-y-2 text-left w-full cursor-pointer"
@@ -1368,12 +1483,11 @@ export default function TenantDashboard({ params }: PageProps) {
                     <h4 className="font-bold text-xs text-gray-900 group-hover:underline">{profile.terminology.ordersLabel}</h4>
                     <p className="text-[11px] text-gray-500">Past transaction logs and customer order histories.</p>
                   </a>
-
                 </div>
               </div>
             </>
           ) : (
-            /* FULL-SCREEN REPORT VIEWS */
+            /* FULL-SCREEN REPORT VIEWS IN MAIN CONTENT AREA */
             <div className="space-y-4">
               
               {/* SUB-VIEW 1: SALES REPORT */}
@@ -1453,29 +1567,52 @@ export default function TenantDashboard({ params }: PageProps) {
                         {loadingSales ? (
                           <tr><td colSpan={5} className="text-center py-12 text-gray-400 font-bold">Querying sales archive...</td></tr>
                         ) : filteredSalesReports.length > 0 ? (
-                          filteredSalesReports.map(ord => (
-                            <tr key={ord.id} className="hover:bg-gray-50 transition">
-                              <td className="p-3">
-                                <div className="font-mono font-black text-gray-900">{ord.order_number ? `KB-${String(ord.order_number).padStart(6, '0')}` : 'SAVED'}</div>
-                                <div className="text-[10px] text-gray-400 font-mono">{new Date(ord.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</div>
-                              </td>
-                              <td className="p-3">
-                                <span className="bg-slate-100 text-slate-800 font-bold px-2 py-0.5 rounded text-[9px] uppercase mr-1">{ord.service_type || 'COUNTER'}</span>
-                                <span className="text-[10px] text-emerald-700 font-semibold">{ord.payment_method || 'CASH'}</span>
-                              </td>
-                              <td className="p-3">
-                                <div className="font-bold text-gray-900">{ord.customer_name || 'Walk-In'}</div>
-                                <div className="text-[10px] text-gray-500 font-mono">{ord.customer_phone || 'No Phone'}</div>
-                              </td>
-                              <td className="p-3 text-[11px] text-gray-600">
-                                <div>Waiter: <span className="font-bold text-gray-900">{ord.waiter_name || 'N/A'}</span></div>
-                                <div>Rider: <span className="font-bold text-gray-900">{ord.rider_name || ord.rider || 'N/A'}</span></div>
-                              </td>
-                              <td className="p-3 text-right font-mono font-black text-emerald-700 text-sm">
-                                {business?.currency_symbol || 'Rs.'} {ord.total_amount}
-                              </td>
-                            </tr>
-                          ))
+                          filteredSalesReports.map(ord => {
+                            const isPendingCash = (ord.settlement_status || '').toUpperCase() === 'PENDING_CASH' || 
+                              (!ord.settlement_status && (
+                                ((ord.service_type || '').toUpperCase() === 'DINE-IN' && ord.waiter_name) ||
+                                ((ord.service_type || '').toUpperCase() === 'DELIVERY' && (ord.payment_method || '').toUpperCase().includes('COD'))
+                              ));
+
+                            return (
+                              <tr key={ord.id} className="hover:bg-gray-50 transition">
+                                <td className="p-3">
+                                  <div className="font-mono font-black text-gray-900">{ord.order_number ? `KB-${String(ord.order_number).padStart(6, '0')}` : 'SAVED'}</div>
+                                  <div className="text-[10px] text-gray-400 font-mono">{new Date(ord.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</div>
+                                </td>
+                                <td className="p-3">
+                                  <div className="flex items-center space-x-1 mb-1">
+                                    <span className="bg-slate-100 text-slate-800 font-bold px-2 py-0.5 rounded text-[9px] uppercase">{ord.service_type || 'COUNTER'}</span>
+                                    <span className="text-[10px] text-emerald-700 font-semibold">{ord.payment_method || 'CASH'}</span>
+                                  </div>
+                                  <div>
+                                    {isPendingCash ? (
+                                      <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider inline-flex items-center space-x-1 animate-pulse">
+                                        <span>⏳</span>
+                                        <span>PENDING CASH</span>
+                                      </span>
+                                    ) : (
+                                      <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider inline-flex items-center space-x-1">
+                                        <span>✓</span>
+                                        <span>SETTLED</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="p-3">
+                                  <div className="font-bold text-gray-900">{ord.customer_name || 'Walk-In'}</div>
+                                  <div className="text-[10px] text-gray-500 font-mono">{ord.customer_phone || 'No Phone'}</div>
+                                </td>
+                                <td className="p-3 text-[11px] text-gray-600">
+                                  <div>Waiter: <span className="font-bold text-gray-900">{ord.waiter_name || 'N/A'}</span></div>
+                                  <div>Rider: <span className="font-bold text-gray-900">{ord.rider_name || ord.rider || 'N/A'}</span></div>
+                                </td>
+                                <td className="p-3 text-right font-mono font-black text-emerald-700 text-sm">
+                                  {business?.currency_symbol || 'Rs.'} {ord.total_amount}
+                                </td>
+                              </tr>
+                            )
+                          })
                         ) : (
                           <tr><td colSpan={5} className="text-center py-12 text-gray-400">No matching sales records found.</td></tr>
                         )}
@@ -1576,6 +1713,57 @@ export default function TenantDashboard({ params }: PageProps) {
                           ))
                         ) : (
                           <tr><td colSpan={8} className="text-center py-12 text-gray-400">No sales return passes recorded matching the criteria.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* SUB-VIEW: CASH LIQUIDITY REPORT */}
+              {activeReportView === 'cash_liquidity' && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs">
+                    <div>
+                      <h3 className="font-black text-gray-900 uppercase tracking-wide text-xs">Cash Liquidity & Inflow Realization</h3>
+                      <p className="text-[10px] text-gray-500">Tracks actual real cash drops deposited by staff and riders, excluding pending receivables.</p>
+                    </div>
+                    <button
+                      onClick={() => { setShowSettlementModal(true); }}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition cursor-pointer shadow-sm"
+                    >
+                      + Process Staff Cash Drop / Batch Settlement 💵
+                    </button>
+                  </div>
+
+                  <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-2xs">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-gray-100 text-gray-500 uppercase text-[10px] font-bold">
+                        <tr>
+                          <th className="p-3">Date/Time</th>
+                          <th className="p-3">Staff / Collector</th>
+                          <th className="p-3">Payment Method</th>
+                          <th className="p-3">Billed Amount</th>
+                          <th className="p-3">Discount / Shortage</th>
+                          <th className="p-3 text-right">Net Cash Received</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {loadingLiquidity ? (
+                          <tr><td colSpan={6} className="text-center py-12 text-gray-400 font-bold">Querying liquidity logs...</td></tr>
+                        ) : cashLiquidityData.length > 0 ? (
+                          cashLiquidityData.map(txn => (
+                            <tr key={txn.id} className="hover:bg-gray-50 transition">
+                              <td className="p-3 font-mono text-[10px] text-gray-500">{new Date(txn.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</td>
+                              <td className="p-3 font-bold text-gray-900">{txn.staff_name || 'Staff Member'}</td>
+                              <td className="p-3"><span className="bg-emerald-50 text-emerald-800 font-bold px-2 py-0.5 rounded text-[9px] uppercase">{txn.payment_method}</span></td>
+                              <td className="p-3 font-mono text-gray-700">{business?.currency_symbol || 'Rs.'} {txn.billed_amount}</td>
+                              <td className="p-3 font-mono text-rose-600">{business?.currency_symbol || 'Rs.'} {txn.discount_amount || '0.00'}</td>
+                              <td className="p-3 text-right font-mono font-black text-emerald-700 text-sm">{business?.currency_symbol || 'Rs.'} {txn.amount_received}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr><td colSpan={6} className="text-center py-12 text-gray-400">No cash liquidity transactions recorded yet.</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -2054,7 +2242,7 @@ export default function TenantDashboard({ params }: PageProps) {
                 {badgePreviewStaff.role} • Dept: {badgePreviewStaff.department || 'General'} • PIN: {badgePreviewStaff.pin_code}
               </p>
             </div>
-              
+            
             <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 flex flex-col items-center justify-center">
               <div id="staff-qr-badge-svg">
                 <QRCodeSVG value={badgePreviewStaff.qr_token || 'N/A'} size={144} level="H" includeMargin={true} />
@@ -2084,6 +2272,123 @@ export default function TenantDashboard({ params }: PageProps) {
         </div>
       )}
 
+      {/* STAFF CASH DROP & BATCH SETTLEMENT MODAL */}
+      {showSettlementModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs font-sans">
+          <div className="bg-white rounded-3xl p-6 max-w-2xl w-full space-y-4 shadow-2xl border border-gray-200 text-gray-800 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b pb-3">
+              <div>
+                <h3 className="font-black text-sm uppercase text-gray-900">Staff Cash Drop & Batch Settlement</h3>
+                <p className="text-[10px] text-gray-500">Select staff member, review pending bills, and settle cash with adjustments.</p>
+              </div>
+              <button onClick={() => setShowSettlementModal(false)} className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 font-bold cursor-pointer">✕</button>
+            </div>
+
+            <form onSubmit={handleProcessBatchSettlement} className="space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Select Staff Member (Waiter / Rider)</label>
+                  <select
+                    value={selectedStaffForSettlement}
+                    onChange={e => {
+                      setSelectedStaffForSettlement(e.target.value)
+                      fetchPendingOrdersForStaff(e.target.value)
+                    }}
+                    className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 font-bold"
+                    required
+                  >
+                    <option value="">-- Choose Staff Member --</option>
+                    {staffList.map(st => (
+                      <option key={st.id} value={st.full_name}>{st.full_name} ({st.role})</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {selectedStaffForSettlement && (
+                <div className="space-y-2">
+                  <h4 className="font-bold uppercase text-gray-700 text-[11px]">Pending Cash Invoices ({pendingOrdersForStaff.length})</h4>
+                  {pendingOrdersForStaff.length > 0 ? (
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                      {pendingOrdersForStaff.map(ord => {
+                        const input = settlementInputs[ord.id] || { received: ord.total_amount, discount: '0', notes: '' }
+                        return (
+                          <div key={ord.id} className="bg-gray-50 p-3 rounded-xl border border-gray-200 space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="font-mono font-black text-gray-900">KB-{String(ord.order_number).padStart(6, '0')}</span>
+                              <span className="font-mono font-bold text-emerald-700">Total Billed: {ord.total_amount}</span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2">
+                              <div>
+                                <label className="block text-[9px] font-bold text-gray-500">Cash Received</label>
+                                <input
+                                  type="number"
+                                  value={input.received}
+                                  onChange={e => {
+                                    const val = e.target.value
+                                    const billed = parseFloat(ord.total_amount) || 0
+                                    const rec = parseFloat(val) || 0
+                                    const diff = Math.max(0, billed - rec)
+                                    setSettlementInputs({
+                                      ...settlementInputs,
+                                      [ord.id]: { ...input, received: val, discount: String(diff) }
+                                    })
+                                  }}
+                                  className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1 font-mono font-bold"
+                                  required
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[9px] font-bold text-gray-500">Discount / Shortage</label>
+                                <input
+                                  type="number"
+                                  value={input.discount}
+                                  onChange={e => setSettlementInputs({
+                                    ...settlementInputs,
+                                    [ord.id]: { ...input, discount: e.target.value }
+                                  })}
+                                  className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1 font-mono text-rose-600 font-bold"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[9px] font-bold text-gray-500">Remarks</label>
+                                <input
+                                  type="text"
+                                  placeholder="Reason..."
+                                  value={input.notes}
+                                  onChange={e => setSettlementInputs({
+                                    ...settlementInputs,
+                                    [ord.id]: { ...input, notes: e.target.value }
+                                  })}
+                                  className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-gray-400 py-4 text-center">No pending cash orders assigned to this staff member.</p>
+                  )}
+                </div>
+              )}
+
+              <div className="flex justify-end space-x-2 pt-2 border-t">
+                <button type="button" onClick={() => setShowSettlementModal(false)} className="px-4 py-2 bg-gray-200 rounded-xl font-bold cursor-pointer">Cancel</button>
+                <button
+                  type="submit"
+                  disabled={processingSettlement || pendingOrdersForStaff.length === 0}
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow transition cursor-pointer"
+                >
+                  {processingSettlement ? 'Processing...' : 'Settle Selected Invoices & Record Liquidity 💵'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* BUSINESS SETTINGS DRAWER */}
       {showSettingsDrawer && (
         <div className="fixed inset-0 z-50 overflow-hidden font-sans">
@@ -2091,7 +2396,7 @@ export default function TenantDashboard({ params }: PageProps) {
 
           <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
             <div className="w-screen max-w-md bg-white border-l border-gray-200 shadow-2xl flex flex-col text-gray-800">
-                
+              
               <div className="px-6 py-5 border-b border-gray-200 flex justify-between items-center bg-gray-50">
                 <div className="flex items-center space-x-2">
                   <span className="text-lg">⚙️</span>

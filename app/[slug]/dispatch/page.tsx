@@ -55,6 +55,22 @@ export default function DispatchManagerDashboard({ params }: PageProps) {
     }
   }, [slug])
 
+  // Top-level cleanup effect for clearing active_pos_sessions on window/tab close
+  useEffect(() => {
+    const cleanupSession = () => {
+      if (authenticatedStaff?.id && business?.id) {
+        const body = JSON.stringify({ businessId: business.id, staffId: authenticatedStaff.id })
+        const blob = new Blob([body], { type: 'application/json' })
+        navigator.sendBeacon('/api/auth/session-release', blob)
+      }
+    }
+
+    window.addEventListener('beforeunload', cleanupSession)
+    return () => {
+      window.removeEventListener('beforeunload', cleanupSession)
+    }
+  }, [authenticatedStaff, business])
+
   useEffect(() => {
     async function initDispatch() {
       const { data: biz, error: bizErr } = await supabase
@@ -153,14 +169,22 @@ export default function DispatchManagerDashboard({ params }: PageProps) {
     }
 
     if (formState) {
-      if (formState.type === 'inhouse' && formState.riderId) {
+      if (formState.type === 'inhouse' && formState.riderId && formState.riderId !== '') {
         const selectedStaff = inHouseRiders.find(r => r.id === formState.riderId)
+        updatePayload.rider_id = formState.riderId
         updatePayload.rider_name = selectedStaff ? (selectedStaff.full_name || selectedStaff.name) : 'In-House Rider'
         updatePayload.rider_phone = formState.phone?.trim() || selectedStaff?.phone || null
-      } else if (formState.type === 'thirdparty') {
-        updatePayload.rider_name = formState.name?.trim() || 'Third-Party Partner'
-        updatePayload.rider_phone = formState.phone?.trim() || null
+      } else {
+        // Explicitly set rider_id to null so Supabase clears the foreign key reference
+        updatePayload.rider_id = null
+        updatePayload.rider_name = formState?.name?.trim() || 'Third-Party Partner'
+        updatePayload.rider_phone = formState?.phone?.trim() || null
       }
+    }
+
+    // Ensure dispatch assignment maintains PENDING_CASH liability tracking until final settlement drop
+    if (newStatus === 'out_for_delivery') {
+      updatePayload.settlement_status = 'PENDING_CASH'
     }
 
     const { error } = await supabase
@@ -171,7 +195,6 @@ export default function DispatchManagerDashboard({ params }: PageProps) {
     if (error) {
       alert(`Failed to update dispatch status: ${error.message}`)
     } else {
-      // Trigger WhatsApp Dispatch Notification if status is 'out_for_delivery'
       if (newStatus === 'out_for_delivery') {
         try {
           await fetch('/api/dispatch/whatsapp', {
@@ -187,7 +210,18 @@ export default function DispatchManagerDashboard({ params }: PageProps) {
     }
   }
 
-  const handleLockSession = () => {
+  const handleLockSession = async () => {
+    if (authenticatedStaff?.id && business?.id) {
+      try {
+        await fetch('/api/auth/session-release', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ businessId: business.id, staffId: authenticatedStaff.id })
+        })
+      } catch (err) {
+        console.warn('Session release API warning:', err)
+      }
+    }
     sessionStorage.removeItem(`unicon_dispatch_staff_session_${slug}`)
     setAuthenticatedStaff(null)
     setShowSecurityGate(true)
