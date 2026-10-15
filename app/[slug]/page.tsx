@@ -37,6 +37,8 @@ export default function TenantDashboard({ params }: PageProps) {
   const [loadingLiquidity, setLoadingLiquidity] = useState(false)
   const [showSettlementModal, setShowSettlementModal] = useState(false)
   const [selectedStaffForSettlement, setSelectedStaffForSettlement] = useState('')
+  const [waiterSearch, setWaiterSearch] = useState('')
+  const [riderSearch, setRiderSearch] = useState('')
   const [pendingOrdersForStaff, setPendingOrdersForStaff] = useState<any[]>([])
   const [settlementInputs, setSettlementInputs] = useState<{ [orderId: string]: { received: string; discount: string; notes: string } }>({})
   const [processingSettlement, setProcessingSettlement] = useState(false)
@@ -300,13 +302,22 @@ export default function TenantDashboard({ params }: PageProps) {
     setLoadingLiquidity(false)
   }
 
-  // Fetch Pending Orders for a Specific Staff Member
-  const fetchPendingOrdersForStaff = async (staffName: string) => {
-    if (!business?.id || !staffName) return
+  // Fetch Pending Orders for a Specific Staff Member or 3rd Party Rider
+  const fetchPendingOrdersForStaff = async (staffIdentifier: string) => {
+    if (!business?.id || !staffIdentifier) return
 
-    const cleanTargetName = staffName.trim().toLowerCase()
+    let resolvedName = staffIdentifier
+    if (staffIdentifier.startsWith('3rd-')) {
+      resolvedName = staffIdentifier.replace('3rd-', '').trim()
+    } else {
+      const matchedStaffObj = staffList.find(st => st.id === staffIdentifier || st.full_name?.toLowerCase() === staffIdentifier.trim().toLowerCase())
+      if (matchedStaffObj) {
+        resolvedName = matchedStaffObj.full_name || matchedStaffObj.name
+      }
+    }
 
-    // Query strictly for orders that are NOT settled at the database level to optimize performance and accuracy
+    const cleanTargetName = resolvedName.toLowerCase().trim()
+
     const { data, error } = await supabase
       .from('orders')
       .select('*')
@@ -316,18 +327,18 @@ export default function TenantDashboard({ params }: PageProps) {
 
     if (!error && data) {
       const pendingForThisStaff = data.filter(ord => {
-        const orderWaiter = (ord.waiter_name || '').toLowerCase().trim()
-        const orderRider = (ord.rider_name || ord.rider || '').toLowerCase().trim()
-
-        // Match staff name against waiter or rider
-        const matchesStaff = (orderWaiter === cleanTargetName) || (orderRider === cleanTargetName) || orderWaiter.includes(cleanTargetName) || orderRider.includes(cleanTargetName)
-        if (!matchesStaff) return false
-
-        // Double check settlement status desync prevention
         const isSettled = (ord.settlement_status || '').toUpperCase() === 'SETTLED'
         if (isSettled) return false
 
-        return true
+        const matchById = ord.waiter_id === staffIdentifier || ord.rider_id === staffIdentifier
+        const orderWaiter = (ord.waiter_name || '').toLowerCase().trim()
+        const orderRider = (ord.rider_name || ord.rider || '').toLowerCase().trim()
+
+        const matchByName = (orderWaiter && orderWaiter === cleanTargetName) || 
+                            (orderRider && orderRider === cleanTargetName) ||
+                            (orderRider && orderRider.includes(cleanTargetName))
+
+        return (matchById || matchByName)
       })
 
       setPendingOrdersForStaff(pendingForThisStaff)
@@ -355,16 +366,22 @@ export default function TenantDashboard({ params }: PageProps) {
 
     setProcessingSettlement(true)
     try {
-      // Resolve staff name cleanly from staffList
-      const matchedStaffObj = staffList.find(st => st.id === selectedStaffForSettlement || st.full_name === selectedStaffForSettlement)
-      const staffIdToSave = matchedStaffObj ? matchedStaffObj.id : null
-      const staffNameVal = matchedStaffObj ? matchedStaffObj.full_name : selectedStaffForSettlement
+      const isThirdParty = selectedStaffForSettlement.startsWith('3rd-')
+      let staffIdToSave = null
+      let staffNameVal = selectedStaffForSettlement
+
+      if (isThirdParty) {
+        staffNameVal = selectedStaffForSettlement.replace('3rd-', '')
+      } else {
+        const matchedStaffObj = staffList.find(st => st.id === selectedStaffForSettlement || st.full_name === selectedStaffForSettlement)
+        staffIdToSave = matchedStaffObj ? matchedStaffObj.id : null
+        staffNameVal = matchedStaffObj ? (matchedStaffObj.full_name || matchedStaffObj.name) : selectedStaffForSettlement
+      }
 
       for (const ord of pendingOrdersForStaff) {
         const input = settlementInputs[ord.id]
         if (!input) continue
 
-        // Prevent duplicate liquidity logging if order is already settled
         if (ord.settlement_status === 'SETTLED') continue
 
         const billed = parseFloat(ord.total_amount) || 0
@@ -424,6 +441,43 @@ export default function TenantDashboard({ params }: PageProps) {
     if (type === 'cash_liquidity') fetchCashLiquidityReport()
     if (type === 'customers') fetchCustomerDatabase()
   }
+
+  // Filter staff lists for Waiters
+  const waitersList = staffList.filter(st => {
+    const r = (st.role || '').toLowerCase()
+    const d = (st.department || '').toLowerCase()
+    const isRider = r.includes('rider') || r.includes('delivery') || d.includes('delivery') || d.includes('logistic') || r.includes('driver')
+    return !isRider
+  }).filter(st => {
+    if (!waiterSearch.trim()) return true
+    return (st.full_name || st.name || '').toLowerCase().includes(waiterSearch.toLowerCase().trim())
+  })
+
+  // Filtered riders list combining In-House Riders and dynamically extracted 3rd Party Partners
+  const ridersList = useMemo(() => {
+    const inHouseRiders = staffList.filter(st => {
+      const r = (st.role || '').toLowerCase()
+      const d = (st.department || '').toLowerCase()
+      return r.includes('rider') || r.includes('delivery') || d.includes('delivery') || d.includes('logistic') || r.includes('driver')
+    })
+
+    const thirdPartyNames = new Set<string>()
+    salesReportData.forEach(ord => {
+      if ((ord.service_type || '').toUpperCase() === 'DELIVERY' && !ord.rider_id && ord.rider_name) {
+        thirdPartyNames.add(ord.rider_name.trim())
+      }
+    })
+
+    const thirdPartyAsStaff = Array.from(thirdPartyNames).map(name => ({
+      id: `3rd-${name}`,
+      full_name: name,
+      role: '3rd Party Partner'
+    }))
+
+    const combined = [...inHouseRiders, ...thirdPartyAsStaff]
+    if (!riderSearch.trim()) return combined
+    return combined.filter(st => (st.full_name || st.name || '').toLowerCase().includes(riderSearch.toLowerCase().trim()))
+  }, [staffList, salesReportData, riderSearch])
 
   // Filtered Sales Report Computed Data
   const filteredSalesReports = useMemo(() => {
@@ -2285,21 +2339,55 @@ export default function TenantDashboard({ params }: PageProps) {
             </div>
 
             <form onSubmit={handleProcessBatchSettlement} className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-gray-700 mb-1">Select Staff Member (Waiter / Rider)</label>
+              
+              {/* TWO SEPARATE FIELDS WITH SEARCH FOR WAITER & RIDER SIDE-BY-SIDE */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="bg-gray-50 p-3 rounded-2xl border border-gray-200 space-y-2">
+                  <label className="block font-bold text-gray-900 uppercase">1. Select Waiter for Cash Settlement</label>
+                  <input
+                    type="text"
+                    placeholder="Search waiter by name..."
+                    value={waiterSearch}
+                    onChange={e => setWaiterSearch(e.target.value)}
+                    className="w-full bg-white border border-gray-300 rounded-xl px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-blue-600"
+                  />
                   <select
-                    value={selectedStaffForSettlement}
+                    value={waitersList.some(st => st.full_name === selectedStaffForSettlement || st.id === selectedStaffForSettlement) ? selectedStaffForSettlement : ''}
                     onChange={e => {
-                      setSelectedStaffForSettlement(e.target.value)
-                      fetchPendingOrdersForStaff(e.target.value)
+                      const val = e.target.value
+                      setSelectedStaffForSettlement(val)
+                      if (val) fetchPendingOrdersForStaff(val)
                     }}
-                    className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 font-bold"
-                    required
+                    className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 font-bold cursor-pointer"
                   >
-                    <option value="">-- Choose Staff Member --</option>
-                    {staffList.map(st => (
-                      <option key={st.id} value={st.full_name}>{st.full_name} ({st.role})</option>
+                    <option value="">-- Choose Waiter --</option>
+                    {waitersList.map(st => (
+                      <option key={st.id} value={st.full_name}>{st.full_name} ({st.role || 'Waiter'})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="bg-gray-50 p-3 rounded-2xl border border-gray-200 space-y-2">
+                  <label className="block font-bold text-gray-900 uppercase">2. Select Rider for Cash Settlement</label>
+                  <input
+                    type="text"
+                    placeholder="Search rider by name..."
+                    value={riderSearch}
+                    onChange={e => setRiderSearch(e.target.value)}
+                    className="w-full bg-white border border-gray-300 rounded-xl px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-blue-600"
+                  />
+                  <select
+                    value={ridersList.some(st => st.full_name === selectedStaffForSettlement || st.id === selectedStaffForSettlement) ? selectedStaffForSettlement : ''}
+                    onChange={e => {
+                      const val = e.target.value
+                      setSelectedStaffForSettlement(val)
+                      if (val) fetchPendingOrdersForStaff(val)
+                    }}
+                    className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 font-bold cursor-pointer"
+                  >
+                    <option value="">-- Choose Rider --</option>
+                    {ridersList.map(st => (
+                      <option key={st.id} value={st.id}>{st.full_name || st.name} ({st.role || 'Rider'})</option>
                     ))}
                   </select>
                 </div>
@@ -2375,7 +2463,7 @@ export default function TenantDashboard({ params }: PageProps) {
               )}
 
               <div className="flex justify-end space-x-2 pt-2 border-t">
-                <button type="button" onClick={() => setShowSettlementModal(false)} className="px-4 py-2 bg-gray-200 rounded-xl font-bold cursor-pointer">Cancel</button>
+                <button type="button" onClick={() => setShowSettlementModal(false)} className="px-4 py-2 bg-gray-200 rounded-xl font-bold cursor-pointer">Cancel/Close</button>
                 <button
                   type="submit"
                   disabled={processingSettlement || pendingOrdersForStaff.length === 0}

@@ -22,9 +22,11 @@ export default function CashLiquidityReportPage({ params }: PageProps) {
   const [loadingLiquidity, setLoadingLiquidity] = useState(false)
   const [staffList, setStaffList] = useState<any[]>([])
 
-  // Settlement Modal States
+  // Settlement Modal States & Search filters
   const [showSettlementModal, setShowSettlementModal] = useState(false)
   const [selectedStaffIdForSettlement, setSelectedStaffIdForSettlement] = useState('')
+  const [waiterSearch, setWaiterSearch] = useState('')
+  const [riderSearch, setRiderSearch] = useState('')
   const [pendingOrdersForStaff, setPendingOrdersForStaff] = useState<any[]>([])
   const [settlementInputs, setSettlementInputs] = useState<{ [orderId: string]: { received: string; discount: string; notes: string } }>({})
   const [processingSettlement, setProcessingSettlement] = useState(false)
@@ -71,9 +73,7 @@ export default function CashLiquidityReportPage({ params }: PageProps) {
     if (!business?.id || !staffId) return
 
     const selectedStaff = staffList.find(st => st.id === staffId)
-    const staffName = selectedStaff ? selectedStaff.full_name : ''
-
-    console.log("Fetching pending orders for Staff ID:", staffId, "Name:", staffName)
+    const staffName = selectedStaff ? (selectedStaff.full_name || selectedStaff.name) : ''
 
     const { data, error } = await supabase
       .from('orders')
@@ -96,7 +96,6 @@ export default function CashLiquidityReportPage({ params }: PageProps) {
         return (matchById || matchByName || isDineInWaiterOrder)
       })
 
-      console.log("Matched pending orders for staff:", pendingForThisStaff)
       setPendingOrdersForStaff(pendingForThisStaff)
 
       const initialMap: any = {}
@@ -123,7 +122,7 @@ export default function CashLiquidityReportPage({ params }: PageProps) {
     setProcessingSettlement(true)
     try {
       const selectedStaff = staffList.find(st => st.id === selectedStaffIdForSettlement)
-      const staffFullName = selectedStaff ? selectedStaff.full_name : 'Staff Member'
+      const staffFullName = selectedStaff ? (selectedStaff.full_name || selectedStaff.name) : 'Staff Member'
 
       for (const ord of pendingOrdersForStaff) {
         const input = settlementInputs[ord.id]
@@ -160,6 +159,26 @@ export default function CashLiquidityReportPage({ params }: PageProps) {
     }
     setProcessingSettlement(false)
   }
+
+  // Filter staff lists for Waiters and Riders with manual search capability
+  const waitersList = staffList.filter(st => {
+    const r = (st.role || '').toLowerCase()
+    const d = (st.department || '').toLowerCase()
+    const isRider = r.includes('rider') || r.includes('delivery') || d.includes('delivery') || d.includes('logistic') || r.includes('driver')
+    return !isRider
+  }).filter(st => {
+    if (!waiterSearch.trim()) return true
+    return (st.full_name || st.name || '').toLowerCase().includes(waiterSearch.toLowerCase().trim())
+  })
+
+  const ridersList = staffList.filter(st => {
+    const r = (st.role || '').toLowerCase()
+    const d = (st.department || '').toLowerCase()
+    return r.includes('rider') || r.includes('delivery') || d.includes('delivery') || d.includes('logistic') || r.includes('driver')
+  }).filter(st => {
+    if (!riderSearch.trim()) return true
+    return (st.full_name || st.name || '').toLowerCase().includes(riderSearch.toLowerCase().trim())
+  })
 
   if (loading) {
     return <div className="min-h-screen bg-gray-50 flex items-center justify-center font-bold text-gray-700 text-xs">Loading Cash Liquidity Report...</div>
@@ -238,22 +257,58 @@ export default function CashLiquidityReportPage({ params }: PageProps) {
             </div>
 
             <form onSubmit={handleProcessBatchSettlement} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">Select Staff Member (Waiter / Rider)</label>
-                <select
-                  value={selectedStaffIdForSettlement}
-                  onChange={e => {
-                    setSelectedStaffIdForSettlement(e.target.value)
-                    fetchPendingOrdersForStaff(e.target.value)
-                  }}
-                  className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 font-bold"
-                  required
-                >
-                  <option value="">-- Choose Staff Member --</option>
-                  {staffList.map(st => (
-                    <option key={st.id} value={st.id}>{st.full_name} ({st.role})</option>
-                  ))}
-                </select>
+              
+              {/* TWO SEPARATE FIELDS WITH SEARCH FOR WAITER & RIDER SIDE-BY-SIDE */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="bg-gray-50 p-3 rounded-2xl border border-gray-200 space-y-2">
+                  <label className="block font-bold text-gray-900 uppercase">1. Select Waiter</label>
+                  <input
+                    type="text"
+                    placeholder="Search waiter..."
+                    value={waiterSearch}
+                    onChange={e => setWaiterSearch(e.target.value)}
+                    className="w-full bg-white border border-gray-300 rounded-xl px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-blue-600"
+                  />
+                  <select
+                    value={waitersList.some(st => st.id === selectedStaffIdForSettlement) ? selectedStaffIdForSettlement : ''}
+                    onChange={e => {
+                      const val = e.target.value
+                      setSelectedStaffIdForSettlement(val)
+                      if (val) fetchPendingOrdersForStaff(val)
+                    }}
+                    className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 font-bold cursor-pointer"
+                  >
+                    <option value="">-- Choose Waiter --</option>
+                    {waitersList.map(st => (
+                      <option key={st.id} value={st.id}>{st.full_name || st.name} ({st.role || 'Waiter'})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="bg-gray-50 p-3 rounded-2xl border border-gray-200 space-y-2">
+                  <label className="block font-bold text-gray-900 uppercase">2. Select Rider</label>
+                  <input
+                    type="text"
+                    placeholder="Search rider..."
+                    value={riderSearch}
+                    onChange={e => setRiderSearch(e.target.value)}
+                    className="w-full bg-white border border-gray-300 rounded-xl px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-blue-600"
+                  />
+                  <select
+                    value={ridersList.some(st => st.id === selectedStaffIdForSettlement) ? selectedStaffIdForSettlement : ''}
+                    onChange={e => {
+                      const val = e.target.value
+                      setSelectedStaffIdForSettlement(val)
+                      if (val) fetchPendingOrdersForStaff(val)
+                    }}
+                    className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 font-bold cursor-pointer"
+                  >
+                    <option value="">-- Choose Rider --</option>
+                    {ridersList.map(st => (
+                      <option key={st.id} value={st.id}>{st.full_name || st.name} ({st.role || 'Rider'})</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {selectedStaffIdForSettlement && (
