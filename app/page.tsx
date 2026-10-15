@@ -56,10 +56,7 @@ export default function UniconLabsLandingPage() {
   const [partners, setPartners] = useState(
     Array.from({ length: 18 }, (_, i) => ({ id: i + 1, name: `Partner Brand ${i + 1}`, logo: '🏢' }))
   )
-  const [blogs, setBlogs] = useState([
-    { id: 1, title: 'Scaling Cloud POS Architecture in 2026', date: 'Oct 04, 2026', category: 'Engineering', desc: 'Discover how offline-first Supabase synchronization keeps retail stores running smoothly.' },
-    { id: 2, title: 'Optimizing Kitchen Workflow with KDS', date: 'Sep 28, 2026', category: 'Operations', desc: 'Best practices for reducing order preparation times in high-volume restaurants.' },
-  ])
+  const [blogs, setBlogs] = useState<any[]>([])
   const [aboutText, setAboutText] = useState('Founded with a vision to revolutionize enterprise operations, Unicon Labs specializes in building end-to-end digital ecosystems. From multi-tenant POS hardware integrations to cloud synchronization and automated financial auditing, we provide the infrastructure businesses need to thrive.')
   const [footerHQ, setFooterHQ] = useState('Software Development Enterprise\nDigital Ecosystems & Modules\nEmail: info.uniconlabs@gmail.com')
 
@@ -104,7 +101,7 @@ export default function UniconLabsLandingPage() {
     if (s.heroBanners && s.heroBanners.length > 0) setHeroBanners(s.heroBanners)
     if (s.products && s.products.length > 0) setProducts(s.products)
     if (s.partners && s.partners.length > 0) setPartners(s.partners)
-    if (s.blogs && s.blogs.length > 0) setBlogs(s.blogs)
+    if (s.blogs !== undefined) setBlogs(s.blogs)
     if (s.aboutText) setAboutText(s.aboutText)
     if (s.footerHQ) setFooterHQ(s.footerHQ)
   }
@@ -564,31 +561,42 @@ export default function UniconLabsLandingPage() {
           <h2 className="text-3xl font-black uppercase tracking-wide text-blue-950">Daily Blogs</h2>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 justify-items-center">
-          {blogs.map((blog, idx) => (
-            <div key={blog.id || idx} className="bg-white border border-blue-100 rounded-2xl md:rounded-3xl p-3 md:p-5 shadow-lg shadow-blue-900/5 flex flex-col justify-between hover:border-blue-400 transition group w-full max-w-xs">
-              <div className="space-y-3">
-                <div className="w-full h-24 md:h-36 bg-blue-900 rounded-2xl flex items-center justify-center text-2xl md:text-3xl text-white font-black shadow-inner group-hover:bg-blue-600 transition">
-                  📰
+        {blogs.length === 0 ? (
+          <div className="text-center py-10 text-slate-400 text-xs italic">No daily blogs published at the moment.</div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 justify-items-center">
+            {blogs.map((blog, idx) => (
+              <div key={blog.id || idx} className="bg-white border border-blue-100 rounded-2xl md:rounded-3xl p-3 md:p-5 shadow-lg shadow-blue-900/5 flex flex-col justify-between hover:border-blue-400 transition group w-full max-w-xs">
+                <div className="space-y-3">
+                  <div className="w-full h-24 md:h-36 bg-blue-900 rounded-2xl flex items-center justify-center text-2xl md:text-3xl text-white font-black shadow-inner group-hover:bg-blue-600 transition overflow-hidden">
+                    {blog.image && blog.image.length > 50 ? (
+                      <img src={blog.image} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span>📰</span>
+                    )}
+                  </div>
+                  <div className="flex justify-between items-center text-[9px] md:text-[10px] text-slate-400 font-bold uppercase">
+                    <span>{blog.category}</span>
+                    <span>{blog.date}</span>
+                  </div>
+                  <h3 className="font-black text-xs md:text-sm uppercase text-blue-950 leading-snug">{blog.title}</h3>
+                  <p className="text-slate-600 text-[11px] md:text-xs leading-relaxed line-clamp-3 text-justify">{blog.desc}</p>
+                  {blog.writer && (
+                    <p className="text-[10px] text-blue-600 font-semibold italic">Shared by: {blog.writer}</p>
+                  )}
                 </div>
-                <div className="flex justify-between items-center text-[9px] md:text-[10px] text-slate-400 font-bold uppercase">
-                  <span>{blog.category}</span>
-                  <span>{blog.date}</span>
+                <div className="pt-3 md:pt-4 mt-3 md:mt-4 border-t border-slate-100">
+                  <button
+                    onClick={() => alert(`Opening article: ${blog.title}`)}
+                    className="text-[11px] md:text-xs font-extrabold text-blue-600 hover:text-blue-800 uppercase tracking-wide flex items-center space-x-1 cursor-pointer"
+                  >
+                    <span>Read more...</span>
+                  </button>
                 </div>
-                <h3 className="font-black text-xs md:text-sm uppercase text-blue-950 leading-snug">{blog.title}</h3>
-                <p className="text-slate-600 text-[11px] md:text-xs leading-relaxed line-clamp-3">{blog.desc}</p>
               </div>
-              <div className="pt-3 md:pt-4 mt-3 md:mt-4 border-t border-slate-100">
-                <button
-                  onClick={() => alert(`Opening article: ${blog.title}`)}
-                  className="text-[11px] md:text-xs font-extrabold text-blue-600 hover:text-blue-800 uppercase tracking-wide flex items-center space-x-1 cursor-pointer"
-                >
-                  <span>Read more...</span>
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* "Read all blogs..." Link positioned perfectly in the bottom right corner */}
         <div className="flex justify-end pt-2">

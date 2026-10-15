@@ -71,23 +71,35 @@ export default function WebSettingsPage() {
   const [editPartnerName, setEditPartnerName] = useState('')
   const [editPartnerLogo, setEditPartnerLogo] = useState('')
 
-  const [blogs, setBlogs] = useState([
-    { id: 1, title: 'Scaling Cloud POS Architecture in 2026', date: 'Oct 04, 2026', category: 'Engineering', desc: 'Discover how offline-first Supabase synchronization keeps retail stores running smoothly.' },
-    { id: 2, title: 'Optimizing Kitchen Workflow with KDS', date: 'Sep 28, 2026', category: 'Operations', desc: 'Best practices for reducing order preparation times in high-volume restaurants.' },
-  ])
+  // Blog Management States
+  const [blogs, setBlogs] = useState<any[]>([])
   const [newBlogTitle, setNewBlogTitle] = useState('')
   const [newBlogCat, setNewBlogCat] = useState('Engineering')
   const [newBlogDesc, setNewBlogDesc] = useState('')
+  const [newBlogImage, setNewBlogImage] = useState('')
+  const [newBlogWriter, setNewBlogWriter] = useState('')
+  const [newBlogPostType, setNewBlogPostType] = useState<'now' | 'schedule'>('now')
+  const [newBlogScheduleDate, setNewBlogScheduleDate] = useState('')
+
+  // Blog Edit States
+  const [editingBlogId, setEditingBlogId] = useState<number | null>(null)
+  const [editBlogTitle, setEditBlogTitle] = useState('')
+  const [editBlogCat, setEditBlogCat] = useState('')
+  const [editBlogDesc, setEditBlogDesc] = useState('')
+  const [editBlogImage, setEditBlogImage] = useState('')
+  const [editBlogWriter, setEditBlogWriter] = useState('')
+  const [editBlogPostType, setEditBlogPostType] = useState<'now' | 'schedule'>('now')
+  const [editBlogScheduleDate, setEditBlogScheduleDate] = useState('')
 
   const [aboutText, setAboutText] = useState('Founded with a vision to revolutionize enterprise operations, Unicon Labs specializes in building end-to-end digital ecosystems. From multi-tenant POS hardware integrations to cloud synchronization and automated financial auditing, we provide the infrastructure businesses need to thrive.')
   const [footerHQ, setFooterHQ] = useState('Software Development Enterprise\nDigital Ecosystems & Modules\nEmail: care.uniconlabs@gmail.com')
 
-  // Load existing settings and verify authorization from Supabase on mount
+  // Load existing settings and verify authorization from sessionStorage on mount
   useEffect(() => {
     async function verifyAndFetch() {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      const sessionAuth = sessionStorage.getItem('unicon_master_auth')
       
-      if (sessionError || !session) {
+      if (sessionAuth !== 'true') {
         router.push('/master-admin')
         return
       }
@@ -110,7 +122,7 @@ export default function WebSettingsPage() {
         if (s.heroBanners) setHeroBanners(s.heroBanners)
         if (s.products) setProducts(s.products)
         if (s.partners) setPartners(s.partners)
-        if (s.blogs) setBlogs(s.blogs)
+        if (s.blogs !== undefined) setBlogs(s.blogs)
         if (s.aboutText) setAboutText(s.aboutText)
         if (s.footerHQ) setFooterHQ(s.footerHQ)
       }
@@ -222,6 +234,32 @@ export default function WebSettingsPage() {
       const resultStr = uploadEvent.target?.result as string
       if (resultStr) {
         setEditPartnerLogo(resultStr)
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleNewBlogImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (uploadEvent) => {
+      const resultStr = uploadEvent.target?.result as string
+      if (resultStr) {
+        setNewBlogImage(resultStr)
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleEditBlogImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (uploadEvent) => {
+      const resultStr = uploadEvent.target?.result as string
+      if (resultStr) {
+        setEditBlogImage(resultStr)
       }
     }
     reader.readAsDataURL(file)
@@ -837,30 +875,177 @@ export default function WebSettingsPage() {
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
               <h2 className="font-extrabold text-sm uppercase text-blue-400">Daily Blogs Management</h2>
               <div className="space-y-3 text-xs">
-                <div className="space-y-2">
-                  {blogs.map((b) => (
-                    <div key={b.id} className="bg-slate-950 border border-slate-800 p-3.5 rounded-xl flex justify-between items-center">
-                      <div>
-                        <span className="text-[10px] bg-blue-950 text-blue-300 px-2 py-0.5 rounded font-bold uppercase">{b.category}</span>
-                        <h4 className="font-bold text-white text-sm mt-1">{b.title}</h4>
-                        <p className="text-slate-400 text-xs">{b.desc}</p>
+                {blogs.length === 0 ? (
+                  <div className="text-slate-400 text-xs py-4 italic">No blogs currently added. Use the form below to create one.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {blogs.map((b: any) => (
+                      <div key={b.id} className="bg-slate-950 border border-slate-800 p-3.5 rounded-xl flex justify-between items-start space-x-3">
+                        <div className="flex space-x-3 items-start flex-1">
+                          {b.image && (b.image.startsWith('data:') || b.image.startsWith('http') || b.image.startsWith('/') || b.image.length > 50) ? (
+                            <div className="w-14 h-14 rounded-lg overflow-hidden border border-slate-800 shrink-0 bg-slate-900 flex items-center justify-center mt-1">
+                              <img src={b.image} alt="" className="w-full h-full object-cover" />
+                            </div>
+                          ) : (
+                            <div className="w-14 h-14 rounded-lg border border-slate-800 flex items-center justify-center text-xl bg-slate-900 shrink-0 mt-1">📰</div>
+                          )}
+                          <div className="space-y-1 flex-1">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-[10px] bg-blue-950 text-blue-300 px-2 py-0.5 rounded font-bold uppercase">{b.category}</span>
+                              <span className="text-[10px] text-slate-500 font-mono">📅 {b.date} {b.postType === 'schedule' && b.scheduleDate ? `(Scheduled: ${b.scheduleDate})` : ''}</span>
+                            </div>
+                            <h4 className="font-bold text-white text-sm">{b.title}</h4>
+                            <p className="text-slate-400 text-xs text-justify leading-relaxed">{b.desc}</p>
+                            {b.writer && (
+                              <p className="text-[11px] text-blue-400 font-medium italic pt-0.5">Shared by: {b.writer}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2 shrink-0 pt-1">
+                          <button
+                            onClick={() => {
+                              setEditingBlogId(b.id)
+                              setEditBlogTitle(b.title)
+                              setEditBlogCat(b.category || 'General')
+                              setEditBlogDesc(b.desc)
+                              setEditBlogImage(b.image || '')
+                              setEditBlogWriter(b.writer || '')
+                              setEditBlogPostType(b.postType || 'now')
+                              setEditBlogScheduleDate(b.scheduleDate || '')
+                            }}
+                            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-blue-300 font-bold rounded-lg cursor-pointer text-[11px]"
+                          >
+                            Edit
+                          </button>
+                          <button onClick={() => setBlogs(blogs.filter((item: any) => item.id !== b.id))} className="text-red-400 hover:text-red-300 font-bold cursor-pointer text-[11px]">Delete</button>
+                        </div>
                       </div>
-                      <button onClick={() => setBlogs(blogs.filter(item => item.id !== b.id))} className="text-red-400 hover:text-red-300 font-bold cursor-pointer shrink-0 pl-4">Delete</button>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
 
+                {/* Edit Blog Section */}
+                {editingBlogId !== null && (
+                  <div className="p-4 bg-blue-950/30 border border-blue-800/60 rounded-xl space-y-3 mt-4">
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-blue-400 uppercase text-[11px]">✏️ Edit Blog Article ID #{editingBlogId}</span>
+                      <button onClick={() => setEditingBlogId(null)} className="text-slate-400 hover:text-white text-xs font-bold cursor-pointer">Cancel</button>
+                    </div>
+                    <div className="space-y-2">
+                      <input type="text" placeholder="Blog Title..." value={editBlogTitle} onChange={e => setEditBlogTitle(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
+                      <input type="text" placeholder="Category (e.g. Engineering)" value={editBlogCat} onChange={e => setEditBlogCat(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
+                      <textarea rows={3} placeholder="Short Blog Summary..." value={editBlogDesc} onChange={e => setEditBlogDesc(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white resize-none" />
+                      <input type="text" placeholder="Writer Name / Designation (e.g. John Doe, Lead Architect)..." value={editBlogWriter} onChange={e => setEditBlogWriter(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
+
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase">Blog Image (Upload Computer File or URL)</label>
+                        <div className="flex items-center space-x-2">
+                          {editBlogImage && (editBlogImage.startsWith('data:') || editBlogImage.startsWith('http') || editBlogImage.startsWith('/') || editBlogImage.length > 50) ? (
+                            <div className="w-12 h-10 rounded border border-slate-700 overflow-hidden shrink-0 bg-slate-900 flex items-center justify-center">
+                              <img src={editBlogImage} alt="" className="w-full h-full object-cover" />
+                            </div>
+                          ) : (
+                            <div className="w-12 h-10 rounded border border-slate-700 flex items-center justify-center text-lg bg-slate-900 shrink-0">📰</div>
+                          )}
+                          <input type="file" accept="image/*" onChange={handleEditBlogImageUpload} className="w-full text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-blue-600 file:text-white cursor-pointer" />
+                        </div>
+                        <input type="text" placeholder="Or paste image URL..." value={editBlogImage} onChange={e => setEditBlogImage(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs font-mono text-white" />
+                      </div>
+
+                      <div className="space-y-1 pt-1">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase">Posting Schedule Option</label>
+                        <div className="flex space-x-4">
+                          <label className="flex items-center space-x-2 cursor-pointer">
+                            <input type="radio" name="editBlogType" checked={editBlogPostType === 'now'} onChange={() => setEditBlogPostType('now')} className="accent-blue-600" />
+                            <span className="text-white font-medium">Post Now</span>
+                          </label>
+                          <label className="flex items-center space-x-2 cursor-pointer">
+                            <input type="radio" name="editBlogType" checked={editBlogPostType === 'schedule'} onChange={() => setEditBlogPostType('schedule')} className="accent-blue-600" />
+                            <span className="text-white font-medium">Set Posting Date/Time</span>
+                          </label>
+                        </div>
+                        {editBlogPostType === 'schedule' && (
+                          <input type="datetime-local" value={editBlogScheduleDate} onChange={e => setEditBlogScheduleDate(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white font-mono text-xs mt-1" />
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (!editBlogTitle.trim()) return
+                        setBlogs(blogs.map((b: any) => b.id === editingBlogId ? { ...b, title: editBlogTitle.trim(), category: editBlogCat.trim() || 'General', desc: editBlogDesc.trim(), image: editBlogImage.trim(), writer: editBlogWriter.trim(), postType: editBlogPostType, scheduleDate: editBlogScheduleDate } : b))
+                        setEditingBlogId(null)
+                      }}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl cursor-pointer"
+                    >
+                      Update Blog Article
+                    </button>
+                  </div>
+                )}
+
+                {/* Add New Blog Section */}
                 <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3 mt-4">
                   <span className="font-bold text-blue-400 uppercase text-[11px] block">+ Write New Blog Article</span>
                   <input type="text" placeholder="Blog Title..." value={newBlogTitle} onChange={e => setNewBlogTitle(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
                   <input type="text" placeholder="Category (e.g. Engineering)" value={newBlogCat} onChange={e => setNewBlogCat(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
                   <textarea rows={3} placeholder="Short Blog Summary..." value={newBlogDesc} onChange={e => setNewBlogDesc(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white resize-none" />
+                  <input type="text" placeholder="Writer Name / Designation (e.g. John Doe, Lead Architect)..." value={newBlogWriter} onChange={e => setNewBlogWriter(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
+
+                  <div className="space-y-1">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase">Blog Image (Upload Computer File or URL)</label>
+                    <div className="flex items-center space-x-2">
+                      {newBlogImage && (newBlogImage.startsWith('data:') || newBlogImage.startsWith('http') || newBlogImage.startsWith('/') || newBlogImage.length > 50) ? (
+                        <div className="w-12 h-10 rounded border border-slate-700 overflow-hidden shrink-0 bg-slate-900 flex items-center justify-center">
+                          <img src={newBlogImage} alt="" className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="w-12 h-10 rounded border border-slate-700 flex items-center justify-center text-lg bg-slate-900 shrink-0">📰</div>
+                      )}
+                      <input type="file" accept="image/*" onChange={handleNewBlogImageUpload} className="w-full text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-blue-600 file:text-white cursor-pointer" />
+                    </div>
+                    <input type="text" placeholder="Or paste image URL..." value={newBlogImage} onChange={e => setNewBlogImage(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs font-mono text-white" />
+                  </div>
+
+                  <div className="space-y-1 pt-1">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase">Posting Schedule Option</label>
+                    <div className="flex space-x-4">
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input type="radio" name="newBlogType" checked={newBlogPostType === 'now'} onChange={() => setNewBlogPostType('now')} className="accent-blue-600" />
+                        <span className="text-white font-medium">Post Now</span>
+                      </label>
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input type="radio" name="newBlogType" checked={newBlogPostType === 'schedule'} onChange={() => setNewBlogPostType('schedule')} className="accent-blue-600" />
+                        <span className="text-white font-medium">Set Posting Date/Time</span>
+                      </label>
+                    </div>
+                    {newBlogPostType === 'schedule' && (
+                      <input type="datetime-local" value={newBlogScheduleDate} onChange={e => setNewBlogScheduleDate(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white font-mono text-xs mt-1" />
+                    )}
+                  </div>
+
                   <button
                     onClick={() => {
                       if (!newBlogTitle.trim()) return
-                      setBlogs([...blogs, { id: Date.now(), title: newBlogTitle.trim(), date: 'Oct 07, 2026', category: newBlogCat.trim() || 'General', desc: newBlogDesc.trim() }])
+                      setBlogs(prevBlogs => [
+                        ...prevBlogs,
+                        {
+                          id: Date.now(),
+                          title: newBlogTitle.trim(),
+                          date: 'Oct 15, 2026',
+                          category: newBlogCat.trim() || 'General',
+                          desc: newBlogDesc.trim(),
+                          image: newBlogImage.trim(),
+                          writer: newBlogWriter.trim(),
+                          postType: newBlogPostType,
+                          scheduleDate: newBlogScheduleDate
+                        }
+                      ])
                       setNewBlogTitle('')
+                      setNewBlogCat('Engineering')
                       setNewBlogDesc('')
+                      setNewBlogImage('')
+                      setNewBlogWriter('')
+                      setNewBlogPostType('now')
+                      setNewBlogScheduleDate('')
                     }}
                     className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl cursor-pointer"
                   >
