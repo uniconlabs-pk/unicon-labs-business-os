@@ -398,7 +398,7 @@ export default function UniconLabsLandingPage() {
 
         {/* 2. STICKY HORIZONTAL MENU BAR */}
         <nav 
-          className="text-white px-4 md:px-8 py-3.5 border-b border-cyan-500/20 shadow-lg overflow-x-auto whitespace-nowrap [-webkit-overflow-scrolling:touch]"
+          className="text-white px-4 md:px-8 py-2.5 border-b border-cyan-500/20 shadow-lg overflow-x-auto whitespace-nowrap [-webkit-overflow-scrolling:touch]"
           style={{
             backgroundImage: `
               radial-gradient(circle at 50% 50%, rgba(34, 211, 238, 0.15) 0%, transparent 70%),
@@ -415,13 +415,16 @@ export default function UniconLabsLandingPage() {
                 key={item.id}
                 href={item.href}
                 onClick={(e) => handleMenuClick(e, item.label, item.href)}
-                className="hover:text-cyan-300 transition-colors py-1 hover:border-b-2 hover:border-cyan-400 whitespace-nowrap cursor-pointer tracking-widest text-blue-100 shrink-0"
+                className="hover:text-cyan-300 transition-colors py-1 whitespace-nowrap cursor-pointer tracking-widest text-blue-100 shrink-0"
               >
                 {item.label}
               </a>
             ))}
           </div>
         </nav>
+
+        {/* VIBRANT RAINBOW RADIANT DIVIDER LINE */}
+        <div className="w-full h-[6px] bg-gradient-to-r from-red-500 via-yellow-400 via-green-400 via-cyan-400 via-blue-500 to-purple-600 shadow-[0_0_18px_rgba(255,255,255,0.7)] relative z-50"></div>
       </div>
 
       {/* 3. HERO BANNER SECTION */}
