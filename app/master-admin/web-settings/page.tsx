@@ -12,14 +12,20 @@ export default function WebSettingsPage() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'header' | 'menu' | 'hero' | 'products' | 'partners' | 'blogs' | 'about' | 'footer'>('header')
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
   const [isSidebarHovered, setIsSidebarHovered] = useState(false)
   const [authorized, setAuthorized] = useState(false)
 
+  // Media Library Modal States
+  const [isMediaModalOpen, setIsMediaModalOpen] = useState(false)
+  const [mediaFiles, setMediaFiles] = useState<any[]>([])
+  const [loadingMedia, setLoadingMedia] = useState(false)
+  const [mediaSelectCallback, setMediaSelectCallback] = useState<((url: string) => void) | null>(null)
+
   // CMS States
-  const [headerBrand, setHeaderBrand] = useState('UNICON LABS')
-  const [headerSlogan, setHeaderSlogan] = useState('YOU THINK WE BUILD')
-  const [headerSubtitle, setHeaderSubtitle] = useState('Enterprise Software Company')
+  const [headerLogo, setHeaderLogo] = useState('')
+  const [headerPhone, setHeaderPhone] = useState('+1 (555) 019-2834')
 
   const [menuItems, setMenuItems] = useState([
     { id: 1, label: 'HOME', href: '#home' },
@@ -114,9 +120,8 @@ export default function WebSettingsPage() {
 
       if (!error && data && data.settings) {
         const s = data.settings
-        if (s.headerBrand) setHeaderBrand(s.headerBrand)
-        if (s.headerSlogan) setHeaderSlogan(s.headerSlogan)
-        if (s.headerSubtitle) setHeaderSubtitle(s.headerSubtitle)
+        if (s.headerLogo) setHeaderLogo(s.headerLogo)
+        if (s.headerPhone) setHeaderPhone(s.headerPhone)
         if (s.menuItems) setMenuItems(s.menuItems)
         if (s.heroSlideInterval) setHeroSlideInterval(s.heroSlideInterval)
         if (s.heroBanners) setHeroBanners(s.heroBanners)
@@ -131,12 +136,91 @@ export default function WebSettingsPage() {
     verifyAndFetch()
   }, [router])
 
+  // Helper: Extract storage file path from public URL and delete it from Supabase bucket
+  const deleteFileFromSupabaseStorage = async (fileUrl: string) => {
+    if (!fileUrl || !fileUrl.includes('/unicon-media/')) return
+    try {
+      const urlParts = fileUrl.split('/unicon-media/')
+      if (urlParts.length > 1) {
+        const filePath = decodeURIComponent(urlParts[1])
+        await supabase.storage.from('unicon-media').remove([filePath])
+      }
+    } catch (err) {
+      console.error('Failed to delete old file from bucket:', err)
+    }
+  }
+
+  // Centralized Supabase Storage Upload Helper
+  const uploadFileToSupabaseStorage = async (file: File): Promise<string | null> => {
+    try {
+      setUploading(true)
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+      const filePath = `uploads/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('unicon-media')
+        .upload(filePath, file)
+
+      if (uploadError) {
+        alert(`Storage Upload Failed: ${uploadError.message}`)
+        return null
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('unicon-media')
+        .getPublicUrl(filePath)
+
+      return publicUrl
+    } catch (err: any) {
+      console.error('Upload Error:', err)
+      alert('An error occurred during file upload.')
+      return null
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  // Fetch existing images from Supabase storage bucket
+  const fetchSupabaseMediaLibrary = async () => {
+    setLoadingMedia(true)
+    try {
+      const { data, error } = await supabase.storage.from('unicon-media').list('uploads', {
+        limit: 100,
+        sortBy: { column: 'created_at', order: 'desc' }
+      })
+      if (!error && data) {
+        const formatted = data
+          .filter(item => item.name && item.name !== '.emptyFolderPlaceholder')
+          .map(item => {
+            const filePath = `uploads/${item.name}`
+            const { data: { publicUrl } } = supabase.storage.from('unicon-media').getPublicUrl(filePath)
+            return {
+              name: item.name,
+              url: publicUrl,
+              created_at: item.created_at
+            }
+          })
+        setMediaFiles(formatted)
+      }
+    } catch (err) {
+      console.error('Error fetching media library:', err)
+    } finally {
+      setLoadingMedia(false)
+    }
+  }
+
+  const openMediaPicker = (callback: (url: string) => void) => {
+    setMediaSelectCallback(() => callback)
+    setIsMediaModalOpen(true)
+    fetchSupabaseMediaLibrary()
+  }
+
   const handleSaveChanges = async () => {
     setSaving(true)
     const payload = {
-      headerBrand,
-      headerSlogan,
-      headerSubtitle,
+      headerLogo,
+      headerPhone,
       menuItems,
       heroSlideInterval,
       heroBanners,
@@ -157,112 +241,6 @@ export default function WebSettingsPage() {
     } else {
       alert('UNICON LABS website settings saved, published, and synced in real-time successfully!')
     }
-  }
-
-  const handleHeroImageUpload = (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (uploadEvent) => {
-      const resultStr = uploadEvent.target?.result as string
-      if (resultStr) {
-        const updated = [...heroBanners]
-        updated[idx].bgImage = resultStr
-        setHeroBanners(updated)
-      }
-    }
-    reader.readAsDataURL(file)
-  }
-
-  const handleNewHeroImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (uploadEvent) => {
-      const resultStr = uploadEvent.target?.result as string
-      if (resultStr) {
-        setNewHeroImage(resultStr)
-      }
-    }
-    reader.readAsDataURL(file)
-  }
-
-  const handleNewProdImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (uploadEvent) => {
-      const resultStr = uploadEvent.target?.result as string
-      if (resultStr) {
-        setNewProdImage(resultStr)
-      }
-    }
-    reader.readAsDataURL(file)
-  }
-
-  const handleEditProdImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (uploadEvent) => {
-      const resultStr = uploadEvent.target?.result as string
-      if (resultStr) {
-        setEditProdImage(resultStr)
-      }
-    }
-    reader.readAsDataURL(file)
-  }
-
-  const handleNewPartnerLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (uploadEvent) => {
-      const resultStr = uploadEvent.target?.result as string
-      if (resultStr) {
-        setNewPartnerLogo(resultStr)
-      }
-    }
-    reader.readAsDataURL(file)
-  }
-
-  const handleEditPartnerLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (uploadEvent) => {
-      const resultStr = uploadEvent.target?.result as string
-      if (resultStr) {
-        setEditPartnerLogo(resultStr)
-      }
-    }
-    reader.readAsDataURL(file)
-  }
-
-  const handleNewBlogImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (uploadEvent) => {
-      const resultStr = uploadEvent.target?.result as string
-      if (resultStr) {
-        setNewBlogImage(resultStr)
-      }
-    }
-    reader.readAsDataURL(file)
-  }
-
-  const handleEditBlogImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (uploadEvent) => {
-      const resultStr = uploadEvent.target?.result as string
-      if (resultStr) {
-        setEditBlogImage(resultStr)
-      }
-    }
-    reader.readAsDataURL(file)
   }
 
   // Product Drag and Drop Handlers
@@ -309,10 +287,81 @@ export default function WebSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans select-none">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans select-none relative">
       
+      {/* Uploading Progress Overlay */}
+      {uploading && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center">
+          <div className="bg-slate-900 border border-blue-500/50 p-6 rounded-2xl flex items-center space-x-3 shadow-2xl">
+            <span className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></span>
+            <span className="text-sm font-bold text-blue-300 uppercase">Synchronizing bucket storage...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Media Library Picker Modal */}
+      {isMediaModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-6">
+          <div className="bg-slate-900 border border-slate-700 w-full max-w-3xl rounded-2xl p-6 space-y-4 shadow-2xl flex flex-col max-h-[80vh]">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="font-extrabold text-sm uppercase text-blue-400">Media Library & Storage Bucket</h3>
+                <p className="text-[10px] text-slate-400">Choose an existing image to reuse across your website, or upload a brand new file.</p>
+              </div>
+              <button onClick={() => setIsMediaModalOpen(false)} className="text-slate-400 hover:text-white font-bold cursor-pointer text-xs">✕ Close</button>
+            </div>
+
+            {/* Direct Upload Tab inside Modal */}
+            <div className="bg-slate-950 border border-slate-800 p-3 rounded-xl flex items-center justify-between">
+              <span className="text-xs text-slate-300 font-bold">Upload New Image to Bucket:</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={async e => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  const publicUrl = await uploadFileToSupabaseStorage(file)
+                  if (publicUrl) {
+                    if (mediaSelectCallback) mediaSelectCallback(publicUrl)
+                    setIsMediaModalOpen(false)
+                  }
+                }}
+                className="text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-blue-600 file:text-white cursor-pointer"
+              />
+            </div>
+
+            {/* Existing Images Grid */}
+            <div className="flex-1 overflow-y-auto pr-1">
+              {loadingMedia ? (
+                <div className="text-center py-10 text-xs text-slate-400 font-bold">Loading available storage images...</div>
+              ) : mediaFiles.length === 0 ? (
+                <div className="text-center py-10 text-xs text-slate-500">No images found in Supabase storage bucket.</div>
+              ) : (
+                <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                  {mediaFiles.map((file, i) => (
+                    <div
+                      key={i}
+                      onClick={() => {
+                        if (mediaSelectCallback) mediaSelectCallback(file.url)
+                        setIsMediaModalOpen(false)
+                      }}
+                      className="group relative bg-slate-950 border border-slate-800 rounded-xl overflow-hidden aspect-square cursor-pointer hover:border-blue-500 transition flex items-center justify-center"
+                    >
+                      <img src={file.url} alt={file.name} className="w-full h-full object-cover group-hover:scale-105 transition duration-200" />
+                      <div className="absolute inset-0 bg-blue-600/20 opacity-0 group-hover:opacity-100 transition flex items-end p-2">
+                        <span className="text-[9px] bg-slate-950/90 text-white px-1.5 py-0.5 rounded font-bold truncate w-full text-center">Select Image</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Top Navbar */}
-      <header className="px-8 py-5 border-b border-slate-800 flex justify-between items-center bg-slate-900/80 sticky top-0 z-50 shadow-sm">
+      <header className="px-8 py-5 border-b border-slate-800 flex justify-between items-center bg-slate-900/80 sticky top-0 z-40 shadow-sm">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-lg text-white shadow">
             🌐
@@ -346,7 +395,7 @@ export default function WebSettingsPage() {
         <aside
           onMouseEnter={() => setIsSidebarHovered(true)}
           onMouseLeave={() => setIsSidebarHovered(false)}
-          className={`bg-slate-900 border-r border-slate-800 transition-all duration-300 ease-in-out flex flex-col shrink-0 z-40 ${
+          className={`bg-slate-900 border-r border-slate-800 transition-all duration-300 ease-in-out flex flex-col shrink-0 z-30 ${
             isSidebarHovered ? 'w-64' : 'w-16'
           }`}
         >
@@ -381,20 +430,67 @@ export default function WebSettingsPage() {
           {/* 1. HEADER SETTINGS */}
           {activeTab === 'header' && (
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
-              <h2 className="font-extrabold text-sm uppercase text-blue-400">Header Branding & Slogan</h2>
-              <div className="space-y-3 text-xs">
-                <div>
-                  <label className="block text-slate-400 font-bold mb-1">Brand Name</label>
-                  <input type="text" value={headerBrand} onChange={e => setHeaderBrand(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-bold" />
+              <h2 className="font-extrabold text-sm uppercase text-blue-400">Header Branding & Inquiry Contact</h2>
+              <div className="space-y-4 text-xs">
+                
+                {/* UNICON LABS Brand Logo Section */}
+                <div className="space-y-2 bg-slate-950 p-4 rounded-xl border border-slate-800">
+                  <label className="block text-slate-400 font-bold uppercase text-[10px]">UNICON LABS Brand Logo Image</label>
+                  <div className="flex items-center space-x-3">
+                    {headerLogo ? (
+                      <div className="w-16 h-12 bg-slate-900 rounded-lg border border-slate-700 overflow-hidden shrink-0 flex items-center justify-center p-1">
+                        <img src={headerLogo} alt="Brand Logo" className="w-full h-full object-contain" />
+                      </div>
+                    ) : (
+                      <div className="w-16 h-12 bg-slate-900 rounded-lg border border-slate-700 flex items-center justify-center text-[10px] text-slate-500 font-bold">No Logo</div>
+                    )}
+                    <div className="flex-1 space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => openMediaPicker(async (url) => {
+                          if (headerLogo && headerLogo !== url) await deleteFileFromSupabaseStorage(headerLogo)
+                          setHeaderLogo(url)
+                        })}
+                        className="py-2 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-[10px] uppercase cursor-pointer shadow"
+                      >
+                        📁 Choose from Media Library / Upload
+                      </button>
+                      <input
+                        type="text"
+                        placeholder="Or paste direct image URL..."
+                        value={headerLogo}
+                        onChange={e => setHeaderLogo(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg text-slate-300 font-mono text-xs"
+                      />
+                    </div>
+                    {headerLogo && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await deleteFileFromSupabaseStorage(headerLogo)
+                          setHeaderLogo('')
+                        }}
+                        className="text-red-400 hover:text-red-300 font-bold text-xs cursor-pointer px-2"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-slate-400 font-bold mb-1">Brand Slogan</label>
-                  <input type="text" value={headerSlogan} onChange={e => setHeaderSlogan(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono" />
+
+                {/* Immediate Inquiry Phone Number Section */}
+                <div className="space-y-1 bg-slate-950 p-4 rounded-xl border border-slate-800">
+                  <label className="block text-slate-400 font-bold uppercase text-[10px]">Immediate Inquiry Phone Number</label>
+                  <p className="text-[10px] text-slate-500 mb-2">Shown alongside: <span className="text-slate-300 font-mono">"For immediate inquiry please call (9:00 AM - 6:00 PM / Mon - Sat)"</span></p>
+                  <input
+                    type="text"
+                    placeholder="Enter phone number (e.g. +1 (555) 019-2834)"
+                    value={headerPhone}
+                    onChange={e => setHeaderPhone(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 px-3 py-2 rounded-xl text-white font-mono"
+                  />
                 </div>
-                <div>
-                  <label className="block text-slate-400 font-bold mb-1">Subtitle / Category</label>
-                  <input type="text" value={headerSubtitle} onChange={e => setHeaderSubtitle(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white" />
-                </div>
+
               </div>
             </div>
           )}
@@ -471,7 +567,7 @@ export default function WebSettingsPage() {
             </div>
           )}
 
-          {/* 3. HERO BANNERS SETTINGS (Image Upload / URL + Timing) */}
+          {/* 3. HERO BANNERS SETTINGS */}
           {activeTab === 'hero' && (
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
               <h2 className="font-extrabold text-sm uppercase text-blue-400">Hero Banners, Visuals & Sliding Timing</h2>
@@ -492,7 +588,15 @@ export default function WebSettingsPage() {
                     <div key={hb.id} className="bg-slate-950 border border-slate-800 p-4 rounded-xl space-y-3">
                       <div className="flex justify-between items-center">
                         <span className="bg-blue-950 text-blue-300 px-2 py-0.5 rounded font-mono text-[10px] uppercase font-bold">{hb.tag}</span>
-                        <button onClick={() => setHeroBanners(heroBanners.filter(b => b.id !== hb.id))} className="text-red-400 hover:text-red-300 font-bold cursor-pointer">Remove Banner</button>
+                        <button 
+                          onClick={async () => {
+                            if (hb.bgImage) await deleteFileFromSupabaseStorage(hb.bgImage)
+                            setHeroBanners(heroBanners.filter(b => b.id !== hb.id))
+                          }} 
+                          className="text-red-400 hover:text-red-300 font-bold cursor-pointer"
+                        >
+                          Remove Banner
+                        </button>
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -549,18 +653,25 @@ export default function WebSettingsPage() {
                             ) : (
                               <div className="w-12 h-10 bg-slate-950 rounded border border-slate-700 flex items-center justify-center text-xs text-slate-500">None</div>
                             )}
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={e => handleHeroImageUpload(idx, e)}
-                              className="w-full text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-blue-600 file:text-white cursor-pointer"
-                            />
+                            <button
+                              type="button"
+                              onClick={() => openMediaPicker(async (url) => {
+                                const oldUrl = heroBanners[idx]?.bgImage
+                                if (oldUrl && oldUrl !== url) await deleteFileFromSupabaseStorage(oldUrl)
+                                const updated = [...heroBanners]
+                                updated[idx].bgImage = url
+                                setHeroBanners(updated)
+                              })}
+                              className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-[10px] uppercase cursor-pointer text-center shadow"
+                            >
+                              📁 Choose / Upload Image
+                            </button>
                           </div>
                           <input
                             type="text"
                             placeholder="Or paste image URL..."
                             value={hb.bgImage || ''}
-                            onChange={e => {
+                            onChange={async e => {
                               const updated = [...heroBanners]
                               updated[idx].bgImage = e.target.value
                               setHeroBanners(updated)
@@ -595,8 +706,19 @@ export default function WebSettingsPage() {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase">Banner Image (Upload or URL)</label>
-                    <input type="file" accept="image/*" onChange={handleNewHeroImageUpload} className="w-full text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-blue-600 file:text-white cursor-pointer" />
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase">Banner Image (Choose from Media Library or URL)</label>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => openMediaPicker(async (url) => {
+                          if (newHeroImage && newHeroImage !== url) await deleteFileFromSupabaseStorage(newHeroImage)
+                          setNewHeroImage(url)
+                        })}
+                        className="py-2 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-[10px] uppercase cursor-pointer shadow"
+                      >
+                        📁 Choose / Upload Image
+                      </button>
+                    </div>
                     <input type="text" placeholder="Or paste image URL..." value={newHeroImage} onChange={e => setNewHeroImage(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs font-mono text-white" />
                   </div>
 
@@ -619,7 +741,7 @@ export default function WebSettingsPage() {
             </div>
           )}
 
-          {/* 4. PRODUCTS DISPLAY SETTINGS WITH DRAG & DROP REORDERING */}
+          {/* 4. PRODUCTS DISPLAY SETTINGS */}
           {activeTab === 'products' && (
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
               <div className="flex justify-between items-center">
@@ -639,7 +761,7 @@ export default function WebSettingsPage() {
                     >
                       <div className="flex items-center space-x-3">
                         <span className="text-slate-500 font-mono text-sm select-none">⠿</span>
-                        {p.image && (p.image.startsWith('data:') || p.image.startsWith('http') || p.image.startsWith('/') || p.image.length > 50) ? (
+                        {p.image && (p.image.startsWith('http') || p.image.startsWith('/') || p.image.startsWith('data:')) ? (
                           <div className="w-10 h-10 rounded-lg overflow-hidden border border-slate-800 shrink-0 bg-slate-900 flex items-center justify-center">
                             <img src={p.image} alt="" className="w-full h-full object-cover" />
                           </div>
@@ -663,13 +785,23 @@ export default function WebSettingsPage() {
                         >
                           Edit
                         </button>
-                        <button onClick={() => setProducts(products.filter(item => item.id !== p.id))} className="text-red-400 hover:text-red-300 font-bold cursor-pointer text-[11px]">Delete</button>
+                        <button 
+                          onClick={async () => {
+                            if (p.image && !['📦', '🖥️', '🍳', '📊', '🛍️'].includes(p.image)) {
+                              await deleteFileFromSupabaseStorage(p.image)
+                            }
+                            setProducts(products.filter(item => item.id !== p.id))
+                          }} 
+                          className="text-red-400 hover:text-red-300 font-bold cursor-pointer text-[11px]"
+                        >
+                          Delete
+                        </button>
                       </div>
                     </div>
                   ))}
                 </div>
 
-                {/* Edit Product Modal / Drawer Section */}
+                {/* Edit Product Section */}
                 {editingProductId !== null && (
                   <div className="p-4 bg-blue-950/30 border border-blue-800/60 rounded-xl space-y-3 mt-4">
                     <div className="flex justify-between items-center">
@@ -686,16 +818,27 @@ export default function WebSettingsPage() {
                         <input type="text" value={editProdDesc} onChange={e => setEditProdDesc(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
                       </div>
                       <div className="space-y-1">
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase">Product Image (Upload Computer File, URL, or Emoji)</label>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase">Product Image (Media Library, URL, or Emoji)</label>
                         <div className="flex items-center space-x-2">
-                          {editProdImage && (editProdImage.startsWith('data:') || editProdImage.startsWith('http') || editProdImage.startsWith('/') || editProdImage.length > 50) ? (
+                          {editProdImage && (editProdImage.startsWith('http') || editProdImage.startsWith('/') || editProdImage.startsWith('data:')) ? (
                             <div className="w-12 h-10 rounded border border-slate-700 overflow-hidden shrink-0 bg-slate-900 flex items-center justify-center">
                               <img src={editProdImage} alt="" className="w-full h-full object-cover" />
                             </div>
                           ) : (
                             <div className="w-12 h-10 rounded border border-slate-700 flex items-center justify-center text-lg bg-slate-900 shrink-0">{editProdImage || '📦'}</div>
                           )}
-                          <input type="file" accept="image/*" onChange={handleEditProdImageUpload} className="w-full text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-blue-600 file:text-white cursor-pointer" />
+                          <button
+                            type="button"
+                            onClick={() => openMediaPicker(async (url) => {
+                              if (editProdImage && !['📦', '🖥️', '🍳', '📊', '🛍️'].includes(editProdImage) && editProdImage !== url) {
+                                await deleteFileFromSupabaseStorage(editProdImage)
+                              }
+                              setEditProdImage(url)
+                            })}
+                            className="py-2 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-[10px] uppercase cursor-pointer shadow"
+                          >
+                            📁 Choose / Upload Image
+                          </button>
                         </div>
                         <input type="text" placeholder="Or paste image URL / Emoji..." value={editProdImage} onChange={e => setEditProdImage(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs font-mono text-white" />
                       </div>
@@ -719,16 +862,27 @@ export default function WebSettingsPage() {
                   <input type="text" placeholder="Short Description..." value={newProdDesc} onChange={e => setNewProdDesc(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
                   
                   <div className="space-y-1">
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase">Product Image (Upload Computer File, URL, or Emoji)</label>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase">Product Image (Media Library, URL, or Emoji)</label>
                     <div className="flex items-center space-x-2">
-                      {newProdImage && (newProdImage.startsWith('data:') || newProdImage.startsWith('http') || newProdImage.startsWith('/') || newProdImage.length > 50) ? (
+                      {newProdImage && (newProdImage.startsWith('http') || newProdImage.startsWith('/') || newProdImage.startsWith('data:')) ? (
                         <div className="w-12 h-10 rounded border border-slate-700 overflow-hidden shrink-0 bg-slate-900 flex items-center justify-center">
                           <img src={newProdImage} alt="" className="w-full h-full object-cover" />
                         </div>
                       ) : (
                         <div className="w-12 h-10 rounded border border-slate-700 flex items-center justify-center text-lg bg-slate-900 shrink-0">{newProdImage || '📦'}</div>
                       )}
-                      <input type="file" accept="image/*" onChange={handleNewProdImageUpload} className="w-full text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-blue-600 file:text-white cursor-pointer" />
+                      <button
+                        type="button"
+                        onClick={() => openMediaPicker(async (url) => {
+                          if (newProdImage && !['📦', '🖥️', '🍳', '📊', '🛍️'].includes(newProdImage) && newProdImage !== url) {
+                            await deleteFileFromSupabaseStorage(newProdImage)
+                          }
+                          setNewProdImage(url)
+                        })}
+                        className="py-2 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-[10px] uppercase cursor-pointer shadow"
+                      >
+                        📁 Choose / Upload Image
+                      </button>
                     </div>
                     <input type="text" placeholder="Or paste image URL / Emoji..." value={newProdImage} onChange={e => setNewProdImage(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs font-mono text-white" />
                   </div>
@@ -759,7 +913,7 @@ export default function WebSettingsPage() {
                   {partners.map((prt: any) => (
                     <div key={prt.id} className="bg-slate-950 border border-slate-800 p-3 rounded-xl flex items-center justify-between">
                       <div className="flex items-center space-x-3">
-                        {prt.logo && (prt.logo.startsWith('data:') || prt.logo.startsWith('http') || prt.logo.startsWith('/') || prt.logo.length > 50) ? (
+                        {prt.logo && (prt.logo.startsWith('http') || prt.logo.startsWith('/') || prt.logo.startsWith('data:')) ? (
                           <div className="w-10 h-10 rounded-lg overflow-hidden border border-slate-800 shrink-0 bg-slate-900 flex items-center justify-center">
                             <img src={prt.logo} alt="" className="w-full h-full object-cover" />
                           </div>
@@ -782,13 +936,21 @@ export default function WebSettingsPage() {
                         >
                           Edit
                         </button>
-                        <button onClick={() => setPartners(partners.filter((x: any) => x.id !== prt.id))} className="text-red-400 hover:text-red-300 font-bold cursor-pointer text-[11px]">Remove</button>
+                        <button 
+                          onClick={async () => {
+                            if (prt.logo && prt.logo !== '🏢') await deleteFileFromSupabaseStorage(prt.logo)
+                            setPartners(partners.filter((x: any) => x.id !== prt.id))
+                          }} 
+                          className="text-red-400 hover:text-red-300 font-bold cursor-pointer text-[11px]"
+                        >
+                          Remove
+                        </button>
                       </div>
                     </div>
                   ))}
                 </div>
 
-                {/* Edit Partner Modal / Section */}
+                {/* Edit Partner Section */}
                 {editingPartnerId !== null && (
                   <div className="p-4 bg-blue-950/30 border border-blue-800/60 rounded-xl space-y-3 mt-4">
                     <div className="flex justify-between items-center">
@@ -801,16 +963,27 @@ export default function WebSettingsPage() {
                         <input type="text" value={editPartnerName} onChange={e => setEditPartnerName(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
                       </div>
                       <div className="space-y-1">
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase">Partner Brand Logo (Upload Computer File, URL, or Emoji)</label>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase">Partner Brand Logo (Media Library, URL, or Emoji)</label>
                         <div className="flex items-center space-x-2">
-                          {editPartnerLogo && (editPartnerLogo.startsWith('data:') || editPartnerLogo.startsWith('http') || editPartnerLogo.startsWith('/') || editPartnerLogo.length > 50) ? (
+                          {editPartnerLogo && (editPartnerLogo.startsWith('http') || editPartnerLogo.startsWith('/') || editPartnerLogo.startsWith('data:')) ? (
                             <div className="w-12 h-10 rounded border border-slate-700 overflow-hidden shrink-0 bg-slate-900 flex items-center justify-center">
                               <img src={editPartnerLogo} alt="" className="w-full h-full object-cover" />
                             </div>
                           ) : (
                             <div className="w-12 h-10 rounded border border-slate-700 flex items-center justify-center text-lg bg-slate-900 shrink-0">{editPartnerLogo || '🏢'}</div>
                           )}
-                          <input type="file" accept="image/*" onChange={handleEditPartnerLogoUpload} className="w-full text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-blue-600 file:text-white cursor-pointer" />
+                          <button
+                            type="button"
+                            onClick={() => openMediaPicker(async (url) => {
+                              if (editPartnerLogo && editPartnerLogo !== '🏢' && editPartnerLogo !== url) {
+                                await deleteFileFromSupabaseStorage(editPartnerLogo)
+                              }
+                              setEditPartnerLogo(url)
+                            })}
+                            className="py-2 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-[10px] uppercase cursor-pointer shadow"
+                          >
+                            📁 Choose / Upload Logo
+                          </button>
                         </div>
                         <input type="text" placeholder="Or paste image URL / Emoji..." value={editPartnerLogo} onChange={e => setEditPartnerLogo(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs font-mono text-white" />
                       </div>
@@ -840,16 +1013,27 @@ export default function WebSettingsPage() {
                   />
 
                   <div className="space-y-1">
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase">Partner Brand Logo (Upload Computer File, URL, or Emoji)</label>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase">Partner Brand Logo (Media Library, URL, or Emoji)</label>
                     <div className="flex items-center space-x-2">
-                      {newPartnerLogo && (newPartnerLogo.startsWith('data:') || newPartnerLogo.startsWith('http') || newPartnerLogo.startsWith('/') || newPartnerLogo.length > 50) ? (
+                      {newPartnerLogo && (newPartnerLogo.startsWith('http') || newPartnerLogo.startsWith('/') || newPartnerLogo.startsWith('data:')) ? (
                         <div className="w-12 h-10 rounded border border-slate-700 overflow-hidden shrink-0 bg-slate-900 flex items-center justify-center">
                           <img src={newPartnerLogo} alt="" className="w-full h-full object-cover" />
                         </div>
                       ) : (
                         <div className="w-12 h-10 rounded border border-slate-700 flex items-center justify-center text-lg bg-slate-900 shrink-0">{newPartnerLogo || '🏢'}</div>
                       )}
-                      <input type="file" accept="image/*" onChange={handleNewPartnerLogoUpload} className="w-full text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-blue-600 file:text-white cursor-pointer" />
+                      <button
+                        type="button"
+                        onClick={() => openMediaPicker(async (url) => {
+                          if (newPartnerLogo && newPartnerLogo !== '🏢' && newPartnerLogo !== url) {
+                            await deleteFileFromSupabaseStorage(newPartnerLogo)
+                          }
+                          setNewPartnerLogo(url)
+                        })}
+                        className="py-2 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-[10px] uppercase cursor-pointer shadow"
+                      >
+                        📁 Choose / Upload Logo
+                      </button>
                     </div>
                     <input type="text" placeholder="Or paste image URL / Emoji..." value={newPartnerLogo} onChange={e => setNewPartnerLogo(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs font-mono text-white" />
                   </div>
@@ -882,7 +1066,7 @@ export default function WebSettingsPage() {
                     {blogs.map((b: any) => (
                       <div key={b.id} className="bg-slate-950 border border-slate-800 p-3.5 rounded-xl flex justify-between items-start space-x-3">
                         <div className="flex space-x-3 items-start flex-1">
-                          {b.image && (b.image.startsWith('data:') || b.image.startsWith('http') || b.image.startsWith('/') || b.image.length > 50) ? (
+                          {b.image && (b.image.startsWith('http') || b.image.startsWith('/') || b.image.startsWith('data:')) ? (
                             <div className="w-14 h-14 rounded-lg overflow-hidden border border-slate-800 shrink-0 bg-slate-900 flex items-center justify-center mt-1">
                               <img src={b.image} alt="" className="w-full h-full object-cover" />
                             </div>
@@ -917,7 +1101,15 @@ export default function WebSettingsPage() {
                           >
                             Edit
                           </button>
-                          <button onClick={() => setBlogs(blogs.filter((item: any) => item.id !== b.id))} className="text-red-400 hover:text-red-300 font-bold cursor-pointer text-[11px]">Delete</button>
+                          <button 
+                            onClick={async () => {
+                              if (b.image) await deleteFileFromSupabaseStorage(b.image)
+                              setBlogs(blogs.filter((item: any) => item.id !== b.id))
+                            }} 
+                            className="text-red-400 hover:text-red-300 font-bold cursor-pointer text-[11px]"
+                          >
+                            Delete
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -938,16 +1130,25 @@ export default function WebSettingsPage() {
                       <input type="text" placeholder="Writer Name / Designation (e.g. John Doe, Lead Architect)..." value={editBlogWriter} onChange={e => setEditBlogWriter(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
 
                       <div className="space-y-1">
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase">Blog Image (Upload Computer File or URL)</label>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase">Blog Image (Media Library or URL)</label>
                         <div className="flex items-center space-x-2">
-                          {editBlogImage && (editBlogImage.startsWith('data:') || editBlogImage.startsWith('http') || editBlogImage.startsWith('/') || editBlogImage.length > 50) ? (
+                          {editBlogImage && (editBlogImage.startsWith('http') || editBlogImage.startsWith('/') || editBlogImage.startsWith('data:')) ? (
                             <div className="w-12 h-10 rounded border border-slate-700 overflow-hidden shrink-0 bg-slate-900 flex items-center justify-center">
                               <img src={editBlogImage} alt="" className="w-full h-full object-cover" />
                             </div>
                           ) : (
                             <div className="w-12 h-10 rounded border border-slate-700 flex items-center justify-center text-lg bg-slate-900 shrink-0">📰</div>
                           )}
-                          <input type="file" accept="image/*" onChange={handleEditBlogImageUpload} className="w-full text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-blue-600 file:text-white cursor-pointer" />
+                          <button
+                            type="button"
+                            onClick={() => openMediaPicker(async (url) => {
+                              if (editBlogImage && editBlogImage !== url) await deleteFileFromSupabaseStorage(editBlogImage)
+                              setEditBlogImage(url)
+                            })}
+                            className="py-2 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-[10px] uppercase cursor-pointer shadow"
+                          >
+                            📁 Choose / Upload Image
+                          </button>
                         </div>
                         <input type="text" placeholder="Or paste image URL..." value={editBlogImage} onChange={e => setEditBlogImage(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs font-mono text-white" />
                       </div>
@@ -991,16 +1192,25 @@ export default function WebSettingsPage() {
                   <input type="text" placeholder="Writer Name / Designation (e.g. John Doe, Lead Architect)..." value={newBlogWriter} onChange={e => setNewBlogWriter(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
 
                   <div className="space-y-1">
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase">Blog Image (Upload Computer File or URL)</label>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase">Blog Image (Media Library or URL)</label>
                     <div className="flex items-center space-x-2">
-                      {newBlogImage && (newBlogImage.startsWith('data:') || newBlogImage.startsWith('http') || newBlogImage.startsWith('/') || newBlogImage.length > 50) ? (
+                      {newBlogImage && (newBlogImage.startsWith('http') || newBlogImage.startsWith('/') || newBlogImage.startsWith('data:')) ? (
                         <div className="w-12 h-10 rounded border border-slate-700 overflow-hidden shrink-0 bg-slate-900 flex items-center justify-center">
                           <img src={newBlogImage} alt="" className="w-full h-full object-cover" />
                         </div>
                       ) : (
                         <div className="w-12 h-10 rounded border border-slate-700 flex items-center justify-center text-lg bg-slate-900 shrink-0">📰</div>
                       )}
-                      <input type="file" accept="image/*" onChange={handleNewBlogImageUpload} className="w-full text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-blue-600 file:text-white cursor-pointer" />
+                      <button
+                        type="button"
+                        onClick={() => openMediaPicker(async (url) => {
+                          if (newBlogImage && newBlogImage !== url) await deleteFileFromSupabaseStorage(newBlogImage)
+                          setNewBlogImage(url)
+                        })}
+                        className="py-2 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-[10px] uppercase cursor-pointer shadow"
+                      >
+                        📁 Choose / Upload Image
+                      </button>
                     </div>
                     <input type="text" placeholder="Or paste image URL..." value={newBlogImage} onChange={e => setNewBlogImage(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs font-mono text-white" />
                   </div>

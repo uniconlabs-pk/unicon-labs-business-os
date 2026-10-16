@@ -12,6 +12,7 @@ export default function UniconLabsLandingPage() {
   const router = useRouter()
   const [activeHeroSlide, setActiveHeroSlide] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
   // Contact Modal States
   const [isContactModalOpen, setIsContactModalOpen] = useState(false)
@@ -32,6 +33,8 @@ export default function UniconLabsLandingPage() {
   // Dynamic Content State loaded from Supabase
   const [headerBrand, setHeaderBrand] = useState('UNICON LABS')
   const [headerSlogan, setHeaderSlogan] = useState('YOU THINK WE BUILD')
+  const [headerLogo, setHeaderLogo] = useState('')
+  const [headerPhone, setHeaderPhone] = useState('+92 333 3776556')
   const [menuItems, setMenuItems] = useState([
     { id: 1, label: 'HOME', href: '#home' },
     { id: 2, label: 'Products', href: '#products' },
@@ -41,21 +44,9 @@ export default function UniconLabsLandingPage() {
     { id: 6, label: 'Contact Us', href: '#contact' },
   ])
   const [heroSlideInterval, setHeroSlideInterval] = useState(4500)
-  const [heroBanners, setHeroBanners] = useState([
-    { id: 1, title: 'POWERING AUTONOMOUS ENTERPRISE ECOSYSTEMS', subtitle: 'Next-generation multi-tenant Business OS designed for scale, speed, and real-time offline sync.', tag: 'FLAGSHIP PLATFORM', bgImage: '', textBgOpacity: 80 },
-    { id: 2, title: 'INTELLIGENT POINT OF SALE & KITCHEN DISPLAY', subtitle: 'Streamline multi-tender settlement, split payments, FBR fiscal integration, and instant KOT ticket routing.', tag: 'OPERATIONAL EXCELLENCE', bgImage: '', textBgOpacity: 80 },
-    { id: 3, title: 'REAL-TIME LOGISTICS & DISPATCH QUEUE', subtitle: 'Effortlessly manage delivery fleets, rider assignments, and automated customer notifications.', tag: 'SUPPLY CHAIN', bgImage: '', textBgOpacity: 80 },
-  ])
-  const [products, setProducts] = useState([
-    { id: 1, name: 'Adaptive POS Terminal', desc: 'Feature-rich multi-surface touchscreen cash register and terminal engine.', image: '🖥️' },
-    { id: 2, name: 'Kitchen Display System (KDS)', desc: 'Live order ticket dispatch routing with speed-of-service performance meters.', image: '🍳' },
-    { id: 3, name: 'Dispatch & Fulfillment', desc: 'Complete delivery order queue manager with rider tracking and analytics.', image: '📦' },
-    { id: 4, name: 'Enterprise ERP & Finance', desc: 'Automated ledger tracking, tax compliance, and comprehensive audit reports.', image: '📊' },
-    { id: 5, name: 'Customer Storefront Portal', desc: 'Branded public web ordering storefront connected directly to your POS.', image: '🛍️' }
-  ])
-  const [partners, setPartners] = useState(
-    Array.from({ length: 18 }, (_, i) => ({ id: i + 1, name: `Partner Brand ${i + 1}`, logo: '🏢' }))
-  )
+  const [heroBanners, setHeroBanners] = useState<any[]>([])
+  const [products, setProducts] = useState<any[]>([])
+  const [partners, setPartners] = useState<any[]>([])
   const [blogs, setBlogs] = useState<any[]>([])
   const [aboutText, setAboutText] = useState('Founded with a vision to revolutionize enterprise operations, Unicon Labs specializes in building end-to-end digital ecosystems. From multi-tenant POS hardware integrations to cloud synchronization and automated financial auditing, we provide the infrastructure businesses need to thrive.')
   const [footerHQ, setFooterHQ] = useState('Software Development Enterprise\nDigital Ecosystems & Modules\nEmail: info.uniconlabs@gmail.com')
@@ -72,6 +63,7 @@ export default function UniconLabsLandingPage() {
       if (data && data.settings) {
         applySettings(data.settings)
       }
+      setIsLoading(false)
     }
     loadSettings()
 
@@ -96,6 +88,8 @@ export default function UniconLabsLandingPage() {
   const applySettings = (s: any) => {
     if (s.headerBrand) setHeaderBrand(s.headerBrand)
     if (s.headerSlogan) setHeaderSlogan(s.headerSlogan)
+    if (s.headerLogo) setHeaderLogo(s.headerLogo)
+    if (s.headerPhone) setHeaderPhone(s.headerPhone)
     if (s.menuItems) setMenuItems(s.menuItems)
     if (s.heroSlideInterval) setHeroSlideInterval(s.heroSlideInterval)
     if (s.heroBanners && s.heroBanners.length > 0) setHeroBanners(s.heroBanners)
@@ -116,10 +110,12 @@ export default function UniconLabsLandingPage() {
   }, [heroBanners.length, heroSlideInterval, isPaused])
 
   const handleNextSlide = () => {
+    if (heroBanners.length === 0) return
     setActiveHeroSlide(prev => (prev + 1) % heroBanners.length)
   }
 
   const handlePrevSlide = () => {
+    if (heroBanners.length === 0) return
     setActiveHeroSlide(prev => (prev - 1 + heroBanners.length) % heroBanners.length)
   }
 
@@ -291,6 +287,30 @@ export default function UniconLabsLandingPage() {
   return (
     <div className="min-h-screen bg-white text-slate-800 flex flex-col font-sans select-none relative">
       
+      {/* VIBRANT SPLASH LOADING SCREEN */}
+      {isLoading && (
+        <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col items-center justify-center space-y-6">
+          <div className="relative flex items-center justify-center">
+            <div className="absolute w-28 h-28 rounded-full bg-cyan-500/20 animate-ping"></div>
+            <div className="w-24 h-24 rounded-2xl bg-slate-900 border border-cyan-500/50 flex items-center justify-center shadow-[0_0_30px_rgba(34,211,238,0.3)] z-10 p-3">
+              <img
+                src="/unicon-logo1.png"
+                alt="Unicon Labs Logo"
+                className="max-h-16 w-auto object-contain animate-pulse"
+              />
+            </div>
+          </div>
+          <div className="flex flex-col items-center space-y-2">
+            <span className="text-xs font-black uppercase tracking-[0.3em] text-cyan-300">UNICON LABS</span>
+            <div className="flex items-center space-x-1.5">
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-bounce"></span>
+              <span className="w-2 h-2 rounded-full bg-blue-500 animate-bounce [animation-delay:0.2s]"></span>
+              <span className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce [animation-delay:0.4s]"></span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Custom Heartbeat Keyframes & Scroll Margin Offset */}
       <style jsx global>{`
         html {
@@ -334,18 +354,22 @@ export default function UniconLabsLandingPage() {
             
             {/* Logo on the Left (Applies to both Mobile & Desktop) */}
             <div className="flex items-center space-x-3 relative shrink-0">
-              <img
-                src="/unicon-logo.png"
-                alt="Unicon Labs Logo"
-                className="h-18 sm:h-20 md:h-20 w-auto object-contain relative z-50"
-              />
+              {headerLogo ? (
+                <img
+                  src={headerLogo}
+                  alt="Tenant Brand Logo"
+                  className="h-14 sm:h-16 md:h-16 w-auto object-contain relative z-50"
+                />
+              ) : (
+                <span className="font-black text-blue-950 text-base md:text-xl tracking-wider">{headerBrand}</span>
+              )}
             </div>
 
             {/* MOBILE VIEW HEADER CONTENT (Visible on mobile/tablet only, hidden on md and above) */}
             <div className="flex md:hidden flex-col items-end text-right space-y-1.5">
               <div className="flex flex-col items-end text-xs font-bold text-slate-700 tracking-tight leading-tight">
                 <span className="text-[10px] sm:text-xs text-slate-600">For immediate inquiry:</span>
-                <span className="text-amber-500 font-black text-xs sm:text-sm tracking-wide">+92 333 3776556</span>
+                <span className="text-amber-500 font-black text-xs sm:text-sm tracking-wide">{headerPhone}</span>
               </div>
               <button
                 onClick={handleLoginClick}
@@ -358,8 +382,8 @@ export default function UniconLabsLandingPage() {
             {/* DESKTOP VIEW HEADER CONTENT (Preserved 100% exactly as original, hidden on mobile, visible on md and above) */}
             <div className="hidden md:flex items-center justify-end space-x-4">
               <div className="flex items-center space-x-1.5 text-[11px] font-bold text-slate-700 tracking-tight whitespace-nowrap">
-                <span>For any immediate inquiry please call ( 9:00 AM - 6:00 PM / Mon-Sat ) :</span>
-                <span className="text-amber-500 font-black text-lg tracking-wide">+92 333 3776556</span>
+                <span>For immediate inquiry please call (9:00 AM - 6:00 PM / Mon - Sat) :</span>
+                <span className="text-amber-500 font-black text-lg tracking-wide">{headerPhone}</span>
               </div>
               <button
                 onClick={handleLoginClick}
@@ -408,65 +432,73 @@ export default function UniconLabsLandingPage() {
         className="bg-gradient-to-b from-blue-900 to-blue-950 text-white px-8 py-24 relative overflow-hidden min-h-[420px] flex items-center justify-center"
       >
         <div className="absolute inset-0 w-full h-full flex items-center justify-center">
-          {heroBanners.map((hb, idx) => {
-            const isActive = idx === activeHeroSlide
-            return (
-              <div
-                key={hb.id || idx}
-                className={`absolute inset-0 w-full h-full flex items-center justify-center px-8 transition-all duration-700 ease-in-out ${
-                  isActive
-                    ? 'opacity-100 translate-x-0 scale-100 filter blur-0 pointer-events-auto'
-                    : 'opacity-0 translate-x-20 scale-95 filter blur-sm pointer-events-none'
-                }`}
-                style={{
-                  backgroundImage: hb.bgImage ? `url('${hb.bgImage}')` : 'none',
-                  backgroundSize: '100% 100%',
-                  backgroundPosition: 'center'
-                }}
-              >
-                <div 
-                  className="max-w-5xl mx-auto text-center space-y-6 relative z-10 p-8 rounded-3xl border border-white/10 backdrop-blur-xs transition-all shadow-xl"
+          {heroBanners.length === 0 ? (
+            <div className="text-blue-300 text-xs italic">Loading hero banners...</div>
+          ) : (
+            heroBanners.map((hb, idx) => {
+              const isActive = idx === activeHeroSlide
+              return (
+                <div
+                  key={hb.id || idx}
+                  className={`absolute inset-0 w-full h-full flex items-center justify-center px-8 transition-all duration-700 ease-in-out ${
+                    isActive
+                      ? 'opacity-100 translate-x-0 scale-100 filter blur-0 pointer-events-auto'
+                      : 'opacity-0 translate-x-20 scale-95 filter blur-sm pointer-events-none'
+                  }`}
                   style={{
-                    backgroundColor: `rgba(15, 23, 42, ${(hb.textBgOpacity ?? 80) / 100})`
+                    backgroundImage: hb.bgImage ? `url('${hb.bgImage}')` : 'none',
+                    backgroundSize: '100% 100%',
+                    backgroundPosition: 'center'
                   }}
                 >
-                  <h1 className="text-3xl md:text-5xl font-black tracking-tight uppercase leading-tight max-w-4xl mx-auto">
-                    {hb.title}
-                  </h1>
-                  
-                  <p className="text-blue-100 max-w-2xl mx-auto text-sm md:text-base font-medium leading-relaxed">
-                    {hb.subtitle}
-                  </p>
+                  <div 
+                    className="max-w-5xl mx-auto text-center space-y-6 relative z-10 p-8 rounded-3xl border border-white/10 backdrop-blur-xs transition-all shadow-xl"
+                    style={{
+                      backgroundColor: `rgba(15, 23, 42, ${(hb.textBgOpacity ?? 80) / 100})`
+                    }}
+                  >
+                    <h1 className="text-3xl md:text-5xl font-black tracking-tight uppercase leading-tight max-w-4xl mx-auto">
+                      {hb.title}
+                    </h1>
+                    
+                    <p className="text-blue-100 max-w-2xl mx-auto text-sm md:text-base font-medium leading-relaxed">
+                      {hb.subtitle}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })
+          )}
         </div>
 
-        <button
-          onClick={handlePrevSlide}
-          className="absolute left-6 top-1/2 -translate-y-1/2 z-30 w-11 h-11 bg-white/10 hover:bg-white/25 backdrop-blur-md rounded-full flex items-center justify-center text-white text-lg font-bold transition shadow-lg cursor-pointer border border-white/20"
-          title="Previous Banner"
-        >
-          ‹
-        </button>
-        <button
-          onClick={handleNextSlide}
-          className="absolute right-6 top-1/2 -translate-y-1/2 z-30 w-11 h-11 bg-white/10 hover:bg-white/25 backdrop-blur-md rounded-full flex items-center justify-center text-white text-lg font-bold transition shadow-lg cursor-pointer border border-white/20"
-          title="Next Banner"
-        >
-          ›
-        </button>
-
-        <div className="absolute bottom-6 left-0 right-0 z-30 flex justify-center space-x-2">
-          {heroBanners.map((_, idx) => (
+        {heroBanners.length > 0 && (
+          <>
             <button
-              key={idx}
-              onClick={() => setActiveHeroSlide(idx)}
-              className={`h-2.5 rounded-full transition-all cursor-pointer ${activeHeroSlide === idx ? 'w-8 bg-white shadow' : 'w-2.5 bg-blue-700/80'}`}
-            />
-          ))}
-        </div>
+              onClick={handlePrevSlide}
+              className="absolute left-6 top-1/2 -translate-y-1/2 z-30 w-11 h-11 bg-white/10 hover:bg-white/25 backdrop-blur-md rounded-full flex items-center justify-center text-white text-lg font-bold transition shadow-lg cursor-pointer border border-white/20"
+              title="Previous Banner"
+            >
+              ‹
+            </button>
+            <button
+              onClick={handleNextSlide}
+              className="absolute right-6 top-1/2 -translate-y-1/2 z-30 w-11 h-11 bg-white/10 hover:bg-white/25 backdrop-blur-md rounded-full flex items-center justify-center text-white text-lg font-bold transition shadow-lg cursor-pointer border border-white/20"
+              title="Next Banner"
+            >
+              ›
+            </button>
+
+            <div className="absolute bottom-6 left-0 right-0 z-30 flex justify-center space-x-2">
+              {heroBanners.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setActiveHeroSlide(idx)}
+                  className={`h-2.5 rounded-full transition-all cursor-pointer ${activeHeroSlide === idx ? 'w-8 bg-white shadow' : 'w-2.5 bg-blue-700/80'}`}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </section>
 
       {/* 4. CORE OPERATIONS DISPLAY ROW */}
@@ -502,31 +534,39 @@ export default function UniconLabsLandingPage() {
             <p className="text-xs text-blue-200">Integrated multi-surface modules engineered for high-performance enterprise execution.</p>
           </div>
 
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3 md:gap-5">
-            {products.map((prod, idx) => (
-              <div key={prod.id || idx} className="bg-slate-900/90 border border-cyan-500/30 rounded-3xl p-3 md:p-5 shadow-xl shadow-blue-950/50 flex flex-col justify-between hover:border-cyan-400 hover:shadow-cyan-500/20 transition group backdrop-blur-xs">
-                <div className="space-y-3 md:space-y-4">
-                  <div className="w-full h-24 md:h-32 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-center overflow-hidden shadow-inner group-hover:scale-105 transition duration-300">
-                    {prod.image && (prod.image.startsWith('data:') || prod.image.startsWith('http') || prod.image.startsWith('/') || prod.image.length > 50) ? (
-                      <img src={prod.image} alt={prod.name} className="w-full h-full object-fill" />
-                    ) : (
-                      <span className="text-3xl md:text-4xl">{prod.image || '📦'}</span>
-                    )}
+          {products.length === 0 ? (
+            <div className="text-center py-10 text-blue-200 text-xs italic">No core operations listed at the moment.</div>
+          ) : (
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3 md:gap-5">
+              {products.map((prod, idx) => (
+                <div key={prod.id || idx} className="bg-slate-900/90 border border-cyan-500/30 rounded-3xl p-3 md:p-5 shadow-xl shadow-blue-950/50 flex flex-col justify-between hover:border-cyan-400 hover:shadow-cyan-500/20 transition group backdrop-blur-xs">
+                  <div className="space-y-3 md:space-y-4">
+                    <div className="w-full h-24 md:h-32 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-center overflow-hidden shadow-inner group-hover:scale-105 transition duration-300">
+                      {prod.image && (prod.image.startsWith('data:') || prod.image.startsWith('http') || prod.image.startsWith('/') || prod.image.length > 50) ? (
+                        <img 
+                          src={prod.image.startsWith('data:') && !prod.image.includes('base64,') ? `data:image/jpeg;base64,${prod.image}` : prod.image} 
+                          alt={prod.name} 
+                          className="w-full h-full object-cover" 
+                        />
+                      ) : (
+                        <span className="text-3xl md:text-4xl">{prod.image || '📦'}</span>
+                      )}
+                    </div>
+                    <h3 className="font-black text-xs md:text-sm uppercase text-cyan-300">{prod.name}</h3>
+                    <p className="text-blue-100 text-[11px] md:text-xs leading-relaxed text-justify">{prod.desc}</p>
                   </div>
-                  <h3 className="font-black text-xs md:text-sm uppercase text-cyan-300">{prod.name}</h3>
-                  <p className="text-blue-100 text-[11px] md:text-xs leading-relaxed text-justify">{prod.desc}</p>
+                  <div className="pt-4 md:pt-6">
+                    <button
+                      onClick={() => alert(`Details for ${prod.name}`)}
+                      className="w-full py-2 bg-blue-600 hover:bg-cyan-500 text-white font-bold rounded-xl text-[11px] md:text-xs transition uppercase tracking-wider border border-blue-500 cursor-pointer shadow-md shadow-blue-600/30"
+                    >
+                      Read more...
+                    </button>
+                  </div>
                 </div>
-                <div className="pt-4 md:pt-6">
-                  <button
-                    onClick={() => alert(`Details for ${prod.name}`)}
-                    className="w-full py-2 bg-blue-600 hover:bg-cyan-500 text-white font-bold rounded-xl text-[11px] md:text-xs transition uppercase tracking-wider border border-blue-500 cursor-pointer shadow-md shadow-blue-600/30"
-                  >
-                    Read more...
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -538,20 +578,28 @@ export default function UniconLabsLandingPage() {
             <p className="text-xs text-slate-500">Proudly empowering top-tier businesses and fast-growing enterprises worldwide.</p>
           </div>
 
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(110px,1fr))] gap-3 md:gap-6 items-center">
-            {partners.map(partner => (
-              <div key={partner.id} className="bg-white border border-slate-100 rounded-2xl md:rounded-3xl p-3 md:p-5 flex flex-col items-center justify-center h-36 md:h-48 shadow-lg shadow-slate-200/60 hover:shadow-xl hover:border-blue-200 transition-all duration-300 group overflow-hidden">
-                {partner.logo && (partner.logo.startsWith('data:') || partner.logo.startsWith('http') || partner.logo.startsWith('/') || partner.logo.length > 50) ? (
-                  <div className="w-full h-20 md:h-32 flex items-center justify-center shrink-0 mb-1">
-                    <img src={partner.logo} alt={partner.name} className="w-full h-full object-contain" />
-                  </div>
-                ) : (
-                  <span className="text-5xl md:text-8xl mb-1">{partner.logo || '🏢'}</span>
-                )}
-                <span className="font-black text-[10px] md:text-xs text-slate-800 text-center truncate w-full uppercase tracking-wide">{partner.name}</span>
-              </div>
-            ))}
-          </div>
+          {partners.length === 0 ? (
+            <div className="text-center py-10 text-slate-400 text-xs italic">No partners listed at the moment.</div>
+          ) : (
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(110px,1fr))] gap-3 md:gap-6 items-center">
+              {partners.map(partner => (
+                <div key={partner.id} className="bg-white border border-slate-100 rounded-2xl md:rounded-3xl p-3 md:p-5 flex flex-col items-center justify-center h-36 md:h-48 shadow-lg shadow-slate-200/60 hover:shadow-xl hover:border-blue-200 transition-all duration-300 group overflow-hidden">
+                  {partner.logo && (partner.logo.startsWith('data:') || partner.logo.startsWith('http') || partner.logo.startsWith('/') || partner.logo.length > 50) ? (
+                    <div className="w-full h-20 md:h-32 flex items-center justify-center shrink-0 mb-1">
+                      <img 
+                        src={partner.logo.startsWith('data:') && !partner.logo.includes('base64,') ? `data:image/png;base64,${partner.logo}` : partner.logo} 
+                        alt={partner.name} 
+                        className="w-full h-full object-contain" 
+                      />
+                    </div>
+                  ) : (
+                    <span className="text-5xl md:text-8xl mb-1">{partner.logo || '🏢'}</span>
+                  )}
+                  <span className="font-black text-[10px] md:text-xs text-slate-800 text-center truncate w-full uppercase tracking-wide">{partner.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -569,8 +617,12 @@ export default function UniconLabsLandingPage() {
               <div key={blog.id || idx} className="bg-white border border-blue-100 rounded-2xl md:rounded-3xl p-3 md:p-5 shadow-lg shadow-blue-900/5 flex flex-col justify-between hover:border-blue-400 transition group w-full max-w-xs">
                 <div className="space-y-3">
                   <div className="w-full h-24 md:h-36 bg-blue-900 rounded-2xl flex items-center justify-center text-2xl md:text-3xl text-white font-black shadow-inner group-hover:bg-blue-600 transition overflow-hidden">
-                    {blog.image && blog.image.length > 50 ? (
-                      <img src={blog.image} alt="" className="w-full h-full object-cover" />
+                    {blog.image && (blog.image.startsWith('data:') || blog.image.startsWith('http') || blog.image.startsWith('/') || blog.image.length > 50) ? (
+                      <img 
+                        src={blog.image.startsWith('data:') && !blog.image.includes('base64,') ? `data:image/jpeg;base64,${blog.image}` : blog.image} 
+                        alt="" 
+                        className="w-full h-full object-cover" 
+                      />
                     ) : (
                       <span>📰</span>
                     )}
@@ -866,7 +918,7 @@ export default function UniconLabsLandingPage() {
               <div className="space-y-4 text-xs leading-relaxed text-blue-100">
                 <div className="p-4 bg-slate-950/80 border border-cyan-500/20 rounded-2xl space-y-3">
                   <p className="text-justify font-medium">
-                    "We honor your interest to become a UNICON LABS Digital World's partner, please contact to our Admin Staff on <span className="text-cyan-300 font-bold">+92 333 3776556</span> or go to the <span className="text-cyan-300 font-bold">-Contact Us-</span> link and leave your precise query, one of our representatives will contact you as soon as possible. Thanks from UNICON LABS"
+                    "We honor your interest to become a UNICON LABS Digital World's partner, please contact to our Admin Staff on <span className="text-cyan-300 font-bold">{headerPhone}</span> or go to the <span className="text-cyan-300 font-bold">-Contact Us-</span> link and leave your precise query, one of our representatives will contact you as soon as possible. Thanks from UNICON LABS"
                   </p>
                 </div>
                 <div className="flex space-x-3 pt-2">
