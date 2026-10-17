@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect, use, useRef } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
 import { getBusinessProfile } from '@/lib/businessProfiles'
@@ -24,17 +24,211 @@ export default function DispatchManagerDashboard({ params }: PageProps) {
   const [deliveryOrders, setDeliveryOrders] = useState<any[]>([])
   const [activeTab, setActiveTab] = useState<'pending' | 'out_for_delivery' | 'completed'>('pending')
   
-  // Security Gate & Staff Authentication States (with sessionStorage hydration)
+  // Audio Notification States & Ref
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [isMuted, setIsMuted] = useState(false)
+  const [volume, setVolume] = useState(0.8)
+  const [selectedSound, setSelectedSound] = useState('/sounds/chime.mp4')
+  const [availableSounds, setAvailableSounds] = useState<{ name: string; url: string; path?: string }[]>([
+    { name: 'Default Local Chime (chime.mp4)', url: '/sounds/chime.mp4' }
+  ])
+  const [showSoundSettings, setShowSoundSettings] = useState(false)
+  const [customUrlInput, setCustomUrlInput] = useState('')
+  const [uploadingSound, setUploadingSound] = useState(false)
+  const [audioUnlocked, setAudioUnlocked] = useState(false)
+
+  // Fetch available sound files from Supabase 'chime-sounds' bucket
+  const fetchChimeBucketSounds = async () => {
+    try {
+      const { data, error } = await supabase.storage.from('chime-sounds').list('', {
+        limit: 50,
+        sortBy: { column: 'created_at', order: 'desc' }
+      })
+
+      if (!error && data && data.length > 0) {
+        const bucketFiles = data
+          .filter(file => file.name && file.name !== '.emptyfolder')
+          .map(file => {
+            const { data: publicUrlData } = supabase.storage.from('chime-sounds').getPublicUrl(file.name)
+            return {
+              name: file.name,
+              url: publicUrlData.publicUrl,
+              path: file.name
+            }
+          })
+
+        setAvailableSounds([
+          { name: 'Default Local Chime (chime.mp4)', url: '/sounds/chime.mp4' },
+          ...bucketFiles
+        ])
+      }
+    } catch (err) {
+      console.warn('Error fetching chime-sounds bucket:', err)
+    }
+  }
+
+  // Hydrate audio settings from localStorage and fetch bucket sounds
+  useEffect(() => {
+    const savedMute = localStorage.getItem(`unicon_dispatch_muted_${slug}`)
+    if (savedMute !== null) setIsMuted(savedMute === 'true')
+
+    const savedVol = localStorage.getItem(`unicon_dispatch_volume_${slug}`)
+    if (savedVol !== null) setVolume(parseFloat(savedVol))
+
+    const savedSound = localStorage.getItem(`unicon_dispatch_sound_${slug}`)
+    if (savedSound) setSelectedSound(savedSound)
+
+    fetchChimeBucketSounds()
+  }, [slug])
+
+  // Initialize Audio Element ref
+  useEffect(() => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio(selectedSound)
+    } else {
+      audioRef.current.src = selectedSound
+    }
+    audioRef.current.volume = volume
+    audioRef.current.load()
+  }, [selectedSound, volume])
+
+  // Unlock browser audio policy on first user interaction anywhere on page
+  useEffect(() => {
+    const unlockAudioContext = () => {
+      if (!audioUnlocked && audioRef.current) {
+        audioRef.current.play().then(() => {
+          audioRef.current?.pause()
+          audioRef.current.currentTime = 0
+          setAudioUnlocked(true)
+          window.removeEventListener('click', unlockAudioContext)
+          window.removeEventListener('keydown', unlockAudioContext)
+        }).catch(() => {})
+      }
+    }
+
+    window.addEventListener('click', unlockAudioContext)
+    window.addEventListener('keydown', unlockAudioContext)
+    return () => {
+      window.removeEventListener('click', unlockAudioContext)
+      window.removeEventListener('keydown', unlockAudioContext)
+    }
+  }, [audioUnlocked])
+
+  const playChime = () => {
+    if (isMuted) return
+    const soundSrc = selectedSound || '/sounds/chime.mp4'
+    const audio = new Audio(soundSrc)
+    audio.volume = volume
+    audio.currentTime = 0
+    audio.play().catch(err => {
+      console.log('Audio autoplay blocked, retrying with blob:', err)
+      fetch(soundSrc)
+        .then(res => res.blob())
+        .then(blob => {
+          const blobUrl = URL.createObjectURL(blob)
+          const blobAudio = new Audio(blobUrl)
+          blobAudio.volume = volume
+          blobAudio.play().catch(bErr => console.log('Blob audio play failed:', bErr))
+        })
+        .catch(fErr => console.log('Blob fetch failed:', fErr))
+    })
+  }
+
+  const testPlaySound = (soundUrl: string) => {
+    if (!soundUrl) return
+    
+    if (soundUrl.startsWith('/')) {
+      const testAudio = new Audio(soundUrl)
+      testAudio.volume = volume
+      testAudio.currentTime = 0
+      testAudio.play().catch(err => {
+        alert(`Could not play local sound: ${err.message}`)
+      })
+      return
+    }
+
+    const testAudio = new Audio()
+    testAudio.volume = volume
+    testAudio.src = soundUrl
+    testAudio.load()
+    
+    testAudio.play().then(() => {}).catch(() => {
+      fetch(soundUrl)
+        .then(res => res.blob())
+        .then(blob => {
+          const blobUrl = URL.createObjectURL(blob)
+          const blobAudio = new Audio(blobUrl)
+          blobAudio.volume = volume
+          blobAudio.play().catch(blobErr => {
+            alert(`Could not play sound: ${blobErr.message}. Please ensure the file is a valid .mp3 or .mp4 audio file.`)
+          })
+        })
+        .catch(fetchErr => {
+          alert(`Could not load sound file: ${fetchErr.message}`)
+        })
+    })
+  }
+
+  const handleSoundChange = (url: string) => {
+    setSelectedSound(url)
+    testPlaySound(url)
+  }
+
+  const handleSaveChimeSettings = () => {
+    localStorage.setItem(`unicon_dispatch_muted_${slug}`, String(isMuted))
+    localStorage.setItem(`unicon_dispatch_volume_${slug}`, String(volume))
+    localStorage.setItem(`unicon_dispatch_sound_${slug}`, selectedSound)
+    setShowSoundSettings(false)
+    alert('Chime settings saved successfully!')
+  }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadingSound(true)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `chime_${Date.now()}.${fileExt}`
+      const fileMimeType = file.type || (fileExt === 'mp3' ? 'audio/mpeg' : 'audio/mp4')
+
+      const { error: uploadError } = await supabase.storage
+        .from('chime-sounds')
+        .upload(fileName, file, { 
+          cacheControl: '3600', 
+          upsert: true,
+          contentType: fileMimeType 
+        })
+
+      if (uploadError) throw uploadError
+
+      const { data: urlData } = supabase.storage.from('chime-sounds').getPublicUrl(fileName)
+      const newFileUrl = urlData.publicUrl
+
+      const prevSound = selectedSound
+      if (prevSound && prevSound.includes('/chime-sounds/')) {
+        const oldPath = prevSound.split('/chime-sounds/').pop()
+        if (oldPath && !oldPath.startsWith('http')) {
+          await supabase.storage.from('chime-sounds').remove([decodeURIComponent(oldPath)])
+        }
+      }
+
+      await fetchChimeBucketSounds()
+      handleSoundChange(newFileUrl)
+      alert('Custom chime sound uploaded successfully to Supabase!')
+    } catch (err: any) {
+      alert(`Failed to upload chime file: ${err.message || err}`)
+    } finally {
+      setUploadingSound(false)
+    }
+  }
+
+  // Security Gate & Staff Authentication States
   const [authenticatedStaff, setAuthenticatedStaff] = useState<any>(null)
   const [showSecurityGate, setShowSecurityGate] = useState(true)
 
-  // Live Timer Tick State
   const [currentTime, setCurrentTime] = useState(new Date())
-
-  // Staff / In-House Riders State
   const [inHouseRiders, setInHouseRiders] = useState<any[]>([])
-  
-  // Detailed Rider Assignment State per order
   const [riderFormStates, setRiderFormStates] = useState<{ [orderId: string]: { type: 'inhouse' | 'thirdparty'; riderId: string; name: string; phone: string } }>({})
 
   useEffect(() => {
@@ -49,13 +243,10 @@ export default function DispatchManagerDashboard({ params }: PageProps) {
         const parsed = JSON.parse(storedStaff)
         setAuthenticatedStaff(parsed)
         setShowSecurityGate(false)
-      } catch (e) {
-        // invalid JSON
-      }
+      } catch (e) {}
     }
   }, [slug])
 
-  // Top-level cleanup effect for clearing active_pos_sessions on window/tab close
   useEffect(() => {
     const cleanupSession = () => {
       if (authenticatedStaff?.id && business?.id) {
@@ -88,7 +279,6 @@ export default function DispatchManagerDashboard({ params }: PageProps) {
       const tenantProfile = getBusinessProfile(biz.business_type)
       setProfile(tenantProfile)
 
-      // Fetch staff members and filter strictly for Delivery Riders / Logistics personnel
       const { data: staffList, error: staffErr } = await supabase
         .from('staff_profiles')
         .select('*')
@@ -101,8 +291,6 @@ export default function DispatchManagerDashboard({ params }: PageProps) {
           return r.includes('rider') || r.includes('delivery') || d.includes('delivery') || d.includes('logistic') || r.includes('driver')
         })
         setInHouseRiders(strictDeliveryRiders)
-      } else {
-        console.warn('Error fetching staff profiles for dispatch:', staffErr)
       }
 
       await fetchDeliveryOrders(biz.id)
@@ -112,7 +300,7 @@ export default function DispatchManagerDashboard({ params }: PageProps) {
     initDispatch()
   }, [slug, router])
 
-  // Real-time subscription for live sync of delivery orders
+  // Real-time subscription for live sync of delivery orders & chime trigger
   useEffect(() => {
     if (!business?.id) return
 
@@ -121,7 +309,23 @@ export default function DispatchManagerDashboard({ params }: PageProps) {
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
+          schema: 'public',
+          table: 'orders',
+          filter: `business_id=eq.${business.id}`,
+        },
+        (payload) => {
+          const newOrder = payload.new as any
+          if (newOrder.service_type === 'DELIVERY') {
+            playChime()
+          }
+          fetchDeliveryOrders(business.id)
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
           schema: 'public',
           table: 'orders',
           filter: `business_id=eq.${business.id}`,
@@ -146,7 +350,14 @@ export default function DispatchManagerDashboard({ params }: PageProps) {
       .order('created_at', { ascending: false })
 
     if (!error && data) {
-      setDeliveryOrders(data)
+      setDeliveryOrders(prev => {
+        const prevIds = new Set(prev.map(o => o.id))
+        const hasNew = data.some(o => !prevIds.has(o.id) && (!o.dispatch_status || o.dispatch_status === 'pending'))
+        if (prev.length > 0 && hasNew) {
+          playChime()
+        }
+        return data
+      })
     }
   }
 
@@ -175,14 +386,12 @@ export default function DispatchManagerDashboard({ params }: PageProps) {
         updatePayload.rider_name = selectedStaff ? (selectedStaff.full_name || selectedStaff.name) : 'In-House Rider'
         updatePayload.rider_phone = formState.phone?.trim() || selectedStaff?.phone || null
       } else {
-        // Explicitly set rider_id to null so Supabase clears the foreign key reference
         updatePayload.rider_id = null
         updatePayload.rider_name = formState?.name?.trim() || 'Third-Party Partner'
         updatePayload.rider_phone = formState?.phone?.trim() || null
       }
     }
 
-    // Ensure dispatch assignment maintains PENDING_CASH liability tracking until final settlement drop
     if (newStatus === 'out_for_delivery') {
       updatePayload.settlement_status = 'PENDING_CASH'
     }
@@ -203,7 +412,6 @@ export default function DispatchManagerDashboard({ params }: PageProps) {
             cleanPhone = '92' + cleanPhone.substring(1)
           }
           
-          // Fix Rider Name resolution: correctly capture selected in-house staff name or 3rd party name
           let resolvedRiderName = 'Assigned Rider'
           if (formState?.type === 'inhouse' && formState.riderId) {
             const matchedStaff = inHouseRiders.find(r => r.id === formState.riderId)
@@ -216,7 +424,6 @@ export default function DispatchManagerDashboard({ params }: PageProps) {
 
           const riderPhoneInfo = formState?.phone || targetOrder.rider_phone || ''
           
-          // Items list without individual prices
           const itemsText = (targetOrder.items || [])
             .map((item: any) => `• ${item.qty}x ${item.name}${item.selectedVariant ? ` [${item.selectedVariant.name}]` : ''}`)
             .join('\n')
@@ -225,7 +432,6 @@ export default function DispatchManagerDashboard({ params }: PageProps) {
           const orderNumStr = targetOrder.order_number ? `KB-${String(targetOrder.order_number).padStart(6, '0')}` : 'DELIVERY'
           const totalAmtStr = `${currencySymbol} ${(Number(targetOrder.total_amount)).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
 
-          // Dynamic closing message based on business type/category
           const bizTypeLower = (business?.business_type || '').toLowerCase()
           const isRestaurantOrFood = bizTypeLower.includes('restaurant') || bizTypeLower.includes('food') || bizTypeLower.includes('cafe') || bizTypeLower.includes('bakery') || bizTypeLower.includes('bite')
           const closingMessage = isRestaurantOrFood ? 'Thanks! ENJOY YOUR MEAL ⭐' : 'Thank you for shopping with us! ⭐'
@@ -236,7 +442,7 @@ export default function DispatchManagerDashboard({ params }: PageProps) {
 Hello *${targetOrder.customer_name || 'Customer'}*, your order has been dispatched and is on its way! 🛵
 
 📋 *ORDER DETAILS:*
-• Order #: *${orderNumStr}*
+- Order #: *${orderNumStr}*
 ${itemsText}
 
 💰 *TOTAL AMOUNT:* *${totalAmtStr}* (${targetOrder.payment_method || 'CASH ON DELIVERY'})
@@ -244,13 +450,15 @@ ${itemsText}
 📍 *DELIVERY ADDRESS:* ${targetOrder.delivery_address || 'N/A'}
 
 👤 *RIDER'S DETAIL:*
-• Name: *${resolvedRiderName}*
+- Name: *${resolvedRiderName}*
 ${riderPhoneInfo ? `• Contact: *${riderPhoneInfo}*` : ''}
 
 ${closingMessage}`
 
+          // Open WhatsApp in a dedicated named window target ('whatsapp_session')
+          // If a WhatsApp tab is already open with that name, it focuses it; otherwise, it opens a brand new tab safely.
           const whatsappUrl = `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(whatsappMessage)}`
-          window.open(whatsappUrl, '_blank')
+          window.open(whatsappUrl, 'whatsapp_session')
         }
       }
       fetchDeliveryOrders(business.id)
@@ -265,9 +473,7 @@ ${closingMessage}`
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ businessId: business.id, staffId: authenticatedStaff.id })
         })
-      } catch (err) {
-        console.warn('Session release API warning:', err)
-      }
+      } catch (err) {}
     }
     sessionStorage.removeItem(`unicon_dispatch_staff_session_${slug}`)
     setAuthenticatedStaff(null)
@@ -280,7 +486,6 @@ ${closingMessage}`
     return <div className="min-h-screen bg-gray-100 flex items-center justify-center font-bold text-gray-700">Loading Dispatch Manager...</div>
   }
 
-  // Filter orders based on active fulfillment tab
   const filteredOrders = deliveryOrders.filter(ord => {
     const status = ord.dispatch_status || 'pending'
     if (activeTab === 'pending') return status === 'pending' || !ord.dispatch_status
@@ -289,7 +494,6 @@ ${closingMessage}`
     return true
   })
 
-  // Helper function to format active order elapsed time
   const getOrderAgeString = (createdAt: string) => {
     const diffMs = currentTime.getTime() - new Date(createdAt).getTime()
     if (diffMs < 0) return 'Just now'
@@ -300,7 +504,6 @@ ${closingMessage}`
     return `${mins} min. ${secs} s. Ago`
   }
 
-  // Helper function to retrieve frozen static fulfillment duration
   const getFulfillmentDurationString = (ord: any) => {
     if (ord.delivery_status && ord.delivery_status !== 'none' && ord.delivery_status.includes('min.')) {
       return ord.delivery_status
@@ -349,6 +552,145 @@ ${closingMessage}`
         </div>
 
         <div className="flex items-center space-x-3">
+          {/* Audio Chime Controls */}
+          <div className="relative">
+            <button
+              onClick={() => setShowSoundSettings(!showSoundSettings)}
+              className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition flex items-center space-x-1 cursor-pointer ${
+                isMuted ? 'bg-red-500/20 text-red-300 border border-red-500/40' : 'bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700'
+              }`}
+              title="Chime Notification Settings"
+            >
+              <span>{isMuted ? '🔇 Muted' : '🔔 Chime'}</span>
+              <span className="text-[9px] opacity-70">({Math.round(volume * 100)}%)</span>
+            </button>
+
+            {/* Sound Settings Popover */}
+            {showSoundSettings && (
+              <div className="absolute right-0 mt-2 w-72 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-4 z-50 text-slate-100 font-sans space-y-3">
+                <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                  <span className="font-black text-xs uppercase tracking-wider text-blue-400">🔊 Chime Settings</span>
+                  <button onClick={() => setShowSoundSettings(false)} className="text-gray-400 hover:text-white text-xs font-bold">✕</button>
+                </div>
+
+                {/* Mute Toggle */}
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] font-bold">Mute Chime</span>
+                  <button
+                    onClick={() => {
+                      const nextMuted = !isMuted
+                      setIsMuted(nextMuted)
+                    }}
+                    className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase cursor-pointer ${
+                      isMuted ? 'bg-red-600 text-white' : 'bg-emerald-600 text-white'
+                    }`}
+                  >
+                    {isMuted ? 'Muted' : 'Active'}
+                  </button>
+                </div>
+
+                {/* Volume Slider */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[11px] font-bold">
+                    <span>Volume</span>
+                    <span className="font-mono text-blue-400">{Math.round(volume * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={volume}
+                    onChange={e => {
+                      const val = parseFloat(e.target.value)
+                      setVolume(val)
+                      if (audioRef.current) audioRef.current.volume = val
+                    }}
+                    className="w-full accent-blue-500 cursor-pointer"
+                  />
+                </div>
+
+                {/* Sound File Selector from Bucket */}
+                <div className="space-y-1.5">
+                  <span className="text-[11px] font-bold text-gray-300">Select Chime Sound (.mp4 / .mp3)</span>
+                  <select
+                    value={selectedSound}
+                    onChange={e => handleSoundChange(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white font-medium focus:outline-none focus:border-blue-500 cursor-pointer truncate"
+                  >
+                    {availableSounds.map((snd, idx) => (
+                      <option key={idx} value={snd.url}>
+                        {snd.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Test Sound Button */}
+                <button
+                  type="button"
+                  onClick={() => testPlaySound(selectedSound)}
+                  className="w-full py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl text-[10px] uppercase tracking-wider transition cursor-pointer flex items-center justify-center space-x-1"
+                >
+                  <span>▶ Test Selected Chime</span>
+                </button>
+
+                {/* Upload to Supabase Chime-Sounds Bucket */}
+                <div className="space-y-1.5 pt-1 border-t border-slate-800">
+                  <span className="text-[10px] font-bold text-gray-400">Upload Chime to Supabase Bucket</span>
+                  <div className="flex space-x-1.5">
+                    <input
+                      type="file"
+                      accept="audio/mp4,audio/mpeg,audio/mp3,video/mp4"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      id="custom-audio-upload"
+                      disabled={uploadingSound}
+                    />
+                    <label
+                      htmlFor="custom-audio-upload"
+                      className={`flex-1 text-center py-1.5 rounded-xl text-[10px] font-bold border border-slate-700 cursor-pointer truncate px-2 ${
+                        uploadingSound ? 'bg-gray-700 text-gray-400 cursor-wait' : 'bg-slate-800 hover:bg-slate-700 text-white'
+                      }`}
+                    >
+                      {uploadingSound ? 'Uploading...' : '📁 Upload File (.mp3/.mp4)'}
+                    </label>
+                  </div>
+                  <div className="flex space-x-1 pt-1">
+                    <input
+                      type="text"
+                      placeholder="Paste sound file URL..."
+                      value={customUrlInput}
+                      onChange={e => setCustomUrlInput(e.target.value)}
+                      className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-[10px] text-white focus:outline-none focus:border-blue-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (customUrlInput.trim()) {
+                          handleSoundChange(customUrlInput.trim())
+                          setCustomUrlInput('')
+                        }
+                      }}
+                      className="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-[10px] font-bold cursor-pointer"
+                    >
+                      Link
+                    </button>
+                  </div>
+                </div>
+
+                {/* SAVE CHIME SETTINGS BUTTON */}
+                <button
+                  type="button"
+                  onClick={handleSaveChimeSettings}
+                  className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-xs uppercase tracking-wider transition cursor-pointer mt-2 shadow-md"
+                >
+                  💾 Save Chime Settings
+                </button>
+              </div>
+            )}
+          </div>
+
           <div className="text-right font-mono">
             <div className="text-xs font-black text-white">{currentTime.toLocaleTimeString('en-US', { hour12: false })}</div>
             <div className="text-[9px] text-blue-400 uppercase font-bold">Staff: {authenticatedStaff?.full_name || 'Online'}</div>
