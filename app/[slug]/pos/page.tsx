@@ -1742,7 +1742,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
       <div className="flex-1 flex overflow-hidden">
         
-        <aside className={`w-80 border-r flex flex-col shrink-0 shadow-2xs transition-colors duration-300 ${isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-gray-200 text-gray-800'}`}>
+        <aside className={`w-72 lg:w-80 border-r flex flex-col shrink-0 shadow-2xs transition-colors duration-300 ${isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-gray-200 text-gray-800'}`}>
           <div className={`p-3 border-b space-y-2 transition-colors ${isDarkMode ? 'border-slate-800' : 'border-gray-200'}`}>
             <div className={`grid grid-cols-3 gap-1 p-1 rounded-xl text-[11px] font-bold ${isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-gray-100 text-gray-600'}`}>
               {(['DINE-IN', 'TAKEAWAY', 'DELIVERY'] as const).map(type => (
@@ -2122,7 +2122,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                 </p>
               </div>
             ) : catalogViewMode === 'grid' ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 overflow-y-auto flex-1 content-start justify-start" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 180px))', maxHeight: '100%' }}>
+              <div className="grid gap-3 overflow-y-auto flex-1 content-start justify-start pr-1" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(clamp(140px, 15vw, 180px), 1fr))', maxHeight: '100%' }}>
                 {filteredProducts.length > 0 ? filteredProducts.map(item => {
                   const dealSummary = getDealItemsSummary(item)
                   return (
@@ -2269,7 +2269,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
           </div>
         </section>
 
-        <aside className={`w-96 border-l flex flex-col shrink-0 shadow-2xs transition-colors duration-300 ${isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-gray-200 text-gray-800'}`}>
+        <aside className={`w-80 lg:w-96 border-l flex flex-col shrink-0 shadow-2xs transition-colors duration-300 ${isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-gray-200 text-gray-800'}`}>
           {!profile.modules.hasTables && (
             <div className={`px-4 py-3 border-b flex justify-between items-center text-[11px] ${isDarkMode ? 'bg-slate-800/80 border-slate-800 text-slate-200' : 'bg-slate-50 border-gray-200 text-slate-900'}`}>
               <span className="font-black uppercase">⚡ Counter Sale Mode</span>
