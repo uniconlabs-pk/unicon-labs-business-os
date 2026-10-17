@@ -22,7 +22,7 @@ export default function CashLiquidityReportPage({ params }: PageProps) {
   const [loadingLiquidity, setLoadingLiquidity] = useState(false)
   const [staffList, setStaffList] = useState<any[]>([])
 
-  // Settlement Modal States & Search filters
+  // Settlement Drawer States & Search filters
   const [showSettlementModal, setShowSettlementModal] = useState(false)
   const [selectedStaffIdForSettlement, setSelectedStaffIdForSettlement] = useState('')
   const [waiterSearch, setWaiterSearch] = useState('')
@@ -30,6 +30,23 @@ export default function CashLiquidityReportPage({ params }: PageProps) {
   const [pendingOrdersForStaff, setPendingOrdersForStaff] = useState<any[]>([])
   const [settlementInputs, setSettlementInputs] = useState<{ [orderId: string]: { received: string; discount: string; notes: string } }>({})
   const [processingSettlement, setProcessingSettlement] = useState(false)
+
+  // ESC key listener to close settlement drawer instantly (unless focused on search inputs)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showSettlementModal) {
+        const activeEl = document.activeElement
+        const isSearchInput = activeEl?.tagName === 'INPUT' && (
+          (activeEl as HTMLInputElement).placeholder?.toLowerCase().includes('search')
+        )
+        if (!isSearchInput) {
+          setShowSettlementModal(false)
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [showSettlementModal])
 
   useEffect(() => {
     const rawSession = localStorage.getItem(`tenant_session_${slug}`)
@@ -160,12 +177,12 @@ export default function CashLiquidityReportPage({ params }: PageProps) {
     setProcessingSettlement(false)
   }
 
-  // Filter staff lists for Waiters and Riders with manual search capability
+  // Filter staff lists strictly for Waiters and Riders with manual search capability
   const waitersList = staffList.filter(st => {
     const r = (st.role || '').toLowerCase()
     const d = (st.department || '').toLowerCase()
-    const isRider = r.includes('rider') || r.includes('delivery') || d.includes('delivery') || d.includes('logistic') || r.includes('driver')
-    return !isRider
+    const isWaiter = r.includes('waiter') || d.includes('service') || r.includes('server') || d.includes('waitstaff')
+    return isWaiter
   }).filter(st => {
     if (!waiterSearch.trim()) return true
     return (st.full_name || st.name || '').toLowerCase().includes(waiterSearch.toLowerCase().trim())
@@ -244,158 +261,170 @@ export default function CashLiquidityReportPage({ params }: PageProps) {
         </div>
       </main>
 
-      {/* BATCH SETTLEMENT MODAL */}
+      {/* BATCH SETTLEMENT DRAWER */}
       {showSettlementModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs font-sans">
-          <div className="bg-white rounded-3xl p-6 max-w-2xl w-full space-y-4 shadow-2xl border border-gray-200 text-gray-800 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center border-b pb-3">
-              <div>
-                <h3 className="font-black text-sm uppercase text-gray-900">Staff Cash Drop & Batch Settlement</h3>
-                <p className="text-[10px] text-gray-500">Select staff member, review pending bills, and settle cash with adjustments.</p>
-              </div>
-              <button onClick={() => setShowSettlementModal(false)} className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 font-bold cursor-pointer">✕</button>
-            </div>
+        <div className="fixed inset-0 z-50 overflow-hidden font-sans">
+          <div onClick={() => setShowSettlementModal(false)} className="absolute inset-0 bg-black/70 backdrop-blur-xs transition-opacity" />
 
-            <form onSubmit={handleProcessBatchSettlement} className="space-y-4 text-xs">
+          <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
+            <div className="w-screen md:w-[55vw] bg-white border-l border-gray-200 shadow-2xl flex flex-col text-gray-800">
               
-              {/* TWO SEPARATE FIELDS WITH SEARCH FOR WAITER & RIDER SIDE-BY-SIDE */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="bg-gray-50 p-3 rounded-2xl border border-gray-200 space-y-2">
-                  <label className="block font-bold text-gray-900 uppercase">1. Select Waiter</label>
-                  <input
-                    type="text"
-                    placeholder="Search waiter..."
-                    value={waiterSearch}
-                    onChange={e => setWaiterSearch(e.target.value)}
-                    className="w-full bg-white border border-gray-300 rounded-xl px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-blue-600"
-                  />
-                  <select
-                    value={waitersList.some(st => st.id === selectedStaffIdForSettlement) ? selectedStaffIdForSettlement : ''}
-                    onChange={e => {
-                      const val = e.target.value
-                      setSelectedStaffIdForSettlement(val)
-                      if (val) fetchPendingOrdersForStaff(val)
-                    }}
-                    className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 font-bold cursor-pointer"
-                  >
-                    <option value="">-- Choose Waiter --</option>
-                    {waitersList.map(st => (
-                      <option key={st.id} value={st.id}>{st.full_name || st.name} ({st.role || 'Waiter'})</option>
-                    ))}
-                  </select>
+              <div className="px-6 py-5 border-b border-gray-200 bg-gray-50 flex justify-between items-center shrink-0">
+                <div>
+                  <h3 className="font-black text-sm uppercase text-gray-900">Staff Cash Drop & Batch Settlement</h3>
+                  <p className="text-[10px] text-gray-500">Select staff member, review pending bills, and settle cash with adjustments.</p>
                 </div>
-
-                <div className="bg-gray-50 p-3 rounded-2xl border border-gray-200 space-y-2">
-                  <label className="block font-bold text-gray-900 uppercase">2. Select Rider</label>
-                  <input
-                    type="text"
-                    placeholder="Search rider..."
-                    value={riderSearch}
-                    onChange={e => setRiderSearch(e.target.value)}
-                    className="w-full bg-white border border-gray-300 rounded-xl px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-blue-600"
-                  />
-                  <select
-                    value={ridersList.some(st => st.id === selectedStaffIdForSettlement) ? selectedStaffIdForSettlement : ''}
-                    onChange={e => {
-                      const val = e.target.value
-                      setSelectedStaffIdForSettlement(val)
-                      if (val) fetchPendingOrdersForStaff(val)
-                    }}
-                    className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 font-bold cursor-pointer"
-                  >
-                    <option value="">-- Choose Rider --</option>
-                    {ridersList.map(st => (
-                      <option key={st.id} value={st.id}>{st.full_name || st.name} ({st.role || 'Rider'})</option>
-                    ))}
-                  </select>
-                </div>
+                <button onClick={() => setShowSettlementModal(false)} className="w-8 h-8 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 flex items-center justify-center font-bold transition cursor-pointer">✕</button>
               </div>
 
-              {selectedStaffIdForSettlement && (
-                <div className="space-y-2">
-                  <h4 className="font-bold uppercase text-gray-700 text-[11px]">Pending Cash Invoices ({pendingOrdersForStaff.length})</h4>
-                  {pendingOrdersForStaff.length > 0 ? (
-                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                      {pendingOrdersForStaff.map(ord => {
-                        const input = settlementInputs[ord.id] || { received: ord.total_amount, discount: '0', notes: '' }
-                        return (
-                          <div key={ord.id} className="bg-gray-50 p-3 rounded-xl border border-gray-200 space-y-2">
-                            <div className="flex justify-between items-center">
-                              <span className="font-mono font-black text-gray-900">KB-{String(ord.order_number).padStart(6, '0')}</span>
-                              <span className="font-mono font-bold text-emerald-700">Total Billed: {ord.total_amount}</span>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2">
-                              <div>
-                                <label className="block text-[9px] font-bold text-gray-500">Cash Received</label>
-                                <input
-                                  type="number"
-                                  value={input.received}
-                                  onChange={e => {
-                                    const val = e.target.value
-                                    const billed = parseFloat(ord.total_amount) || 0
-                                    const rec = parseFloat(val) || 0
-                                    const diff = Math.max(0, billed - rec)
-                                    setSettlementInputs({
-                                      ...settlementInputs,
-                                      [ord.id]: { ...input, received: val, discount: String(diff) }
-                                    })
-                                  }}
-                                  className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1 font-mono font-bold"
-                                  required
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-[9px] font-bold text-gray-500">Discount / Shortage</label>
-                                <input
-                                  type="number"
-                                  value={input.discount}
-                                  onChange={e => setSettlementInputs({
-                                    ...settlementInputs,
-                                    [ord.id]: { ...input, discount: e.target.value }
-                                  })}
-                                  className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1 font-mono text-rose-600 font-bold"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-[9px] font-bold text-gray-500">Remarks</label>
-                                <input
-                                  type="text"
-                                  placeholder="Reason..."
-                                  value={input.notes}
-                                  onChange={e => setSettlementInputs({
-                                    ...settlementInputs,
-                                    [ord.id]: { ...input, notes: e.target.value }
-                                  })}
-                                  className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      })}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                <form onSubmit={handleProcessBatchSettlement} className="space-y-4 text-xs">
+                  
+                  {/* TWO SEPARATE FIELDS WITH SEARCH FOR WAITER & RIDER SIDE-BY-SIDE */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="bg-gray-50 p-3 rounded-2xl border border-gray-200 space-y-2">
+                      <label className="block font-bold text-gray-900 uppercase">1. Select Waiter</label>
+                      <input
+                        type="text"
+                        placeholder="Search waiter..."
+                        value={waiterSearch}
+                        onChange={e => setWaiterSearch(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Escape') setWaiterSearch('') }}
+                        className="w-full bg-white border border-gray-300 rounded-xl px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-blue-600"
+                      />
+                      <select
+                        value={waitersList.some(st => st.id === selectedStaffIdForSettlement) ? selectedStaffIdForSettlement : ''}
+                        onChange={e => {
+                          const val = e.target.value
+                          setSelectedStaffIdForSettlement(val)
+                          if (val) fetchPendingOrdersForStaff(val)
+                        }}
+                        size={waiterSearch.trim() ? Math.min(Math.max(waitersList.length + 1, 2), 5) : 1}
+                        className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 font-bold cursor-pointer"
+                      >
+                        <option value="">-- Choose Waiter --</option>
+                        {waitersList.map(st => (
+                          <option key={st.id} value={st.id}>{st.full_name || st.name} ({st.role || 'Waiter'})</option>
+                        ))}
+                      </select>
                     </div>
-                  ) : (
-                    <p className="text-gray-400 py-4 text-center">No pending cash orders assigned to this staff member.</p>
-                  )}
-                </div>
-              )}
 
-              <div className="flex justify-between items-center pt-2 border-t">
-                <div className="font-mono font-black text-xs text-gray-900">
-                  TOTAL: <span className="text-emerald-700">{business?.currency_symbol || 'Rs.'} {pendingOrdersForStaff.reduce((sum, ord) => sum + (parseFloat(ord.total_amount) || 0), 0).toFixed(2)}</span>
-                </div>
-                <div className="flex space-x-2">
-                  <button type="button" onClick={() => setShowSettlementModal(false)} className="px-4 py-2 bg-gray-200 rounded-xl font-bold cursor-pointer">Cancel/Close</button>
-                  <button
-                    type="submit"
-                    disabled={processingSettlement || pendingOrdersForStaff.length === 0}
-                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow transition cursor-pointer"
-                  >
-                    {processingSettlement ? 'Processing...' : 'Settle Selected Invoices & Record Liquidity 💵'}
-                  </button>
-                </div>
+                    <div className="bg-gray-50 p-3 rounded-2xl border border-gray-200 space-y-2">
+                      <label className="block font-bold text-gray-900 uppercase">2. Select Rider</label>
+                      <input
+                        type="text"
+                        placeholder="Search rider..."
+                        value={riderSearch}
+                        onChange={e => setRiderSearch(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Escape') setRiderSearch('') }}
+                        className="w-full bg-white border border-gray-300 rounded-xl px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-blue-600"
+                      />
+                      <select
+                        value={ridersList.some(st => st.id === selectedStaffIdForSettlement) ? selectedStaffIdForSettlement : ''}
+                        onChange={e => {
+                          const val = e.target.value
+                          setSelectedStaffIdForSettlement(val)
+                          if (val) fetchPendingOrdersForStaff(val)
+                        }}
+                        size={riderSearch.trim() ? Math.min(Math.max(ridersList.length + 1, 2), 5) : 1}
+                        className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 font-bold cursor-pointer"
+                      >
+                        <option value="">-- Choose Rider --</option>
+                        {ridersList.map(st => (
+                          <option key={st.id} value={st.id}>{st.full_name || st.name} ({st.role || 'Rider'})</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {selectedStaffIdForSettlement && (
+                    <div className="space-y-2">
+                      <h4 className="font-bold uppercase text-gray-700 text-[11px]">Pending Cash Invoices ({pendingOrdersForStaff.length})</h4>
+                      {pendingOrdersForStaff.length > 0 ? (
+                        <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                          {pendingOrdersForStaff.map(ord => {
+                            const input = settlementInputs[ord.id] || { received: ord.total_amount, discount: '0', notes: '' }
+                            return (
+                              <div key={ord.id} className="bg-gray-50 p-3 rounded-xl border border-gray-200 space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <span className="font-mono font-black text-gray-900">KB-{String(ord.order_number).padStart(6, '0')}</span>
+                                  <span className="font-mono font-bold text-emerald-700">Total Billed: {ord.total_amount}</span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2">
+                                  <div>
+                                    <label className="block text-[9px] font-bold text-gray-500">Cash Received</label>
+                                    <input
+                                      type="number"
+                                      value={input.received}
+                                      onChange={e => {
+                                        const val = e.target.value
+                                        const billed = parseFloat(ord.total_amount) || 0
+                                        const rec = parseFloat(val) || 0
+                                        const diff = Math.max(0, billed - rec)
+                                        setSettlementInputs({
+                                          ...settlementInputs,
+                                          [ord.id]: { ...input, received: val, discount: String(diff) }
+                                        })
+                                      }}
+                                      className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1 font-mono font-bold"
+                                      required
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[9px] font-bold text-gray-500">Discount / Shortage</label>
+                                    <input
+                                      type="number"
+                                      value={input.discount}
+                                      onChange={e => setSettlementInputs({
+                                        ...settlementInputs,
+                                        [ord.id]: { ...input, discount: e.target.value }
+                                      })}
+                                      className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1 font-mono text-rose-600 font-bold"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[9px] font-bold text-gray-500">Remarks</label>
+                                    <input
+                                      type="text"
+                                      placeholder="Reason..."
+                                      value={input.notes}
+                                      onChange={e => setSettlementInputs({
+                                        ...settlementInputs,
+                                        [ord.id]: { ...input, notes: e.target.value }
+                                      })}
+                                      className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-gray-400 py-4 text-center">No pending cash orders assigned to this staff member.</p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center pt-4 border-t">
+                    <div className="font-mono font-black text-xs text-gray-900">
+                      TOTAL: <span className="text-emerald-700">{business?.currency_symbol || 'Rs.'} {pendingOrdersForStaff.reduce((sum, ord) => sum + (parseFloat(ord.total_amount) || 0), 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button type="button" onClick={() => setShowSettlementModal(false)} className="px-4 py-2 bg-gray-200 rounded-xl font-bold cursor-pointer">Cancel/Close</button>
+                      <button
+                        type="submit"
+                        disabled={processingSettlement || pendingOrdersForStaff.length === 0}
+                        className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow transition cursor-pointer"
+                      >
+                        {processingSettlement ? 'Processing...' : 'Settle Selected Invoices & Record Liquidity 💵'}
+                      </button>
+                    </div>
+                  </div>
+                </form>
               </div>
-            </form>
+
+            </div>
           </div>
         </div>
       )}

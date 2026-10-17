@@ -22,6 +22,12 @@ export default function TenantDashboard({ params }: PageProps) {
   const [stats, setStats] = useState({ productsCount: 0, categoriesCount: 0, tablesCount: 0, staffCount: 0 })
   const [loading, setLoading] = useState(true)
 
+  // Dashboard Analytics & Charts States
+  const [dashboardOrders, setDashboardOrders] = useState<any[]>([])
+  const [salesDaysFilter, setSalesDaysFilter] = useState<number>(15)
+  const [topRankingMode, setTopRankingMode] = useState<'revenue' | 'units'>('revenue')
+  const [hoveredSalesDay, setHoveredSalesDay] = useState<any | null>(null)
+
   // Settings Drawer State
   const [showSettingsDrawer, setShowSettingsDrawer] = useState(false)
   const [savingSettings, setSavingSettings] = useState(false)
@@ -42,6 +48,23 @@ export default function TenantDashboard({ params }: PageProps) {
   const [pendingOrdersForStaff, setPendingOrdersForStaff] = useState<any[]>([])
   const [settlementInputs, setSettlementInputs] = useState<{ [orderId: string]: { received: string; discount: string; notes: string } }>({})
   const [processingSettlement, setProcessingSettlement] = useState(false)
+
+  // ESC key listener to close settlement drawer instantly (unless focused on search inputs)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showSettlementModal) {
+        const activeEl = document.activeElement
+        const isSearchInput = activeEl?.tagName === 'INPUT' && (
+          (activeEl as HTMLInputElement).placeholder?.toLowerCase().includes('search')
+        )
+        if (!isSearchInput) {
+          setShowSettlementModal(false)
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [showSettlementModal])
 
   // Reports Filter States
   const [salesReportData, setSalesReportData] = useState<any[]>([])
@@ -232,11 +255,12 @@ export default function TenantDashboard({ params }: PageProps) {
       setEditHasErp(biz.has_erp ?? true)
       setEditHasTables(biz.has_tables ?? prof.modules.hasTables)
 
-      const [{ count: pCount }, { count: cCount }, { count: tCount }, { count: sCount, data: sData }] = await Promise.all([
+      const [{ count: pCount }, { count: cCount }, { count: tCount }, { count: sCount, data: sData }, { data: ordData }] = await Promise.all([
         supabase.from('products').select('*', { count: 'exact', head: true }).eq('business_id', biz.id),
         supabase.from('categories').select('*', { count: 'exact', head: true }).eq('business_id', biz.id),
         supabase.from('tables').select('*', { count: 'exact', head: true }).eq('business_id', biz.id),
-        supabase.from('staff_profiles').select('*', { count: 'exact' }).eq('business_id', biz.id)
+        supabase.from('staff_profiles').select('*', { count: 'exact' }).eq('business_id', biz.id),
+        supabase.from('orders').select('*').eq('business_id', biz.id).order('created_at', { ascending: false })
       ])
 
       setStats({
@@ -247,12 +271,77 @@ export default function TenantDashboard({ params }: PageProps) {
       })
 
       if (sData) setStaffList(sData)
+      if (ordData) setDashboardOrders(ordData)
+
       fetchActiveSessions(biz.id)
       setLoading(false)
     }
 
     fetchTenantData()
   }, [slug, router])
+
+  // Computed Sales Trend Data for Last X Days
+  const salesTrendData = useMemo(() => {
+    const daysMap: { [dateStr: string]: number } = {}
+    const today = new Date()
+    
+    for (let i = salesDaysFilter - 1; i >= 0; i--) {
+      const d = new Date()
+      d.setDate(today.getDate() - i)
+      const dateString = d.toISOString().split('T')[0]
+      daysMap[dateString] = 0
+    }
+
+    dashboardOrders.forEach(ord => {
+      const ordDate = new Date(ord.created_at).toISOString().split('T')[0]
+      if (daysMap[ordDate] !== undefined) {
+        daysMap[ordDate] += parseFloat(ord.total_amount) || 0
+      }
+    })
+
+    return Object.keys(daysMap).map(dateStr => ({
+      date: dateStr,
+      formattedDate: new Date(dateStr).toLocaleDateString([], { month: 'short', day: 'numeric' }),
+      totalSale: daysMap[dateStr]
+    }))
+  }, [dashboardOrders, salesDaysFilter])
+
+  // Computed Top 10 Selling Items (Last 30 Days) with Sort Mode (Revenue or Units)
+  const topSellingItemsData = useMemo(() => {
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+    const itemCounts: { [name: string]: { qty: number; revenue: number } } = {}
+
+    dashboardOrders.forEach(ord => {
+      const ordDate = new Date(ord.created_at)
+      if (ordDate >= thirtyDaysAgo && ord.items && Array.isArray(ord.items)) {
+        ord.items.forEach((it: any) => {
+          const itemName = it.name || it.title || 'Unknown Item'
+          const qty = parseFloat(it.quantity || it.qty || 1)
+          const price = parseFloat(it.price || it.unit_price || 0)
+          
+          if (!itemCounts[itemName]) {
+            itemCounts[itemName] = { qty: 0, revenue: 0 }
+          }
+          itemCounts[itemName].qty += qty
+          itemCounts[itemName].revenue += qty * price
+        })
+      }
+    })
+
+    const unsorted = Object.keys(itemCounts).map(name => ({
+      name,
+      qty: itemCounts[name].qty,
+      revenue: itemCounts[name].revenue
+    }))
+
+    if (topRankingMode === 'units') {
+      return unsorted.sort((a, b) => b.qty - a.qty).slice(0, 10)
+    } else {
+      return unsorted.sort((a, b) => b.revenue - a.revenue).slice(0, 10)
+    }
+  }, [dashboardOrders, topRankingMode])
 
   // Fetch Sales Report Data
   const fetchSalesReport = async () => {
@@ -442,12 +531,12 @@ export default function TenantDashboard({ params }: PageProps) {
     if (type === 'customers') fetchCustomerDatabase()
   }
 
-  // Filter staff lists for Waiters
+  // Filter staff lists strictly for Waiters
   const waitersList = staffList.filter(st => {
     const r = (st.role || '').toLowerCase()
     const d = (st.department || '').toLowerCase()
-    const isRider = r.includes('rider') || r.includes('delivery') || d.includes('delivery') || d.includes('logistic') || r.includes('driver')
-    return !isRider
+    const isWaiter = r.includes('waiter') || d.includes('service') || r.includes('server') || d.includes('waitstaff')
+    return isWaiter
   }).filter(st => {
     if (!waiterSearch.trim()) return true
     return (st.full_name || st.name || '').toLowerCase().includes(waiterSearch.toLowerCase().trim())
@@ -1308,6 +1397,149 @@ export default function TenantDashboard({ params }: PageProps) {
                   <h2 className="text-xl font-black">Welcome back, {business?.name}</h2>
                   <p className="text-xs text-gray-300 leading-relaxed">Manage your catalog, POS terminals, staff access, and live business operations seamlessly.</p>
                 </div>
+              </div>
+
+              {/* FINANCIAL CHARTS & ANALYTICS HUB */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                
+                {/* 1. SALES TREND GRAPH (HIDDEN UNLESS HOVERED, REDUCED BOX SIZE BY 50%, NO TITLE TEXT) */}
+                <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm space-y-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="font-black text-xs uppercase text-gray-900 tracking-wide">Sales Trend Realization</h3>
+                      <p className="text-[10px] text-gray-500">Total gross revenue performance over selected timeframe.</p>
+                    </div>
+                    <div className="flex bg-gray-100 p-0.5 rounded-xl border border-gray-200 space-x-1">
+                      {[10, 15, 30].map(days => (
+                        <button
+                          key={days}
+                          type="button"
+                          onClick={() => setSalesDaysFilter(days)}
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
+                            salesDaysFilter === days ? 'bg-white text-gray-900 shadow-2xs' : 'text-gray-500 hover:text-gray-900'
+                          }`}
+                        >
+                          {days}D
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* STICKY TOP-CENTER INFO BOX (ONLY SHOWS ON HOVER, REDUCED SIZE) */}
+                  <div className="h-8 flex items-center justify-center">
+                    {hoveredSalesDay ? (
+                      <div className="bg-slate-900 text-white px-3 py-1 rounded-xl shadow-md text-center max-w-[200px] flex items-center justify-center transition-all border border-slate-700 animate-fadeIn">
+                        <span className="text-[10px] font-mono font-black text-emerald-400 truncate">
+                          {hoveredSalesDay.formattedDate}: {business?.currency_symbol || 'Rs.'} {hoveredSalesDay.totalSale.toLocaleString()}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="text-[10px] font-medium text-gray-400 italic">
+                        Roll over any bar/candle to view specific day details
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="h-44 flex items-end justify-between gap-1 pt-2 pb-2 px-2 border-b border-gray-100 bg-gray-50/50 rounded-xl overflow-hidden">
+                    {salesTrendData.map((item, idx) => {
+                      const maxSale = Math.max(...salesTrendData.map(d => d.totalSale), 1)
+                      const heightPercent = Math.max(8, Math.round((item.totalSale / maxSale) * 100))
+                      return (
+                        <div 
+                          key={idx} 
+                          className="flex-1 flex flex-col items-center h-full justify-end cursor-pointer group"
+                          onMouseEnter={() => setHoveredSalesDay(item)}
+                          onMouseLeave={() => setHoveredSalesDay(null)}
+                        >
+                          <div 
+                            className="w-full bg-emerald-600 group-hover:bg-emerald-400 rounded-t-xs transition-all duration-300"
+                            style={{ height: `${heightPercent}%` }}
+                          />
+                          <span className="text-[8px] font-mono text-gray-400 mt-1.5 truncate w-full text-center">
+                            {salesDaysFilter === 30 && idx % 3 !== 0 ? '' : item.formattedDate}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  <div className="flex justify-between items-center pt-1 text-[11px]">
+                    <span className="text-gray-500 font-medium">Total Period Sales:</span>
+                    <span className="font-mono font-black text-emerald-700 text-sm">
+                      {business?.currency_symbol || 'Rs.'} {salesTrendData.reduce((sum, d) => sum + d.totalSale, 0).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 2. TOP 10 SELLING ITEMS OR DEALS (WITH REVENUE / UNITS TOGGLE) */}
+                <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm space-y-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="font-black text-xs uppercase text-gray-900 tracking-wide">Top 10 Selling Items & Deals</h3>
+                      <p className="text-[10px] text-gray-500">Ranked by {topRankingMode === 'revenue' ? 'total revenue' : 'total units sold'} in last 30 days.</p>
+                    </div>
+                    <div className="flex bg-gray-100 p-0.5 rounded-xl border border-gray-200 space-x-1">
+                      <button
+                        type="button"
+                        onClick={() => setTopRankingMode('revenue')}
+                        className={`px-2 py-1 rounded-lg text-[9px] font-bold transition cursor-pointer uppercase ${
+                          topRankingMode === 'revenue' ? 'bg-indigo-600 text-white shadow-2xs' : 'text-gray-500 hover:text-gray-900'
+                        }`}
+                      >
+                        Revenue
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTopRankingMode('units')}
+                        className={`px-2 py-1 rounded-lg text-[9px] font-bold transition cursor-pointer uppercase ${
+                          topRankingMode === 'units' ? 'bg-indigo-600 text-white shadow-2xs' : 'text-gray-500 hover:text-gray-900'
+                        }`}
+                      >
+                        Units
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+                    {topSellingItemsData.length > 0 ? (
+                      topSellingItemsData.map((item, idx) => {
+                        const maxVal = topRankingMode === 'revenue' 
+                          ? Math.max(...topSellingItemsData.map(i => i.revenue), 1)
+                          : Math.max(...topSellingItemsData.map(i => i.qty), 1)
+                        const currentVal = topRankingMode === 'revenue' ? item.revenue : item.qty
+                        const widthPercent = Math.max(10, Math.round((currentVal / maxVal) * 100))
+                        
+                        return (
+                          <div key={idx} className="space-y-1 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
+                            <div className="flex justify-between items-center text-[11px]">
+                              <div className="flex items-center space-x-2 truncate">
+                                <span className="font-mono font-black text-indigo-600 w-4">#{idx + 1}</span>
+                                <span className="font-bold text-gray-900 truncate">{item.name}</span>
+                              </div>
+                              <div className="flex items-center space-x-3 shrink-0 font-mono">
+                                <span className="text-gray-500 font-medium">{item.qty} units</span>
+                                <span className="font-bold text-emerald-700">{business?.currency_symbol || 'Rs.'} {item.revenue.toLocaleString()}</span>
+                              </div>
+                            </div>
+                            <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
+                              <div className="bg-indigo-600 h-full rounded-full transition-all duration-500" style={{ width: `${widthPercent}%` }} />
+                            </div>
+                          </div>
+                        )
+                      })
+                    ) : (
+                      <div className="text-center py-12 text-gray-400 font-medium">
+                        No item sales history recorded for the last 30 days yet.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-between items-center pt-1 text-[11px] border-t border-gray-100">
+                    <span className="text-gray-500 font-medium">Tracked Catalog Items:</span>
+                    <span className="font-mono font-bold text-gray-800">{topSellingItemsData.length} items ranked</span>
+                  </div>
+                </div>
+
               </div>
 
               {/* DATABASE METRICS COUNTERS */}
@@ -2326,158 +2558,170 @@ export default function TenantDashboard({ params }: PageProps) {
         </div>
       )}
 
-      {/* STAFF CASH DROP & BATCH SETTLEMENT MODAL */}
+      {/* STAFF CASH DROP & BATCH SETTLEMENT SLIDE-OVER DRAWER */}
       {showSettlementModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs font-sans">
-          <div className="bg-white rounded-3xl p-6 max-w-2xl w-full space-y-4 shadow-2xl border border-gray-200 text-gray-800 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center border-b pb-3">
-              <div>
-                <h3 className="font-black text-sm uppercase text-gray-900">Staff Cash Drop & Batch Settlement</h3>
-                <p className="text-[10px] text-gray-500">Select staff member, review pending bills, and settle cash with adjustments.</p>
-              </div>
-              <button onClick={() => setShowSettlementModal(false)} className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 font-bold cursor-pointer">✕</button>
-            </div>
+        <div className="fixed inset-0 z-50 overflow-hidden font-sans">
+          <div onClick={() => setShowSettlementModal(false)} className="absolute inset-0 bg-black/70 backdrop-blur-xs transition-opacity" />
 
-            <form onSubmit={handleProcessBatchSettlement} className="space-y-4 text-xs">
+          <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
+            <div className="w-screen md:w-[55vw] bg-white border-l border-gray-200 shadow-2xl flex flex-col text-gray-800">
               
-              {/* TWO SEPARATE FIELDS WITH SEARCH FOR WAITER & RIDER SIDE-BY-SIDE */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="bg-gray-50 p-3 rounded-2xl border border-gray-200 space-y-2">
-                  <label className="block font-bold text-gray-900 uppercase">1. Select Waiter for Cash Settlement</label>
-                  <input
-                    type="text"
-                    placeholder="Search waiter by name..."
-                    value={waiterSearch}
-                    onChange={e => setWaiterSearch(e.target.value)}
-                    className="w-full bg-white border border-gray-300 rounded-xl px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-blue-600"
-                  />
-                  <select
-                    value={waitersList.some(st => st.full_name === selectedStaffForSettlement || st.id === selectedStaffForSettlement) ? selectedStaffForSettlement : ''}
-                    onChange={e => {
-                      const val = e.target.value
-                      setSelectedStaffForSettlement(val)
-                      if (val) fetchPendingOrdersForStaff(val)
-                    }}
-                    className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 font-bold cursor-pointer"
-                  >
-                    <option value="">-- Choose Waiter --</option>
-                    {waitersList.map(st => (
-                      <option key={st.id} value={st.full_name}>{st.full_name} ({st.role || 'Waiter'})</option>
-                    ))}
-                  </select>
+              <div className="px-6 py-5 border-b border-gray-200 bg-gray-50 flex justify-between items-center shrink-0">
+                <div>
+                  <h3 className="font-black text-sm uppercase text-gray-900">Staff Cash Drop & Batch Settlement</h3>
+                  <p className="text-[10px] text-gray-500">Select staff member, review pending bills, and settle cash with adjustments.</p>
                 </div>
-
-                <div className="bg-gray-50 p-3 rounded-2xl border border-gray-200 space-y-2">
-                  <label className="block font-bold text-gray-900 uppercase">2. Select Rider for Cash Settlement</label>
-                  <input
-                    type="text"
-                    placeholder="Search rider by name..."
-                    value={riderSearch}
-                    onChange={e => setRiderSearch(e.target.value)}
-                    className="w-full bg-white border border-gray-300 rounded-xl px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-blue-600"
-                  />
-                  <select
-                    value={ridersList.some(st => st.full_name === selectedStaffForSettlement || st.id === selectedStaffForSettlement) ? selectedStaffForSettlement : ''}
-                    onChange={e => {
-                      const val = e.target.value
-                      setSelectedStaffForSettlement(val)
-                      if (val) fetchPendingOrdersForStaff(val)
-                    }}
-                    className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 font-bold cursor-pointer"
-                  >
-                    <option value="">-- Choose Rider --</option>
-                    {ridersList.map(st => (
-                      <option key={st.id} value={st.id}>{st.full_name || st.name} ({st.role || 'Rider'})</option>
-                    ))}
-                  </select>
-                </div>
+                <button onClick={() => setShowSettlementModal(false)} className="w-8 h-8 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 flex items-center justify-center font-bold transition cursor-pointer">✕</button>
               </div>
 
-              {selectedStaffForSettlement && (
-                <div className="space-y-2">
-                  <h4 className="font-bold uppercase text-gray-700 text-[11px]">Pending Cash Invoices ({pendingOrdersForStaff.length})</h4>
-                  {pendingOrdersForStaff.length > 0 ? (
-                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                      {pendingOrdersForStaff.map(ord => {
-                        const input = settlementInputs[ord.id] || { received: ord.total_amount, discount: '0', notes: '' }
-                        return (
-                          <div key={ord.id} className="bg-gray-50 p-3 rounded-xl border border-gray-200 space-y-2">
-                            <div className="flex justify-between items-center">
-                              <span className="font-mono font-black text-gray-900">KB-{String(ord.order_number).padStart(6, '0')}</span>
-                              <span className="font-mono font-bold text-emerald-700">Total Billed: {ord.total_amount}</span>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2">
-                              <div>
-                                <label className="block text-[9px] font-bold text-gray-500">Cash Received</label>
-                                <input
-                                  type="number"
-                                  value={input.received}
-                                  onChange={e => {
-                                    const val = e.target.value
-                                    const billed = parseFloat(ord.total_amount) || 0
-                                    const rec = parseFloat(val) || 0
-                                    const diff = Math.max(0, billed - rec)
-                                    setSettlementInputs({
-                                      ...settlementInputs,
-                                      [ord.id]: { ...input, received: val, discount: String(diff) }
-                                    })
-                                  }}
-                                  className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1 font-mono font-bold"
-                                  required
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-[9px] font-bold text-gray-500">Discount / Shortage</label>
-                                <input
-                                  type="number"
-                                  value={input.discount}
-                                  onChange={e => setSettlementInputs({
-                                    ...settlementInputs,
-                                    [ord.id]: { ...input, discount: e.target.value }
-                                  })}
-                                  className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1 font-mono text-rose-600 font-bold"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-[9px] font-bold text-gray-500">Remarks</label>
-                                <input
-                                  type="text"
-                                  placeholder="Reason..."
-                                  value={input.notes}
-                                  onChange={e => setSettlementInputs({
-                                    ...settlementInputs,
-                                    [ord.id]: { ...input, notes: e.target.value }
-                                  })}
-                                  className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      })}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                <form onSubmit={handleProcessBatchSettlement} className="space-y-4 text-xs">
+                  
+                  {/* TWO SEPARATE FIELDS WITH SEARCH FOR WAITER & RIDER SIDE-BY-SIDE */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="bg-gray-50 p-3 rounded-2xl border border-gray-200 space-y-2">
+                      <label className="block font-bold text-gray-900 uppercase">1. Select Waiter for Cash Settlement</label>
+                      <input
+                        type="text"
+                        placeholder="Search waiter by name..."
+                        value={waiterSearch}
+                        onChange={e => setWaiterSearch(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Escape') setWaiterSearch('') }}
+                        className="w-full bg-white border border-gray-300 rounded-xl px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-blue-600"
+                      />
+                      <select
+                        value={waitersList.some(st => st.full_name === selectedStaffForSettlement || st.id === selectedStaffForSettlement) ? selectedStaffForSettlement : ''}
+                        onChange={e => {
+                          const val = e.target.value
+                          setSelectedStaffForSettlement(val)
+                          if (val) fetchPendingOrdersForStaff(val)
+                        }}
+                        size={waiterSearch.trim() ? Math.min(Math.max(waitersList.length + 1, 2), 5) : 1}
+                        className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 font-bold cursor-pointer"
+                      >
+                        <option value="">-- Choose Waiter --</option>
+                        {waitersList.map(st => (
+                          <option key={st.id} value={st.full_name}>{st.full_name} ({st.role || 'Waiter'})</option>
+                        ))}
+                      </select>
                     </div>
-                  ) : (
-                    <p className="text-gray-400 py-4 text-center">No pending cash orders assigned to this staff member.</p>
-                  )}
-                </div>
-              )}
 
-              <div className="flex justify-between items-center pt-2 border-t">
-                <div className="font-mono font-black text-xs text-gray-900">
-                  TOTAL: <span className="text-emerald-700">{business?.currency_symbol || 'Rs.'} {pendingOrdersForStaff.reduce((sum, ord) => sum + (parseFloat(ord.total_amount) || 0), 0).toFixed(2)}</span>
-                </div>
-                <div className="flex space-x-2">
-                  <button type="button" onClick={() => setShowSettlementModal(false)} className="px-4 py-2 bg-gray-200 rounded-xl font-bold cursor-pointer">Cancel/Close</button>
-                  <button
-                    type="submit"
-                    disabled={processingSettlement || pendingOrdersForStaff.length === 0}
-                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow transition cursor-pointer"
-                  >
-                    {processingSettlement ? 'Processing...' : 'Settle Selected Invoices & Record Liquidity 💵'}
-                  </button>
-                </div>
+                    <div className="bg-gray-50 p-3 rounded-2xl border border-gray-200 space-y-2">
+                      <label className="block font-bold text-gray-900 uppercase">2. Select Rider for Cash Settlement</label>
+                      <input
+                        type="text"
+                        placeholder="Search rider by name..."
+                        value={riderSearch}
+                        onChange={e => setRiderSearch(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Escape') setRiderSearch('') }}
+                        className="w-full bg-white border border-gray-300 rounded-xl px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-blue-600"
+                      />
+                      <select
+                        value={ridersList.some(st => st.full_name === selectedStaffForSettlement || st.id === selectedStaffForSettlement) ? selectedStaffForSettlement : ''}
+                        onChange={e => {
+                          const val = e.target.value
+                          setSelectedStaffForSettlement(val)
+                          if (val) fetchPendingOrdersForStaff(val)
+                        }}
+                        size={riderSearch.trim() ? Math.min(Math.max(ridersList.length + 1, 2), 5) : 1}
+                        className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 font-bold cursor-pointer"
+                      >
+                        <option value="">-- Choose Rider --</option>
+                        {ridersList.map(st => (
+                          <option key={st.id} value={st.id}>{st.full_name || st.name} ({st.role || 'Rider'})</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {selectedStaffForSettlement && (
+                    <div className="space-y-2">
+                      <h4 className="font-bold uppercase text-gray-700 text-[11px]">Pending Cash Invoices ({pendingOrdersForStaff.length})</h4>
+                      {pendingOrdersForStaff.length > 0 ? (
+                        <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                          {pendingOrdersForStaff.map(ord => {
+                            const input = settlementInputs[ord.id] || { received: ord.total_amount, discount: '0', notes: '' }
+                            return (
+                              <div key={ord.id} className="bg-gray-50 p-3 rounded-xl border border-gray-200 space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <span className="font-mono font-black text-gray-900">KB-{String(ord.order_number).padStart(6, '0')}</span>
+                                  <span className="font-mono font-bold text-emerald-700">Total Billed: {ord.total_amount}</span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2">
+                                  <div>
+                                    <label className="block text-[9px] font-bold text-gray-500">Cash Received</label>
+                                    <input
+                                      type="number"
+                                      value={input.received}
+                                      onChange={e => {
+                                        const val = e.target.value
+                                        const billed = parseFloat(ord.total_amount) || 0
+                                        const rec = parseFloat(val) || 0
+                                        const diff = Math.max(0, billed - rec)
+                                        setSettlementInputs({
+                                          ...settlementInputs,
+                                          [ord.id]: { ...input, received: val, discount: String(diff) }
+                                        })
+                                      }}
+                                      className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1 font-mono font-bold"
+                                      required
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[9px] font-bold text-gray-500">Discount / Shortage</label>
+                                    <input
+                                      type="number"
+                                      value={input.discount}
+                                      onChange={e => setSettlementInputs({
+                                        ...settlementInputs,
+                                        [ord.id]: { ...input, discount: e.target.value }
+                                      })}
+                                      className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1 font-mono text-rose-600 font-bold"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[9px] font-bold text-gray-500">Remarks</label>
+                                    <input
+                                      type="text"
+                                      placeholder="Reason..."
+                                      value={input.notes}
+                                      onChange={e => setSettlementInputs({
+                                        ...settlementInputs,
+                                        [ord.id]: { ...input, notes: e.target.value }
+                                      })}
+                                      className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-gray-400 py-4 text-center">No pending cash orders assigned to this staff member.</p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center pt-4 border-t">
+                    <div className="font-mono font-black text-xs text-gray-900">
+                      TOTAL: <span className="text-emerald-700">{business?.currency_symbol || 'Rs.'} {pendingOrdersForStaff.reduce((sum, ord) => sum + (parseFloat(ord.total_amount) || 0), 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button type="button" onClick={() => setShowSettlementModal(false)} className="px-4 py-2 bg-gray-200 rounded-xl font-bold cursor-pointer">Cancel/Close</button>
+                      <button
+                        type="submit"
+                        disabled={processingSettlement || pendingOrdersForStaff.length === 0}
+                        className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow transition cursor-pointer"
+                      >
+                        {processingSettlement ? 'Processing...' : 'Settle Selected Invoices & Record Liquidity 💵'}
+                      </button>
+                    </div>
+                  </div>
+                </form>
               </div>
-            </form>
+
+            </div>
           </div>
         </div>
       )}
