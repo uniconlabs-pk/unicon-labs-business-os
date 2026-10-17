@@ -36,6 +36,7 @@ export default function DispatchManagerDashboard({ params }: PageProps) {
   const [customUrlInput, setCustomUrlInput] = useState('')
   const [uploadingSound, setUploadingSound] = useState(false)
   const [audioUnlocked, setAudioUnlocked] = useState(false)
+  const cachedBlobUrlRef = useRef<string | null>(null)
 
   // Fetch available sound files from Supabase 'chime-sounds' bucket
   const fetchChimeBucketSounds = async () => {
@@ -81,24 +82,38 @@ export default function DispatchManagerDashboard({ params }: PageProps) {
     fetchChimeBucketSounds()
   }, [slug])
 
-  // Initialize Audio Element ref
+  // Pre-cache audio file as local secure Blob to bypass production HTTPS/CORS restrictions
   useEffect(() => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio(selectedSound)
-    } else {
-      audioRef.current.src = selectedSound
+    let isMounted = true
+    if (!selectedSound) return
+
+    fetch(selectedSound)
+      .then(res => res.blob())
+      .then(blob => {
+        if (!isMounted) return
+        if (cachedBlobUrlRef.current) {
+          URL.revokeObjectURL(cachedBlobUrlRef.current)
+        }
+        cachedBlobUrlRef.current = URL.createObjectURL(blob)
+      })
+      .catch(err => {
+        console.warn('Could not pre-cache audio blob, will use direct URL fallback:', err)
+        cachedBlobUrlRef.current = null
+      })
+
+    return () => {
+      isMounted = false
     }
-    audioRef.current.volume = volume
-    audioRef.current.load()
-  }, [selectedSound, volume])
+  }, [selectedSound])
 
   // Unlock browser audio policy on first user interaction anywhere on page
   useEffect(() => {
     const unlockAudioContext = () => {
-      if (!audioUnlocked && audioRef.current) {
-        audioRef.current.play().then(() => {
-          audioRef.current?.pause()
-          audioRef.current.currentTime = 0
+      if (!audioUnlocked) {
+        const targetSrc = cachedBlobUrlRef.current || selectedSound
+        const silentAudio = new Audio(targetSrc)
+        silentAudio.volume = 0
+        silentAudio.play().then(() => {
           setAudioUnlocked(true)
           window.removeEventListener('click', unlockAudioContext)
           window.removeEventListener('keydown', unlockAudioContext)
@@ -112,21 +127,21 @@ export default function DispatchManagerDashboard({ params }: PageProps) {
       window.removeEventListener('click', unlockAudioContext)
       window.removeEventListener('keydown', unlockAudioContext)
     }
-  }, [audioUnlocked])
+  }, [audioUnlocked, selectedSound])
 
   const playChime = () => {
     if (isMuted) return
-    const soundSrc = selectedSound || '/sounds/chime.mp4'
-    const audio = new Audio(soundSrc)
+    const targetSrc = cachedBlobUrlRef.current || selectedSound || '/sounds/chime.mp4'
+    const audio = new Audio(targetSrc)
     audio.volume = volume
     audio.currentTime = 0
     audio.play().catch(err => {
-      console.log('Audio autoplay blocked, retrying with blob:', err)
-      fetch(soundSrc)
+      console.log('Audio playback blocked or failed, retrying direct fetch:', err)
+      fetch(selectedSound)
         .then(res => res.blob())
         .then(blob => {
-          const blobUrl = URL.createObjectURL(blob)
-          const blobAudio = new Audio(blobUrl)
+          const freshBlobUrl = URL.createObjectURL(blob)
+          const blobAudio = new Audio(freshBlobUrl)
           blobAudio.volume = volume
           blobAudio.play().catch(bErr => console.log('Blob audio play failed:', bErr))
         })
@@ -137,36 +152,23 @@ export default function DispatchManagerDashboard({ params }: PageProps) {
   const testPlaySound = (soundUrl: string) => {
     if (!soundUrl) return
     
-    if (soundUrl.startsWith('/')) {
-      const testAudio = new Audio(soundUrl)
-      testAudio.volume = volume
-      testAudio.currentTime = 0
-      testAudio.play().catch(err => {
-        alert(`Could not play local sound: ${err.message}`)
+    fetch(soundUrl)
+      .then(res => res.blob())
+      .then(blob => {
+        const blobUrl = URL.createObjectURL(blob)
+        const testAudio = new Audio(blobUrl)
+        testAudio.volume = volume
+        testAudio.play().catch(blobErr => {
+          alert(`Could not play sound: ${blobErr.message}. Please ensure the file is a valid .mp3 or .mp4 audio file.`)
+        })
       })
-      return
-    }
-
-    const testAudio = new Audio()
-    testAudio.volume = volume
-    testAudio.src = soundUrl
-    testAudio.load()
-    
-    testAudio.play().then(() => {}).catch(() => {
-      fetch(soundUrl)
-        .then(res => res.blob())
-        .then(blob => {
-          const blobUrl = URL.createObjectURL(blob)
-          const blobAudio = new Audio(blobUrl)
-          blobAudio.volume = volume
-          blobAudio.play().catch(blobErr => {
-            alert(`Could not play sound: ${blobErr.message}. Please ensure the file is a valid .mp3 or .mp4 audio file.`)
-          })
+      .catch(fetchErr => {
+        const fallbackAudio = new Audio(soundUrl)
+        fallbackAudio.volume = volume
+        fallbackAudio.play().catch(err => {
+          alert(`Could not load sound file: ${err.message}`)
         })
-        .catch(fetchErr => {
-          alert(`Could not load sound file: ${fetchErr.message}`)
-        })
-    })
+      })
   }
 
   const handleSoundChange = (url: string) => {
@@ -300,7 +302,27 @@ export default function DispatchManagerDashboard({ params }: PageProps) {
     initDispatch()
   }, [slug, router])
 
-  // Real-time subscription for live sync of delivery orders & chime trigger
+  const fetchDeliveryOrders = async (bizId: string) => {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('business_id', bizId)
+      .eq('service_type', 'DELIVERY')
+      .order('created_at', { ascending: false })
+
+    if (!error && data) {
+      setDeliveryOrders(prev => {
+        const prevIds = new Set(prev.map(o => o.id))
+        const hasNew = data.some(o => !prevIds.has(o.id) && (!o.dispatch_status || o.dispatch_status === 'pending'))
+        if (prev.length > 0 && hasNew) {
+          playChime()
+        }
+        return data
+      })
+    }
+  }
+
+  // Dual-layer safety: Real-time subscription + 5-second polling fallback for production network reliability
   useEffect(() => {
     if (!business?.id) return
 
@@ -336,30 +358,16 @@ export default function DispatchManagerDashboard({ params }: PageProps) {
       )
       .subscribe()
 
+    // Polling fallback interval to ensure zero missed orders in production
+    const pollingInterval = setInterval(() => {
+      fetchDeliveryOrders(business.id)
+    }, 5000)
+
     return () => {
       supabase.removeChannel(channel)
+      clearInterval(pollingInterval)
     }
   }, [business?.id])
-
-  const fetchDeliveryOrders = async (bizId: string) => {
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('business_id', bizId)
-      .eq('service_type', 'DELIVERY')
-      .order('created_at', { ascending: false })
-
-    if (!error && data) {
-      setDeliveryOrders(prev => {
-        const prevIds = new Set(prev.map(o => o.id))
-        const hasNew = data.some(o => !prevIds.has(o.id) && (!o.dispatch_status || o.dispatch_status === 'pending'))
-        if (prev.length > 0 && hasNew) {
-          playChime()
-        }
-        return data
-      })
-    }
-  }
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string, createdAt: string, formState?: { type: 'inhouse' | 'thirdparty'; riderId: string; name: string; phone: string }) => {
     const nowIso = new Date().toISOString()
@@ -455,8 +463,7 @@ ${riderPhoneInfo ? `• Contact: *${riderPhoneInfo}*` : ''}
 
 ${closingMessage}`
 
-          // Open WhatsApp in a dedicated named window target ('whatsapp_session')
-          // If a WhatsApp tab is already open with that name, it focuses it; otherwise, it opens a brand new tab safely.
+          // Open WhatsApp in dedicated named window target ('whatsapp_session')
           const whatsappUrl = `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(whatsappMessage)}`
           window.open(whatsappUrl, 'whatsapp_session')
         }
