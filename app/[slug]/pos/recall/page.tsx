@@ -4,6 +4,7 @@ import { useState, useEffect, use, useMemo, useRef } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
 import ThermalReceipt from '../../../components/ThermalReceipt'
+import ThermalKOT from '../../../components/ThermalKOT'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -17,6 +18,7 @@ export default function PosRecallPortal({ params }: PageProps) {
   const { slug } = use(params)
   const router = useRouter()
   const printReceiptRef = useRef<HTMLDivElement>(null)
+  const printKotRef = useRef<HTMLDivElement>(null)
 
   const [business, setBusiness] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -33,6 +35,7 @@ export default function PosRecallPortal({ params }: PageProps) {
 
   // Print State
   const [printOrderData, setPrintOrderData] = useState<any>(null)
+  const [printKotData, setPrintKotData] = useState<any>(null)
 
   useEffect(() => {
     async function init() {
@@ -67,8 +70,33 @@ export default function PosRecallPortal({ params }: PageProps) {
       if (ords) setRecentOrders(ords)
       setLoadingRecall(false)
       setLoading(false)
+
+      // Ensure iframe takes immediate keyboard focus upon load
+      window.focus()
     }
     init()
+
+    // Requirement 1: Close modal when user clicks Esc key
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        try {
+          const parentButtons = window.parent.document.querySelectorAll('button')
+          let closeBtn: HTMLElement | null = null
+          parentButtons.forEach(btn => {
+            if (btn.textContent?.trim() === '✕') {
+              closeBtn = btn
+            }
+          })
+          if (closeBtn) {
+            (closeBtn as HTMLButtonElement).click()
+          }
+        } catch (err) {
+          console.warn('Could not trigger parent close action:', err)
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [slug, router])
 
   const filteredRecallOrders = useMemo(() => {
@@ -124,11 +152,13 @@ export default function PosRecallPortal({ params }: PageProps) {
       ? orderRecord.change_returned
       : (tenderEntry.changeReturned !== undefined && tenderEntry.changeReturned !== null ? tenderEntry.changeReturned : 0)
 
+    const assignedOrderNo = orderRecord.order_number ? `KB-${String(orderRecord.order_number).padStart(6, '0')}` : (orderRecord.serial_number || orderRecord.id?.slice(0, 8) || 'SAVED')
+
     const receiptPayload = {
       storeName: business?.name || 'STORE',
       address: business?.address || '',
       phone: business?.phone || '',
-      orderNo: orderRecord.order_number ? `KB-${String(orderRecord.order_number).padStart(6, '0')}` : (orderRecord.serial_number || orderRecord.id?.slice(0, 8) || 'SAVED'),
+      orderNo: assignedOrderNo,
       serial_number: orderRecord.serial_number || `SN-${Math.floor(100000 + Math.random() * 900000)}`,
       date: new Date(orderRecord.created_at || Date.now()).toLocaleString(),
       staff: orderRecord.cashier_name || 'Staff',
@@ -154,11 +184,39 @@ export default function PosRecallPortal({ params }: PageProps) {
       fbrPosId: orderRecord.fbr_pos_id || null
     }
 
-    setPrintOrderData(receiptPayload)
+    const kotPayload = {
+      kotNo: orderRecord.order_number ? `KOT-${String(orderRecord.order_number).padStart(6, '0')}` : 'KOT-REPRINT',
+      orderNumber: assignedOrderNo,
+      time: new Date(orderRecord.created_at || Date.now()).toLocaleString(),
+      staff: orderRecord.cashier_name || 'Staff',
+      waiter: orderRecord.waiter_name || 'N/A',
+      customerName: orderRecord.customer_name || 'Walk-In Customer',
+      customerPhone: orderRecord.customer_phone || '',
+      deliveryAddress: orderRecord.delivery_address || '',
+      deliveryNote: orderRecord.delivery_note || '',
+      serviceType: orderRecord.service_type || 'COUNTER',
+      tableName: orderRecord.table_name || null,
+      zoneName: orderRecord.zone_name || null,
+      items: orderRecord.items || []
+    }
+
+    // STRICT SEQUENTIAL PRINTING: Clear receipt, print KOT first, then print Sales Receipt
+    setPrintOrderData(null)
+    setPrintKotData(kotPayload)
+
     setTimeout(() => {
-      if (printReceiptRef.current) {
+      if (printKotRef.current) {
         window.print()
       }
+      setTimeout(() => {
+        setPrintKotData(null)
+        setPrintOrderData(receiptPayload)
+        setTimeout(() => {
+          if (printReceiptRef.current) {
+            window.print()
+          }
+        }, 300)
+      }, 700)
     }, 150)
   }
 
@@ -286,6 +344,57 @@ export default function PosRecallPortal({ params }: PageProps) {
 
       {/* Hidden Print Staging */}
       <div className="hidden print:block print:w-[80mm] print:m-0 print:p-0">
+        <style jsx global>{`
+          @media print {
+            @page {
+              size: 80mm auto !important;
+              margin: 0 !important;
+            }
+            html, body {
+              width: 80mm !important;
+              max-width: 80mm !important;
+              height: auto !important;
+              min-height: 0 !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              overflow: visible !important;
+              background: #fff !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            body * {
+              visibility: hidden;
+            }
+            .print-receipt-wrapper, .print-receipt-wrapper * {
+              visibility: visible;
+            }
+            .print-receipt-wrapper {
+              position: absolute !important;
+              left: 0 !important;
+              top: 0 !important;
+              width: 80mm !important;
+              max-width: 80mm !important;
+              height: auto !important;
+              max-height: none !important;
+              overflow: visible !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              page-break-before: avoid !important;
+              page-break-after: avoid !important;
+              page-break-inside: auto !important;
+              break-before: avoid !important;
+              break-after: avoid !important;
+              break-inside: auto !important;
+            }
+          }
+        `}</style>
+
+        {printKotData && (
+          <div ref={printKotRef} className="print-receipt-wrapper">
+            <ThermalKOT kotData={printKotData} business={business} slug={slug} />
+          </div>
+        )}
+
         {printOrderData && (
           <div ref={printReceiptRef} className="print-receipt-wrapper">
             <ThermalReceipt

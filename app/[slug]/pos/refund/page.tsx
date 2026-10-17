@@ -90,8 +90,33 @@ export default function PosRefundPortal({ params }: PageProps) {
         }
       }
       setLoading(false)
+
+      // Ensure iframe takes immediate keyboard focus upon load for instant Esc key response
+      window.focus()
     }
     init()
+
+    // Listen for Escape key to instantly close modal from parent
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        try {
+          const parentButtons = window.parent.document.querySelectorAll('button')
+          let closeBtn: HTMLElement | null = null
+          parentButtons.forEach(btn => {
+            if (btn.textContent?.trim() === '✕') {
+              closeBtn = btn
+            }
+          })
+          if (closeBtn) {
+            (closeBtn as HTMLButtonElement).click()
+          }
+        } catch (err) {
+          console.warn('Could not trigger parent close action:', err)
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [slug, router])
 
   const filteredRefundOrders = useMemo(() => {
@@ -524,7 +549,7 @@ export default function PosRefundPortal({ params }: PageProps) {
                   <option value="Quality Issue / Damaged">🍔 Quality Issue / Damaged (Write-off Inventory)</option>
                   <option value="Customer Cancelled / Changed Mind">❌ Customer Cancelled / Changed Mind (Restock Stock)</option>
                   <option value="Delivery Mishap / Driver Drop">🛵 Delivery Mishap / Driver Drop</option>
-                  <option value="Wrong Item Prepared">⚠️️ Wrong Item Prepared</option>
+                  <option value="Wrong Item Prepared">⚠ Wrong Item Prepared</option>
                 </select>
               </div>
 
