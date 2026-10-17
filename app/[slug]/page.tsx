@@ -335,8 +335,8 @@ export default function TenantDashboard({ params }: PageProps) {
         const orderRider = (ord.rider_name || ord.rider || '').toLowerCase().trim()
 
         const matchByName = (orderWaiter && orderWaiter === cleanTargetName) || 
-                            (orderRider && orderRider === cleanTargetName) ||
-                            (orderRider && orderRider.includes(cleanTargetName))
+                          (orderRider && orderRider === cleanTargetName) ||
+                          (orderRider && orderRider.includes(cleanTargetName))
 
         return (matchById || matchByName)
       })
@@ -2462,15 +2462,20 @@ export default function TenantDashboard({ params }: PageProps) {
                 </div>
               )}
 
-              <div className="flex justify-end space-x-2 pt-2 border-t">
-                <button type="button" onClick={() => setShowSettlementModal(false)} className="px-4 py-2 bg-gray-200 rounded-xl font-bold cursor-pointer">Cancel/Close</button>
-                <button
-                  type="submit"
-                  disabled={processingSettlement || pendingOrdersForStaff.length === 0}
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow transition cursor-pointer"
-                >
-                  {processingSettlement ? 'Processing...' : 'Settle Selected Invoices & Record Liquidity 💵'}
-                </button>
+              <div className="flex justify-between items-center pt-2 border-t">
+                <div className="font-mono font-black text-xs text-gray-900">
+                  TOTAL: <span className="text-emerald-700">{business?.currency_symbol || 'Rs.'} {pendingOrdersForStaff.reduce((sum, ord) => sum + (parseFloat(ord.total_amount) || 0), 0).toFixed(2)}</span>
+                </div>
+                <div className="flex space-x-2">
+                  <button type="button" onClick={() => setShowSettlementModal(false)} className="px-4 py-2 bg-gray-200 rounded-xl font-bold cursor-pointer">Cancel/Close</button>
+                  <button
+                    type="submit"
+                    disabled={processingSettlement || pendingOrdersForStaff.length === 0}
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow transition cursor-pointer"
+                  >
+                    {processingSettlement ? 'Processing...' : 'Settle Selected Invoices & Record Liquidity 💵'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
