@@ -196,14 +196,61 @@ export default function DispatchManagerDashboard({ params }: PageProps) {
       alert(`Failed to update dispatch status: ${error.message}`)
     } else {
       if (newStatus === 'out_for_delivery') {
-        try {
-          await fetch('/api/dispatch/whatsapp', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orderId, slug })
-          })
-        } catch (waErr) {
-          console.warn('WhatsApp dispatch trigger warning:', waErr)
+        const targetOrder = deliveryOrders.find(o => o.id === orderId)
+        if (targetOrder && targetOrder.customer_phone) {
+          let cleanPhone = targetOrder.customer_phone.replace(/\D/g, '')
+          if (cleanPhone.startsWith('0')) {
+            cleanPhone = '92' + cleanPhone.substring(1)
+          }
+          
+          // Fix Rider Name resolution: correctly capture selected in-house staff name or 3rd party name
+          let resolvedRiderName = 'Assigned Rider'
+          if (formState?.type === 'inhouse' && formState.riderId) {
+            const matchedStaff = inHouseRiders.find(r => r.id === formState.riderId)
+            resolvedRiderName = matchedStaff ? (matchedStaff.full_name || matchedStaff.name) : 'In-House Rider'
+          } else if (formState?.type === 'thirdparty') {
+            resolvedRiderName = formState?.name?.trim() || 'Third-Party Partner'
+          } else {
+            resolvedRiderName = targetOrder.rider_name || 'Assigned Rider'
+          }
+
+          const riderPhoneInfo = formState?.phone || targetOrder.rider_phone || ''
+          
+          // Items list without individual prices
+          const itemsText = (targetOrder.items || [])
+            .map((item: any) => `• ${item.qty}x ${item.name}${item.selectedVariant ? ` [${item.selectedVariant.name}]` : ''}`)
+            .join('\n')
+
+          const brandNameCaps = (business?.name || 'STORE').toUpperCase()
+          const orderNumStr = targetOrder.order_number ? `KB-${String(targetOrder.order_number).padStart(6, '0')}` : 'DELIVERY'
+          const totalAmtStr = `${currencySymbol} ${(Number(targetOrder.total_amount)).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+
+          // Dynamic closing message based on business type/category
+          const bizTypeLower = (business?.business_type || '').toLowerCase()
+          const isRestaurantOrFood = bizTypeLower.includes('restaurant') || bizTypeLower.includes('food') || bizTypeLower.includes('cafe') || bizTypeLower.includes('bakery') || bizTypeLower.includes('bite')
+          const closingMessage = isRestaurantOrFood ? 'Thanks! ENJOY YOUR MEAL ⭐' : 'Thank you for shopping with us! ⭐'
+
+          const whatsappMessage = 
+`📦 *${brandNameCaps} - Order Dispatched!*
+
+Hello *${targetOrder.customer_name || 'Customer'}*, your order has been dispatched and is on its way! 🛵
+
+📋 *ORDER DETAILS:*
+• Order #: *${orderNumStr}*
+${itemsText}
+
+💰 *TOTAL AMOUNT:* *${totalAmtStr}* (${targetOrder.payment_method || 'CASH ON DELIVERY'})
+
+📍 *DELIVERY ADDRESS:* ${targetOrder.delivery_address || 'N/A'}
+
+👤 *RIDER'S DETAIL:*
+• Name: *${resolvedRiderName}*
+${riderPhoneInfo ? `• Contact: *${riderPhoneInfo}*` : ''}
+
+${closingMessage}`
+
+          const whatsappUrl = `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(whatsappMessage)}`
+          window.open(whatsappUrl, '_blank')
         }
       }
       fetchDeliveryOrders(business.id)
