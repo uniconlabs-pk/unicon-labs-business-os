@@ -28,6 +28,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
   const printReceiptRef = useRef<HTMLDivElement>(null)
   const printKotRef = useRef<HTMLDivElement>(null)
   const printSrrRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   const [business, setBusiness] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
@@ -56,6 +57,9 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
   const [newCustAddressInput, setNewCustAddressInput] = useState('')
   const [savingNewCustomer, setSavingNewCustomer] = useState(false)
 
+  // Cheat Sheet Modal State
+  const [showCheatSheetModal, setShowCheatSheetModal] = useState(false)
+
   const [authenticatedStaff, setAuthenticatedStaff] = useState<any>(null)
   const [showSecurityGate, setShowSecurityGate] = useState(true)
   
@@ -63,6 +67,9 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
   const [tables, setTables] = useState<any[]>([])
   const [activeZone, setActiveZone] = useState('ALL')
   const [selectedTable, setSelectedTable] = useState<any>(null)
+
+  // Cart Selection Index State for Keyboard Navigation
+  const [selectedCartIndex, setSelectedCartIndex] = useState<number>(0)
 
   // Hydrate tableCarts from localStorage for browser refresh persistence
   const [tableCarts, setTableCarts] = useState<{ [key: string]: any[] }>(() => {
@@ -202,6 +209,158 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
   const activeOrderNumber = activeOrderMeta?.code || 'PENDING'
   const activeOrderInt = activeOrderMeta?.intVal || Number(business?.next_order_seq ?? 100000)
+
+  // --- EARLY DECLARATIONS FOR KEYBOARD HOOK ---
+  const activeTableReservation = reservations.find(r => r.table_id === selectedTable?.id && r.status === 'RESERVED')
+  const isTableLockedByReservation = selectedTable?.status === 'reserved' && activeTableReservation
+
+  // --- COMPREHENSIVE POS KEYBOARD SHORTCUT ENGINE ---
+  useEffect(() => {
+    const handleGlobalKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement;
+      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT';
+
+      // Allow Escape to close modals, clear search, or blur inputs
+      if (isInput) {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          target.blur();
+          setSearchQuery('');
+          setShowWaiterDropdown(false);
+          setShowCheatSheetModal(false);
+        }
+        return;
+      }
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setShowCheatSheetModal(false);
+        setShowNewCustomerModal(false);
+        setShowCustomizeModal(false);
+        setShowSettlementModal(false);
+        return;
+      }
+
+      // Global Navigation & Actions
+      if (event.key === 'F1') {
+        event.preventDefault();
+        setShowCheatSheetModal(prev => !prev);
+        return;
+      }
+
+      if (event.key === 'F2' || (event.key === '/' && !isInput)) {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+        return;
+      }
+
+      if (event.key === 'F3') {
+        event.preventDefault();
+        setIsDarkMode(prev => !prev);
+        return;
+      }
+
+      if (event.key === 'F5') {
+        event.preventDefault();
+        setCatalogViewMode(prev => prev === 'grid' ? 'list' : 'grid');
+        return;
+      }
+
+      if (event.key === 'F8') {
+        event.preventDefault();
+        if (currentCart.length > 0 && !isTableLockedByReservation) {
+          handleSendToKitchen();
+        }
+        return;
+      }
+
+      if (event.key === 'F4') {
+        event.preventDefault();
+        if (currentCart.length > 0 && !isTableLockedByReservation) {
+          openSettlementModal();
+        }
+        return;
+      }
+
+      // Session Lock / Exit Control Shortcuts
+      if (event.ctrlKey && event.key.toLowerCase() === 'l') {
+        event.preventDefault();
+        handleLockSession();
+        return;
+      }
+
+      if (event.altKey && event.shiftKey && event.key.toLowerCase() === 'e') {
+        event.preventDefault();
+        handleWorkstationExit();
+        return;
+      }
+
+      // Active Cart Item Navigation & Manipulation
+      if (currentCart.length > 0) {
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          setSelectedCartIndex(prev => (prev < currentCart.length - 1 ? prev + 1 : 0));
+          return;
+        }
+        if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          setSelectedCartIndex(prev => (prev > 0 ? prev - 1 : currentCart.length - 1));
+          return;
+        }
+
+        const activeIdx = Math.min(selectedCartIndex, currentCart.length - 1);
+
+        if (event.key === '+' || event.key === '=') {
+          event.preventDefault();
+          const updated = [...currentCart];
+          updated[activeIdx].qty += 1;
+          updateCurrentCart(updated);
+          return;
+        }
+
+        if (event.key === '-' || event.key === '_') {
+          event.preventDefault();
+          const updated = [...currentCart];
+          if (updated[activeIdx].qty > 1) {
+            updated[activeIdx].qty -= 1;
+            updateCurrentCart(updated);
+          } else {
+            const filtered = currentCart.filter((_, i) => i !== activeIdx);
+            updateCurrentCart(filtered);
+            setSelectedCartIndex(prev => Math.max(0, prev - 1));
+          }
+          return;
+        }
+
+        if (event.key === 'Delete' || event.key === 'Backspace') {
+          event.preventDefault();
+          const filtered = currentCart.filter((_, i) => i !== activeIdx);
+          updateCurrentCart(filtered);
+          setSelectedCartIndex(prev => Math.max(0, prev - 1));
+          return;
+        }
+      }
+
+      // Service Mode Switching via Alt + Number
+      if (event.altKey) {
+        if (event.key === '1') {
+          event.preventDefault();
+          setServiceType('DINE-IN');
+        } else if (event.key === '2') {
+          event.preventDefault();
+          setServiceType('TAKEAWAY');
+          setSelectedTable(null);
+        } else if (event.key === '3') {
+          event.preventDefault();
+          setServiceType('DELIVERY');
+          setSelectedTable(null);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [currentCart, isTableLockedByReservation, serviceType, selectedTable, selectedCartIndex]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -830,9 +989,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     hasDispatchQueue: business?.has_dispatch_queue ?? business?.has_dispatch ?? profile.modules.hasDispatchQueue ?? false
   }
 
-  const activeTableReservation = reservations.find(r => r.table_id === selectedTable?.id && r.status === 'RESERVED')
-  const isTableLockedByReservation = selectedTable?.status === 'reserved' && activeTableReservation
-
   const updateCurrentCart = async (newCart: any[]) => {
     if (profile.modules.hasTables && serviceType === 'DINE-IN' && selectedTable) {
       if (isTableLockedByReservation) {
@@ -1375,11 +1531,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
     const shouldRouteToDispatch = !effectiveModules.hasKDS && effectiveModules.hasDispatchQueue && serviceType === 'DELIVERY'
 
-    // 1. Determine exact initial settlement status based on rules:
-    // - Dine-In with a Waiter -> PENDING_CASH (Waiter Liability)
-    // - Delivery COD at POS -> PENDING_CASH (Pending Cash Clearing Pool)
-    // - Counter / Takeaway / Direct Cash -> SETTLED (Instant Cash Inflow)
-    // Delivery and Dine-In with waiter are strictly PENDING_CASH. Counter/Takeaway are SETTLED.
     const isDineInWithWaiter = serviceType === 'DINE-IN' && selectedWaiter;
     const isDeliveryOrder = serviceType === 'DELIVERY';
     
@@ -1432,8 +1583,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       return
     }
 
-    // 2. If it's an immediate settled sale (Counter/Takeaway paid with Cash/Card), 
-    // record the cash liquidity transaction instantly so it populates the Cash Liquidity Report!
     if (initialStatus === 'SETTLED' && insertedOrder?.id) {
       await supabase.from('cash_liquidity_transactions').insert([{
         business_id: business.id,
@@ -1970,8 +2119,9 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
             <div className="flex items-center gap-2">
               <div className="relative flex-1 flex items-center">
                 <input 
+                  ref={searchInputRef}
                   type="text" 
-                  placeholder={`Search ${profile.terminology.productsLabel.toLowerCase()}...`} 
+                  placeholder={`Search ${profile.terminology.productsLabel.toLowerCase()}... (Press F2)`} 
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   onKeyDown={e => {
@@ -2003,7 +2153,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                 className={`w-14 h-7 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-300 shrink-0 ${
                   isDarkMode ? 'bg-slate-700' : 'bg-slate-800'
                 }`}
-                title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                title={isDarkMode ? 'Switch to Light Mode (F3)' : 'Switch to Dark Mode (F3)'}
               >
                 <div
                   className={`bg-white w-5 h-5 rounded-full shadow-md transform transition-transform duration-300 flex items-center justify-center text-[10px] ${
@@ -2042,7 +2192,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                       ? (isDarkMode ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-slate-900 text-white shadow-2xs') 
                       : (isDarkMode ? 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white' : 'bg-white border-gray-200 text-gray-600 hover:text-black')
                   }`}
-                  title="List View"
+                  title="List View (F5)"
                 >
                   <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
                     <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/>
@@ -2480,64 +2630,80 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
           <div className={`flex-1 p-3 overflow-y-auto space-y-2.5 divide-y ${isDarkMode ? 'divide-slate-800' : 'divide-gray-100'}`}>
             {currentCart.length > 0 ? (
-              currentCart.map((ci, idx) => (
-                <div key={idx} className="pt-2.5 first:pt-0 flex justify-between items-start text-xs">
-                  <div className="space-y-0.5 flex-1 pr-2">
-                    <div className="flex items-center space-x-1.5">
-                      <h5 className="font-bold">{ci.name}</h5>
-                      {ci.sentToKitchen && (
-                        <span className={`text-[8px] px-1 py-0.2 rounded font-mono font-bold ${isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'}`} title="Already sent to kitchen">
-                          ✓ Sent
-                        </span>
+              currentCart.map((ci, idx) => {
+                const isSelectedCartItem = selectedCartIndex === idx;
+                return (
+                  <div 
+                    key={idx} 
+                    onClick={() => setSelectedCartIndex(idx)}
+                    className={`pt-2.5 first:pt-0 flex justify-between items-start text-xs p-2 rounded-xl transition cursor-pointer ${
+                      isSelectedCartItem 
+                        ? (isDarkMode ? 'bg-slate-800 ring-1 ring-emerald-500' : 'bg-emerald-50/80 ring-1 ring-emerald-600') 
+                        : ''
+                    }`}
+                  >
+                    <div className="space-y-0.5 flex-1 pr-2">
+                      <div className="flex items-center space-x-1.5">
+                        <h5 className="font-bold">{ci.name}</h5>
+                        {ci.sentToKitchen && (
+                          <span className={`text-[8px] px-1 py-0.2 rounded font-mono font-bold ${isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'}`} title="Already sent to kitchen">
+                            ✓ Sent
+                          </span>
+                        )}
+                      </div>
+                      {ci.selectedVariant && (
+                        <span className="text-[10px] text-purple-400 font-semibold block">• Variant: {ci.selectedVariant.name}</span>
                       )}
+                      {ci.dealComponents && ci.dealComponents.length > 0 && (
+                        <div className="text-[10px] text-emerald-400 space-y-0.5 pt-0.5 pl-2 border-l-2 border-emerald-500 my-1">
+                          {ci.dealComponents.map((dc: any, dcIdx: number) => (
+                            <div key={dcIdx}>↳ {dc.qty}x {dc.name}</div>
+                          ))}
+                        </div>
+                      )}
+                      {ci.selectedAddons && ci.selectedAddons.length > 0 && (
+                        <div className="text-[10px] text-blue-400 space-y-0.5 pt-0.5">
+                          {ci.selectedAddons.map((ao: any, aIdx: number) => {
+                            const varText = ao.selectedVariant ? ` (${ao.selectedVariant.name})` : ''
+                            const varPrice = ao.selectedVariant ? ao.selectedVariant.price : 0
+                            const totalAoPrice = ao.price + varPrice
+                            return (
+                              <div key={aIdx}>+ {ao.name}{varText} ({currencySymbol} {totalAoPrice})</div>
+                            )
+                          })}
+                        </div>
+                      )}
+                      <div className="flex items-center space-x-3 pt-1">
+                        <div className={`flex items-center border rounded-lg overflow-hidden ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+                          <button onClick={(e) => {
+                            e.stopPropagation()
+                            const updated = [...currentCart]
+                            if (updated[idx].qty > 1) updated[idx].qty -= 1
+                            updateCurrentCart(updated)
+                          }} className="px-2 py-0.5 hover:bg-gray-700 font-bold cursor-pointer">-</button>
+                          <span className="px-2 py-0.5 font-mono font-bold">{ci.qty}</span>
+                          <button onClick={(e) => {
+                            e.stopPropagation()
+                            const updated = [...currentCart]
+                            updated[idx].qty += 1
+                            updateCurrentCart(updated)
+                          }} className="px-2 py-0.5 hover:bg-gray-700 font-bold cursor-pointer">+</button>
+                        </div>
+                      </div>
                     </div>
-                    {ci.selectedVariant && (
-                      <span className="text-[10px] text-purple-400 font-semibold block">• Variant: {ci.selectedVariant.name}</span>
-                    )}
-                    {ci.dealComponents && ci.dealComponents.length > 0 && (
-                      <div className="text-[10px] text-emerald-400 space-y-0.5 pt-0.5 pl-2 border-l-2 border-emerald-500 my-1">
-                        {ci.dealComponents.map((dc: any, dcIdx: number) => (
-                          <div key={dcIdx}>↳ {dc.qty}x {dc.name}</div>
-                        ))}
-                      </div>
-                    )}
-                    {ci.selectedAddons && ci.selectedAddons.length > 0 && (
-                      <div className="text-[10px] text-blue-400 space-y-0.5 pt-0.5">
-                        {ci.selectedAddons.map((ao: any, aIdx: number) => {
-                          const varText = ao.selectedVariant ? ` (${ao.selectedVariant.name})` : ''
-                          const varPrice = ao.selectedVariant ? ao.selectedVariant.price : 0
-                          const totalAoPrice = ao.price + varPrice
-                          return (
-                            <div key={aIdx}>+ {ao.name}{varText} ({currencySymbol} {totalAoPrice})</div>
-                          )
-                        })}
-                      </div>
-                    )}
-                    <div className="flex items-center space-x-3 pt-1">
-                      <div className={`flex items-center border rounded-lg overflow-hidden ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
-                        <button onClick={() => {
-                          const updated = [...currentCart]
-                          if (updated[idx].qty > 1) updated[idx].qty -= 1
-                          updateCurrentCart(updated)
-                        }} className="px-2 py-0.5 hover:bg-gray-700 font-bold cursor-pointer">-</button>
-                        <span className="px-2 py-0.5 font-mono font-bold">{ci.qty}</span>
-                        <button onClick={() => {
-                          const updated = [...currentCart]
-                          updated[idx].qty += 1
-                          updateCurrentCart(updated)
-                        }} className="px-2 py-0.5 hover:bg-gray-700 font-bold cursor-pointer">+</button>
-                      </div>
+                    
+                    <div className="text-right space-y-1">
+                      <div className="font-mono font-black text-emerald-400">{currencySymbol} {ci.finalUnitPrice * ci.qty}</div>
+                      <button onClick={(e) => {
+                        e.stopPropagation()
+                        updateCurrentCart(currentCart.filter((_, i) => i !== idx))
+                      }} className="text-gray-400 hover:text-red-500 text-xs cursor-pointer">
+                        🗑️
+                      </button>
                     </div>
                   </div>
-                  
-                  <div className="text-right space-y-1">
-                    <div className="font-mono font-black text-emerald-400">{currencySymbol} {ci.finalUnitPrice * ci.qty}</div>
-                    <button onClick={() => updateCurrentCart(currentCart.filter((_, i) => i !== idx))} className="text-gray-400 hover:text-red-500 text-xs cursor-pointer">
-                      🗑️
-                    </button>
-                  </div>
-                </div>
-              ))
+                )
+              })
             ) : (
               <div className="text-center py-20 text-gray-500 text-xs">Cart is empty. Select items from catalog.</div>
             )}
@@ -2655,7 +2821,6 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
             </div>
           </div>
         </aside>
-
       </div>
 
       {showNewCustomerModal && (
@@ -2729,6 +2894,57 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {showCheatSheetModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 font-sans">
+          <div className={`rounded-3xl p-6 w-full max-w-xl space-y-4 shadow-2xl border ${isDarkMode ? 'bg-slate-900 text-white border-slate-800' : 'bg-white text-gray-900 border-gray-200'}`}>
+            <div className="flex justify-between items-center border-b pb-3">
+              <h3 className="font-black text-sm uppercase flex items-center space-x-2">
+                <span>⌨️</span>
+                <span>POS Keyboard Shortcut Cheat Sheet</span>
+              </h3>
+              <button type="button" onClick={() => setShowCheatSheetModal(false)} className="text-gray-400 hover:text-white font-bold cursor-pointer">✕</button>
+            </div>
+
+            <div className="max-h-[60vh] overflow-y-auto rounded-2xl border border-slate-700/60 overflow-hidden">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className={`uppercase font-black text-[11px] tracking-wider ${isDarkMode ? 'bg-slate-800 text-emerald-400' : 'bg-slate-900 text-emerald-300'}`}>
+                    <th className="p-3 border-b border-slate-700 w-1/3">S. KEY</th>
+                    <th className="p-3 border-b border-slate-700 w-2/3">ACTION</th>
+                  </tr>
+                </thead>
+                <tbody className={`divide-y ${isDarkMode ? 'divide-slate-800 text-slate-200' : 'divide-gray-100 text-gray-800'}`}>
+                  <tr className={isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-gray-50'}><td className="p-2.5 font-mono font-bold text-emerald-500">F1</td><td className="p-2.5 font-semibold">Open Shortcut Cheat Sheet Modal</td></tr>
+                  <tr className={isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-gray-50'}><td className="p-2.5 font-mono font-bold text-emerald-500">F2 or /</td><td className="p-2.5 font-semibold">Focus Universal Product Search Bar</td></tr>
+                  <tr className={isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-gray-50'}><td className="p-2.5 font-mono font-bold text-emerald-500">F3</td><td className="p-2.5 font-semibold">Toggle Light / Dark Mode</td></tr>
+                  <tr className={isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-gray-50'}><td className="p-2.5 font-mono font-bold text-emerald-500">F5</td><td className="p-2.5 font-semibold">Toggle Catalog Grid / List View</td></tr>
+                  <tr className={isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-gray-50'}><td className="p-2.5 font-mono font-bold text-emerald-500">F4</td><td className="p-2.5 font-semibold">Open Settle & Pay Payment Modal</td></tr>
+                  <tr className={isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-gray-50'}><td className="p-2.5 font-mono font-bold text-emerald-500">F8</td><td className="p-2.5 font-semibold">Send Order to Kitchen (KDS)</td></tr>
+                  <tr className={isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-gray-50'}><td className="p-2.5 font-mono font-bold text-emerald-500">Alt + 1</td><td className="p-2.5 font-semibold">Switch Service Mode to Dine-In</td></tr>
+                  <tr className={isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-gray-50'}><td className="p-2.5 font-mono font-bold text-emerald-500">Alt + 2</td><td className="p-2.5 font-semibold">Switch Service Mode to Takeaway</td></tr>
+                  <tr className={isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-gray-50'}><td className="p-2.5 font-mono font-bold text-emerald-500">Alt + 3</td><td className="p-2.5 font-semibold">Switch Service Mode to Delivery</td></tr>
+                  <tr className={isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-gray-50'}><td className="p-2.5 font-mono font-bold text-emerald-500">Ctrl + L</td><td className="p-2.5 font-semibold">Lock POS Session / Sign Out Staff</td></tr>
+                  <tr className={isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-gray-50'}><td className="p-2.5 font-mono font-bold text-emerald-500">Arrow Up / Down</td><td className="p-2.5 font-semibold">Navigate Active Cart Items</td></tr>
+                  <tr className={isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-gray-50'}><td className="p-2.5 font-mono font-bold text-emerald-500">+ / -</td><td className="p-2.5 font-semibold">Adjust Highlighted Cart Item Quantity</td></tr>
+                  <tr className={isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-gray-50'}><td className="p-2.5 font-mono font-bold text-emerald-500">Delete / Backspace</td><td className="p-2.5 font-semibold">Remove Highlighted Item from Cart</td></tr>
+                  <tr className={isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-gray-50'}><td className="p-2.5 font-mono font-bold text-emerald-500">Escape</td><td className="p-2.5 font-semibold">Close Modals / Clear Search Input</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setShowCheatSheetModal(false)}
+                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-xs uppercase cursor-pointer"
+              >
+                Got It (Close)
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
