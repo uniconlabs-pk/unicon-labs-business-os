@@ -349,7 +349,7 @@ export default function UniconLabsLandingPage() {
       {/* STICKY HEADER & NAV WRAPPER CONTAINER */}
       <div className="sticky top-0 z-50 w-full shadow-md">
         {/* 1. SMART HEADER AREA */}
-        <header className="bg-white border-b border-blue-100 px-4 md:px-8 py-3 w-full">
+        <header className="bg-white border-b border-blue-100 px-4 md:px-8 py-[2px] w-full">
           <div className="max-w-7xl mx-auto flex flex-row justify-between items-center gap-3 md:gap-4">
             
             {/* Logo on the Left (Applies to both Mobile & Desktop) */}
@@ -358,7 +358,7 @@ export default function UniconLabsLandingPage() {
                 <img
                   src={headerLogo}
                   alt="Tenant Brand Logo"
-                  className="h-14 sm:h-16 md:h-16 w-auto object-contain relative z-50"
+                  className="h-[64px] sm:h-[72px] md:h-[72px] w-auto object-contain relative z-50"
                 />
               ) : (
                 <span className="font-black text-blue-950 text-base md:text-xl tracking-wider">{headerBrand}</span>
@@ -387,7 +387,7 @@ export default function UniconLabsLandingPage() {
               </div>
               <button
                 onClick={handleLoginClick}
-                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition shadow-md shadow-blue-600/30 cursor-pointer uppercase tracking-wide shrink-0"
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition shadow-md shadow-blue-600/30 cursor-pointer tracking-wide shrink-0"
               >
                 Login / Sign Up
               </button>
@@ -409,7 +409,7 @@ export default function UniconLabsLandingPage() {
             backgroundPosition: 'center'
           }}
         >
-          <div className="max-w-7xl mx-auto flex items-center justify-start md:justify-center space-x-6 md:space-x-8 text-xs font-black uppercase tracking-wider min-w-max px-2">
+          <div className="max-w-7xl mx-auto flex items-center justify-start md:justify-center space-x-6 md:space-x-8 text-xs font-black tracking-wider min-w-max px-2">
             {menuItems.map(item => (
               <a
                 key={item.id}
@@ -533,7 +533,7 @@ export default function UniconLabsLandingPage() {
 
         <div className="max-w-7xl mx-auto w-full space-y-8 relative z-10">
           <div className="text-center space-y-2">
-            <h2 className="text-3xl font-black uppercase tracking-wide text-white">Our Core Operations</h2>
+            <h2 className="text-3xl font-black tracking-wide text-white">Digital Ecosystem / Core Operations</h2>
             <p className="text-xs text-blue-200">Integrated multi-surface modules engineered for high-performance enterprise execution.</p>
           </div>
 
@@ -577,7 +577,7 @@ export default function UniconLabsLandingPage() {
       <section id="partners" className="bg-slate-50 border-y border-slate-200 px-4 md:px-8 pt-6 pb-12 md:py-20">
         <div className="max-w-7xl mx-auto space-y-8 md:space-y-12">
           <div className="text-center space-y-2">
-            <h2 className="text-3xl font-black uppercase tracking-wide text-blue-950">Our Respected Partners</h2>
+            <h2 className="text-3xl font-black tracking-wide text-blue-950">Powering Pakistan's Top Hospitality & Retail Brands</h2>
             <p className="text-xs text-slate-500">Proudly empowering top-tier businesses and fast-growing enterprises worldwide.</p>
           </div>
 
@@ -609,7 +609,7 @@ export default function UniconLabsLandingPage() {
       {/* 6. DAILY BLOGS SECTION */}
       <section id="blogs" className="px-4 md:px-8 pt-4 md:pt-14 pb-4 max-w-7xl mx-auto w-full space-y-6">
         <div className="space-y-2 text-center">
-          <h2 className="text-3xl font-black uppercase tracking-wide text-blue-950">Daily Blogs</h2>
+          <h2 className="text-3xl font-black tracking-wide text-blue-950">Tech Insights & Architecture Blogs</h2>
         </div>
 
         {blogs.length === 0 ? (
@@ -634,16 +634,16 @@ export default function UniconLabsLandingPage() {
                     <span>{blog.category}</span>
                     <span>{blog.date}</span>
                   </div>
-                  <h3 className="font-black text-xs md:text-sm uppercase text-blue-950 leading-snug">{blog.title}</h3>
+                  <h3 className="font-black text-xs md:text-sm text-blue-950 leading-snug">{blog.title}</h3>
                   <p className="text-slate-600 text-[11px] md:text-xs leading-relaxed line-clamp-3 text-justify">{blog.desc}</p>
                   {blog.writer && (
-                    <p className="text-[10px] text-blue-600 font-semibold italic">Shared by: {blog.writer}</p>
+                    <p className="text-[10px] text-green-600 font-semibold italic">Shared by : {blog.writer}</p>
                   )}
                 </div>
                 <div className="pt-3 md:pt-4 mt-3 md:mt-4 border-t border-slate-100">
                   <button
                     onClick={() => alert(`Opening article: ${blog.title}`)}
-                    className="text-[11px] md:text-xs font-extrabold text-blue-600 hover:text-blue-800 uppercase tracking-wide flex items-center space-x-1 cursor-pointer"
+                    className="text-[11px] md:text-xs font-extrabold text-blue-600 hover:text-blue-800 tracking-wide flex items-center space-x-1 cursor-pointer"
                   >
                     <span>Read more...</span>
                   </button>
@@ -657,10 +657,9 @@ export default function UniconLabsLandingPage() {
         <div className="flex justify-end pt-2">
           <button
             onClick={() => alert('Opening full blog archive...')}
-            className="text-xs font-black text-blue-600 hover:text-blue-800 uppercase tracking-wider flex items-center space-x-1 cursor-pointer"
+            className="text-xs font-black text-blue-600 hover:text-blue-800 font-semibold italic"
           >
-            <span>Read all blogs...</span>
-            <span>→</span>
+            <span>Read all BLOGS...</span>            
           </button>
         </div>
       </section>
@@ -751,12 +750,13 @@ export default function UniconLabsLandingPage() {
             </ul>
           </div>
           <div className="space-y-2">
-            <h4 className="font-black uppercase tracking-wider text-cyan-300 text-sm">Operations</h4>
+            <h4 className="font-black uppercase tracking-wider text-cyan-300 text-sm">Core Operations</h4>
             <ul className="space-y-1.5 text-blue-200">
-              <li>Adaptive POS Terminal</li>
-              <li>Kitchen Display (KDS)</li>
-              <li>Dispatch Queue</li>
-              <li>FBR Fiscal Synchronization</li>
+              <li>POS Terminal Software</li>
+              <li>KDS Kitchen Display System</li>
+              <li>DDC Digital Dispatch Center</li>
+              <li>Online Store-Front</li>
+	      <li>ERP & Finance Software</li> 	
             </ul>
           </div>
           <div className="space-y-2">
@@ -771,7 +771,7 @@ export default function UniconLabsLandingPage() {
         <div className="max-w-7xl mx-auto pt-1.5 pb-1.5 flex flex-col md:flex-row justify-between items-center gap-4 border-b border-cyan-500/20 relative z-10">
           <div className="flex items-center space-x-3">
             <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></span>
-            <span className="text-sm font-black uppercase tracking-wider text-cyan-300">Connect with us on :</span>
+            <span className="text-sm font-black tracking-wider text-cyan-300">Connect with us on :</span>
           </div>
           <div className="flex items-center space-x-4">
             <a
@@ -827,7 +827,7 @@ export default function UniconLabsLandingPage() {
         {/* FOOTER BOTTOM LINKS WITH "BACK TO TOP" */}
         <div className="max-w-7xl mx-auto pt-4 pb-2 flex flex-col items-center text-xs text-blue-300 font-medium relative z-10 gap-3">
           <div className="flex flex-col md:flex-row justify-between items-center w-full">
-            <p>© 2026 <a href="/master-admin" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-300 underline cursor-pointer">{headerBrand}</a>. All rights reserved.</p>
+            <p>© 2026 <a href="/master-admin" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-300">{headerBrand}</a>. All rights reserved.</p>
             <div className="flex flex-wrap justify-center items-center gap-4 md:space-x-6 mt-3 md:mt-0">
               <span className="hover:text-cyan-300 cursor-pointer">Privacy Policy</span>
               <span className="hover:text-cyan-300 cursor-pointer">Terms of Service</span>
@@ -840,7 +840,7 @@ export default function UniconLabsLandingPage() {
               onClick={scrollToTop}
               className="px-4 py-2 bg-blue-900/80 hover:bg-cyan-600 text-white font-bold rounded-xl transition border border-cyan-500/30 shadow-lg cursor-pointer uppercase tracking-wider flex items-center space-x-1"
             >
-              <span>↑ Back to Top</span>
+              <span>Get back to TOP</span>
             </button>
           </div>
         </div>
