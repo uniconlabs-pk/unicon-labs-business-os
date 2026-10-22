@@ -21,6 +21,7 @@ interface BusinessTenant {
   has_erp: boolean
   has_dispatch_queue?: boolean
   has_tables?: boolean
+  has_catering_quotation?: boolean
   address: string
   phone: string
   email: string
@@ -90,7 +91,8 @@ export default function MasterAdminPanel() {
   const [resetTables, setResetTables] = useState(true)
   const [resetSequences, setResetSequences] = useState(true)
   const [resetReturns, setResetReturns] = useState(true)
-  const [resetCashLiquidity, setResetCashLiquidity] = useState(true) // 👈 ADDED
+  const [resetCashLiquidity, setResetCashLiquidity] = useState(true)
+  const [resetQuotations, setResetQuotations] = useState(true)
   const [isResetting, setIsResetting] = useState(false)
 
   // New Tenant Modal State
@@ -235,7 +237,7 @@ export default function MasterAdminPanel() {
     setSavingCreds(false)
   }
 
-  const handleToggleModule = async (id: string, moduleKey: 'has_pos' | 'has_kds' | 'has_storefront' | 'has_erp' | 'has_dispatch_queue', currentState: boolean) => {
+  const handleToggleModule = async (id: string, moduleKey: 'has_pos' | 'has_kds' | 'has_storefront' | 'has_erp' | 'has_dispatch_queue' | 'has_catering_quotation', currentState: boolean) => {
     const newState = !currentState
     setTenants(tenants.map(t => t.id === id ? { ...t, [moduleKey]: newState } : t))
 
@@ -281,8 +283,11 @@ export default function MasterAdminPanel() {
         await supabase.from('order_refunds').delete().eq('business_id', resettingTenant.id)
         await supabase.from('sales_returns').delete().eq('business_id', resettingTenant.id)
       }
-      if (resetCashLiquidity) { // 👈 ADDED
+      if (resetCashLiquidity) {
         await supabase.from('cash_liquidity_transactions').delete().eq('business_id', resettingTenant.id)
+      }
+      if (resetQuotations) {
+        await supabase.from('catering_quotations').delete().eq('business_id', resettingTenant.id)
       }
       if (resetTables) {
         await supabase.from('tables').update({ status: 'available' }).eq('business_id', resettingTenant.id)
@@ -292,7 +297,8 @@ export default function MasterAdminPanel() {
           next_order_seq: 100011,
           next_serial_seq: 100011,
           next_kot_seq: 100011,
-          next_srr_seq: 100011
+          next_srr_seq: 100011,
+          next_quotation_seq: 100000
         }).eq('id', resettingTenant.id)
       }
 
@@ -326,6 +332,7 @@ export default function MasterAdminPanel() {
       has_storefront: true,
       has_erp: true,
       has_dispatch_queue: true,
+      has_catering_quotation: false,
       has_tables: newType === 'restaurant',
       address: newAddress,
       phone: newPhone,
@@ -457,7 +464,6 @@ export default function MasterAdminPanel() {
           </div>
         </div>
         <div className="flex items-center space-x-4">
-          {/* --- EXACT ADDITION: Link to Unicon Labs Website Settings CMS --- */}
           <button 
             onClick={() => router.push('/master-admin/web-settings')}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition shadow flex items-center space-x-1.5 cursor-pointer"
@@ -594,6 +600,7 @@ export default function MasterAdminPanel() {
                             <button onClick={() => handleToggleModule(tenant.id, 'has_dispatch_queue', tenant.has_dispatch_queue ?? true)} className={`px-2 py-0.5 rounded text-[9px] font-bold ${tenant.has_dispatch_queue !== false ? 'bg-emerald-900/50 text-emerald-300' : 'bg-gray-800 text-gray-500'}`}>Dispatch</button>
                             <button onClick={() => handleToggleModule(tenant.id, 'has_storefront', tenant.has_storefront ?? true)} className={`px-2 py-0.5 rounded text-[9px] font-bold ${tenant.has_storefront !== false ? 'bg-emerald-900/50 text-emerald-300' : 'bg-gray-800 text-gray-500'}`}>Store</button>
                             <button onClick={() => handleToggleModule(tenant.id, 'has_erp', tenant.has_erp ?? true)} className={`px-2 py-0.5 rounded text-[9px] font-bold ${tenant.has_erp !== false ? 'bg-emerald-900/50 text-emerald-300' : 'bg-gray-800 text-gray-500'}`}>ERP</button>
+                            <button onClick={() => handleToggleModule(tenant.id, 'has_catering_quotation', tenant.has_catering_quotation ?? false)} className={`px-2 py-0.5 rounded text-[9px] font-bold ${tenant.has_catering_quotation === true ? 'bg-amber-900/50 text-amber-300' : 'bg-gray-800 text-gray-500'}`} title="Catering Quotations Module">Catering</button>
                           </div>
                         </td>
                         <td className="p-3.5 text-right space-x-2">
@@ -697,19 +704,21 @@ export default function MasterAdminPanel() {
                   <input type="checkbox" checked={resetReturns} onChange={e => setResetReturns(e.target.checked)} className="rounded bg-gray-800 border-gray-700 text-amber-500 focus:ring-0 w-4 h-4" />
                   <span className="text-white font-semibold">Delete all Sales Return Receipts / Refunds (`order_refunds`, `sales_returns`)</span>
                 </label>
-                {/* 👇 ADDED START */}
                 <label className="flex items-center space-x-3 cursor-pointer">
                   <input type="checkbox" checked={resetCashLiquidity} onChange={e => setResetCashLiquidity(e.target.checked)} className="rounded bg-gray-800 border-gray-700 text-amber-500 focus:ring-0 w-4 h-4" />
                   <span className="text-white font-semibold">Delete all Cash Liquidity Reports (`cash_liquidity_transactions`)</span>
                 </label>
-                {/* 👇 ADDED END */}
+                <label className="flex items-center space-x-3 cursor-pointer">
+                  <input type="checkbox" checked={resetQuotations} onChange={e => setResetQuotations(e.target.checked)} className="rounded bg-gray-800 border-gray-700 text-amber-500 focus:ring-0 w-4 h-4" />
+                  <span className="text-white font-semibold">Delete all Catering Quotations (`catering_quotations`)</span>
+                </label>
                 <label className="flex items-center space-x-3 cursor-pointer">
                   <input type="checkbox" checked={resetTables} onChange={e => setResetTables(e.target.checked)} className="rounded bg-gray-800 border-gray-700 text-amber-500 focus:ring-0 w-4 h-4" />
                   <span className="text-white font-semibold">Reset all dine-in tables back to 'available'</span>
                 </label>
                 <label className="flex items-center space-x-3 cursor-pointer">
                   <input type="checkbox" checked={resetSequences} onChange={e => setResetSequences(e.target.checked)} className="rounded bg-gray-800 border-gray-700 text-amber-500 focus:ring-0 w-4 h-4" />
-                  <span className="text-white font-semibold">Reset sequence numbers back to 100011</span>
+                  <span className="text-white font-semibold">Reset sequence numbers back to 100011 / 100000</span>
                 </label>
               </div>
 

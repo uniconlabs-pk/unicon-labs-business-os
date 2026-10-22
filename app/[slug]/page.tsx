@@ -142,9 +142,7 @@ export default function TenantDashboard({ params }: PageProps) {
     return `STF-${slug.slice(0, 4).toUpperCase()}-${randNum}`
   }
 
-  // Editable Business Settings Fields
-  const [editName, setEditName] = useState('')
-  const [editType, setEditType] = useState('restaurant')
+  // Editable Business Settings Fields (Business Name & Type excluded from tenant editing)
   const [editLogoUrl, setEditLogoUrl] = useState('')
   const [editBannerUrl, setEditBannerUrl] = useState('')
   const [editAddress, setEditAddress] = useState('')
@@ -152,11 +150,21 @@ export default function TenantDashboard({ params }: PageProps) {
   const [editEmail, setEditEmail] = useState('')
   const [editWebUrl, setEditWebUrl] = useState('')
 
-  // Sequence Starting Points Configuration State
+  // Sequence Starting Points & Prefixes Configuration State
   const [editNextOrderSeq, setEditNextOrderSeq] = useState<string>('100000')
+  const [editOrderPrefix, setEditOrderPrefix] = useState<string>('')
+
   const [editNextSerialSeq, setEditNextSerialSeq] = useState<string>('100000')
+  const [editSerialPrefix, setEditSerialPrefix] = useState<string>('')
+
   const [editNextKotSeq, setEditNextKotSeq] = useState<string>('100000')
+  const [editKotPrefix, setEditKotPrefix] = useState<string>('')
+
   const [editNextSrrSeq, setEditNextSrrSeq] = useState<string>('100000')
+  const [editSrrPrefix, setEditSrrPrefix] = useState<string>('')
+
+  const [editNextQuotationSeq, setEditNextQuotationSeq] = useState<string>('100000')
+  const [editQuotationPrefix, setEditQuotationPrefix] = useState<string>('')
 
   const fetchActiveSessions = async (businessId: string) => {
     if (!businessId) return
@@ -230,18 +238,27 @@ export default function TenantDashboard({ params }: PageProps) {
       }
 
       setBusiness(biz)
-      setEditName(biz.name || '')
-      setEditType(biz.business_type || 'restaurant')
       setEditLogoUrl(biz.logo_url || '')
       setEditBannerUrl(biz.banner_url || '')
       setEditAddress(biz.address || '')
       setEditPhone(biz.phone || '')
       setEditEmail(biz.email || '')
       setEditWebUrl(biz.web_url || '')
+
       setEditNextOrderSeq(String(biz.next_order_seq ?? 100000))
+      setEditOrderPrefix(biz.order_prefix || '')
+
       setEditNextSerialSeq(String(biz.next_serial_seq ?? 100000))
+      setEditSerialPrefix(biz.serial_prefix || '')
+
       setEditNextKotSeq(String(biz.next_kot_seq ?? 100000))
+      setEditKotPrefix(biz.kot_prefix || '')
+
       setEditNextSrrSeq(String(biz.next_srr_seq ?? 100000))
+      setEditSrrPrefix(biz.srr_prefix || '')
+
+      setEditNextQuotationSeq(String(biz.next_quotation_seq ?? 100000))
+      setEditQuotationPrefix(biz.quotation_prefix || '')
 
       if (biz.name) {
         document.title = biz.name
@@ -689,8 +706,6 @@ export default function TenantDashboard({ params }: PageProps) {
         (payload) => {
           const updatedBiz = payload.new
           setBusiness(updatedBiz)
-          setEditName(updatedBiz.name || '')
-          setEditType(updatedBiz.business_type || 'restaurant')
           setEditLogoUrl(updatedBiz.logo_url || '')
           setEditBannerUrl(updatedBiz.banner_url || '')
           setEditAddress(updatedBiz.address || '')
@@ -703,10 +718,21 @@ export default function TenantDashboard({ params }: PageProps) {
           setEditHasStorefront(updatedBiz.has_storefront ?? true)
           setEditHasErp(updatedBiz.has_erp ?? true)
           setEditHasTables(updatedBiz.has_tables ?? false)
+
           setEditNextOrderSeq(String(updatedBiz.next_order_seq ?? 100000))
+          setEditOrderPrefix(updatedBiz.order_prefix || '')
+
           setEditNextSerialSeq(String(updatedBiz.next_serial_seq ?? 100000))
+          setEditSerialPrefix(updatedBiz.serial_prefix || '')
+
           setEditNextKotSeq(String(updatedBiz.next_kot_seq ?? 100000))
+          setEditKotPrefix(updatedBiz.kot_prefix || '')
+
           setEditNextSrrSeq(String(updatedBiz.next_srr_seq ?? 100000))
+          setEditSrrPrefix(updatedBiz.srr_prefix || '')
+
+          setEditNextQuotationSeq(String(updatedBiz.next_quotation_seq ?? 100000))
+          setEditQuotationPrefix(updatedBiz.quotation_prefix || '')
           
           if (updatedBiz.name) {
             document.title = updatedBiz.name
@@ -820,13 +846,12 @@ export default function TenantDashboard({ params }: PageProps) {
     const parsedSerialSeq = parseInt(editNextSerialSeq) || 100000
     const parsedKotSeq = parseInt(editNextKotSeq) || 100000
     const parsedSrrSeq = parseInt(editNextSrrSeq) || 100000
+    const parsedQuotationSeq = parseInt(editNextQuotationSeq) || 100000
 
     setSavingSettings(true)
     const { error } = await supabase
       .from('businesses')
       .update({
-        name: editName,
-        business_type: editType,
         logo_url: editLogoUrl ? editLogoUrl.trim() : null,
         banner_url: editBannerUrl ? editBannerUrl.trim() : null,
         address: editAddress,
@@ -840,9 +865,15 @@ export default function TenantDashboard({ params }: PageProps) {
         has_erp: editHasErp,
         has_tables: editHasTables,
         next_order_seq: parsedOrderSeq,
+        order_prefix: editOrderPrefix.trim().slice(0, 5),
         next_serial_seq: parsedSerialSeq,
+        serial_prefix: editSerialPrefix.trim().slice(0, 5),
         next_kot_seq: parsedKotSeq,
-        next_srr_seq: parsedSrrSeq
+        kot_prefix: editKotPrefix.trim().slice(0, 5),
+        next_srr_seq: parsedSrrSeq,
+        srr_prefix: editSrrPrefix.trim().slice(0, 5),
+        next_quotation_seq: parsedQuotationSeq,
+        quotation_prefix: editQuotationPrefix.trim().slice(0, 5)
       })
       .eq('id', business.id)
 
@@ -852,8 +883,6 @@ export default function TenantDashboard({ params }: PageProps) {
       alert('Business credentials & sequence starting points updated successfully!')
       setBusiness({
         ...business,
-        name: editName,
-        business_type: editType,
         logo_url: editLogoUrl,
         banner_url: editBannerUrl,
         address: editAddress,
@@ -867,13 +896,16 @@ export default function TenantDashboard({ params }: PageProps) {
         has_erp: editHasErp,
         has_tables: editHasTables,
         next_order_seq: parsedOrderSeq,
+        order_prefix: editOrderPrefix.trim().slice(0, 5),
         next_serial_seq: parsedSerialSeq,
+        serial_prefix: editSerialPrefix.trim().slice(0, 5),
         next_kot_seq: parsedKotSeq,
-        next_srr_seq: parsedSrrSeq
+        kot_prefix: editKotPrefix.trim().slice(0, 5),
+        next_srr_seq: parsedSrrSeq,
+        srr_prefix: editSrrPrefix.trim().slice(0, 5),
+        next_quotation_seq: parsedQuotationSeq,
+        quotation_prefix: editQuotationPrefix.trim().slice(0, 5)
       })
-      if (editName) {
-        document.title = editName
-      }
       setShowSettingsDrawer(false)
     }
     setSavingSettings(false)
@@ -1256,6 +1288,17 @@ export default function TenantDashboard({ params }: PageProps) {
               >
                 <span>📊</span>
                 <span>ERP Controls</span>
+              </a>
+            )}
+
+            {/* CONDITIONAL CATERING QUOTATION SIDEBAR LINK */}
+            {business?.has_catering_quotation === true && (
+              <a 
+                href={`/${slug}/quotation`} 
+                className="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-amber-300 hover:bg-slate-800 font-semibold text-xs transition"
+              >
+                <span>📋</span>
+                <span>Catering Quotations</span>
               </a>
             )}
 
@@ -2749,72 +2792,71 @@ export default function TenantDashboard({ params }: PageProps) {
 
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 <form onSubmit={handleSaveSettings} id="business-settings-form" className="space-y-4 text-xs">
-                  <div>
-                    <label className="block text-gray-700 font-bold mb-1">Business Name</label>
-                    <input 
-                      type="text" 
-                      value={editName} 
-                      onChange={e => setEditName(e.target.value)} 
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-gray-900 focus:outline-none focus:border-emerald-500 font-medium"
-                      required 
-                    />
-                  </div>
+                  
+                  {/* Sequence Starting Points & Prefixes Configuration */}
+                  <div className="space-y-3 pt-1">
+                    <label className="block text-gray-700 font-bold uppercase tracking-wider text-[11px]">Sequence Starting Points & Prefixes</label>
+                    <p className="text-[10px] text-gray-500">Configure starting number and custom 1–5 letter prefix for each sequence.</p>
+                    
+                    <div className="space-y-2.5">
+                      {/* Order No */}
+                      <div className="grid grid-cols-2 gap-2 bg-gray-50 p-2.5 rounded-xl border border-gray-200">
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Order No. Start</label>
+                          <input type="number" value={editNextOrderSeq} onChange={e => setEditNextOrderSeq(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-xs font-bold" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Prefix (1-5 chars)</label>
+                          <input type="text" maxLength={5} placeholder="ORD" value={editOrderPrefix} onChange={e => setEditOrderPrefix(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-xs uppercase font-bold" />
+                        </div>
+                      </div>
 
-                  <div>
-                    <label className="block text-gray-700 font-bold mb-1">Business Type / Category</label>
-                    <select 
-                      value={editType} 
-                      onChange={e => setEditType(e.target.value)} 
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-gray-900 uppercase focus:outline-none focus:border-emerald-500 font-medium"
-                    >
-                      <option value="restaurant">Restaurant</option>
-                      <option value="retail">Retail Store</option>
-                      <option value="perfumery">Perfumery</option>
-                      <option value="Building Materials">Building Materials</option>
-                      <option value="Pharmacy">Pharmacy</option>
-                    </select>
-                  </div>
+                      {/* Serial No */}
+                      <div className="grid grid-cols-2 gap-2 bg-gray-50 p-2.5 rounded-xl border border-gray-200">
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Serial No. Start</label>
+                          <input type="number" value={editNextSerialSeq} onChange={e => setEditNextSerialSeq(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-xs font-bold" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Prefix (1-5 chars)</label>
+                          <input type="text" maxLength={5} placeholder="SRL" value={editSerialPrefix} onChange={e => setEditSerialPrefix(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-xs uppercase font-bold" />
+                        </div>
+                      </div>
 
-                  {/* Sequence Starting Points Configuration */}
-                  <div className="space-y-2 pt-2 border-t border-gray-200">
-                    <label className="block text-gray-700 font-bold uppercase tracking-wider text-[11px]">Sequence Starting Points</label>
-                    <p className="text-[10px] text-gray-500">Configure exact starting numbers for your invoice numbering continuity.</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Set Order No.</label>
-                        <input 
-                          type="number"
-                          value={editNextOrderSeq}
-                          onChange={e => setEditNextOrderSeq(e.target.value)}
-                          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-2 font-mono text-xs font-bold"
-                        />
+                      {/* KOT No */}
+                      <div className="grid grid-cols-2 gap-2 bg-gray-50 p-2.5 rounded-xl border border-gray-200">
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-600 mb-0.5">KOT No. Start</label>
+                          <input type="number" value={editNextKotSeq} onChange={e => setEditNextKotSeq(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-xs font-bold" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Prefix (1-5 chars)</label>
+                          <input type="text" maxLength={5} placeholder="KOT" value={editKotPrefix} onChange={e => setEditKotPrefix(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-xs uppercase font-bold" />
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Set Serial No.</label>
-                        <input 
-                          type="number"
-                          value={editNextSerialSeq}
-                          onChange={e => setEditNextSerialSeq(e.target.value)}
-                          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-2 font-mono text-xs font-bold"
-                        />
+
+                      {/* SRR No */}
+                      <div className="grid grid-cols-2 gap-2 bg-gray-50 p-2.5 rounded-xl border border-gray-200">
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-600 mb-0.5">SRR No. Start</label>
+                          <input type="number" value={editNextSrrSeq} onChange={e => setEditNextSrrSeq(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-xs font-bold" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Prefix (1-5 chars)</label>
+                          <input type="text" maxLength={5} placeholder="SRR" value={editSrrPrefix} onChange={e => setEditSrrPrefix(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-xs uppercase font-bold" />
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Set KOT No.</label>
-                        <input 
-                          type="number"
-                          value={editNextKotSeq}
-                          onChange={e => setEditNextKotSeq(e.target.value)}
-                          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-2 font-mono text-xs font-bold"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Set SRR No.</label>
-                        <input 
-                          type="number"
-                          value={editNextSrrSeq}
-                          onChange={e => setEditNextSrrSeq(e.target.value)}
-                          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-2 font-mono text-xs font-bold"
-                        />
+
+                      {/* Quotation No */}
+                      <div className="grid grid-cols-2 gap-2 bg-gray-50 p-2.5 rounded-xl border border-gray-200">
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Quotation No. Start</label>
+                          <input type="number" value={editNextQuotationSeq} onChange={e => setEditNextQuotationSeq(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-xs font-bold" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Prefix (1-5 chars)</label>
+                          <input type="text" maxLength={5} placeholder="QUOT" value={editQuotationPrefix} onChange={e => setEditQuotationPrefix(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-xs uppercase font-bold" />
+                        </div>
                       </div>
                     </div>
                   </div>
