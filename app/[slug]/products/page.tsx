@@ -57,6 +57,14 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
   const [prodCategory, setProdCategory] = useState('')
   const [prodLinkedCategories, setProdLinkedCategories] = useState<string[]>([])
   const [prodPrice, setProdPrice] = useState('')
+  
+  // --- CHANNEL VISIBILITY & CATERING BULK PRICE STATES ---
+  const [prodShowOnPos, setProdShowOnPos] = useState(true)
+  const [prodShowOnStorefront, setProdShowOnStorefront] = useState(true)
+  const [prodShowInCatering, setProdShowInCatering] = useState(false)
+  const [prodCateringPrice, setProdCateringPrice] = useState('')
+  // ------------------------------------------------------
+
   const [prodDescription, setProdDescription] = useState('')
   
   // Promotional Badges Enabler
@@ -126,7 +134,6 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
     loadTenantData()
   }, [slug, router])
 
-  // ALL USEMEMO HOOKS DECLARED UNCONDITIONALLY AT TOP LEVEL
   const categoryTree = useMemo(() => {
     const flatList = categories || []
     const buildTree = (list: any[], parentId: string | null = null, depth = 1): any[] => {
@@ -179,7 +186,6 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
     }
   }, [categories])
 
-  // Exclude primary cat + ancestor/mother path + descendant branch from multi-linking
   const excludedForMultiLinking = useMemo(() => {
     if (!prodCategory) return []
     const list = categories || []
@@ -203,7 +209,6 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
     return Array.from(new Set([...ancestors, ...descendants]))
   }, [prodCategory, categories])
 
-  // STRICT PERMANENT CATEGORY SEQUENCE LOCK FOR ALL / BRANCH VIEWS
   const filteredProducts = useMemo(() => {
     const list = products || []
     const searchedProducts = list.filter(p => {
@@ -264,7 +269,6 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
     }
   }, [products, searchQuery, selectedMotherCategoryFilter, selectedSubCategoryFilter, flattenedCategories, getDescendantNames])
 
-  // SAFE LOADING GUARD PLACED AFTER ALL HOOKS
   if (loading || !profile) {
     return <div className="min-h-screen bg-gray-50 flex items-center justify-center font-bold text-gray-700">Loading Tenant Ecosystem...</div>
   }
@@ -273,7 +277,6 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
   const isRestaurant = profile.typeKey === 'restaurant'
   const isPharmacy = business?.business_type?.toLowerCase() === 'pharmacy' || profile.typeKey === 'pharmacy'
 
-  // CSV Import/Export
   const handleDownloadCsvTemplate = () => {
     const csvHeader = "name,category_name,price,description,in_stock,badge_enabled,badge_text\n"
     const sampleRow1 = '"Standard Item","GENERAL",450.00,"Description of item",true,true,"HOT SELLER"\n'
@@ -351,6 +354,10 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
             name,
             category: categoryName,
             price,
+            show_on_pos: true,
+            show_on_storefront: true,
+            show_in_catering: false,
+            catering_price: null,
             description: description || null,
             in_stock: inStock,
             sort_order: products.length + importedCount,
@@ -381,7 +388,6 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
     reader.readAsText(file)
   }
 
-  // Drag & Drop Reordering (Permanent persistence)
   const handleProductDragStart = (e: React.DragEvent, id: string) => {
     setDraggedProductId(id)
     e.dataTransfer.effectAllowed = 'move'
@@ -454,7 +460,6 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
 
     setUploadingImage(true)
 
-    // If there is an existing image URL, delete the old file from Supabase storage first
     if (prodImage && prodImage.includes('/storage/v1/object/public/products/')) {
       const oldPathParts = prodImage.split('/storage/v1/object/public/products/')
       if (oldPathParts[1]) {
@@ -486,7 +491,6 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
     return [parentId, ...children.flatMap(child => getSubtreeCategoryIds(child.id, cats))]
   }
 
-  // Safe-Delete Subtree & Product Dependency Guard for Categories/Subcategories
   const handleSafeDeleteCategoryTree = async (categoryId: string) => {
     const targetCategoryIds = getSubtreeCategoryIds(categoryId, categories)
     const targetCatNames = categories.filter(c => targetCategoryIds.includes(c.id)).map(c => c.name)
@@ -503,7 +507,7 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
     }
 
     if (count && count > 0) {
-      alert(`Cannot delete category branch: ${count} active item(s) are assigned to this category or its subcategories. Please reassign or delete containing items first.`)
+      alert(`Cannot delete category branch: ${count} active item(s) are assigned to this category or its subcategories.`)
       return
     }
 
@@ -522,7 +526,6 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
     }
   }
 
-  // Category Actions (Max 3 levels check)
   const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!catName) return
@@ -536,7 +539,7 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
     }
 
     if (parentLevel > 3) {
-      alert('Maximum nesting depth (3 levels) reached. Cannot create subcategory deeper than level 3.')
+      alert('Maximum nesting depth (3 levels) reached.')
       return
     }
 
@@ -595,7 +598,6 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
     setShowCategoryModal(false)
   }
 
-  // Product Actions
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!prodName || !prodPrice || !prodCategory) {
@@ -609,6 +611,10 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
       category: prodCategory,
       linked_categories: prodMultiCategoryEnabled ? prodLinkedCategories.filter(c => c !== prodCategory) : [],
       price: parseFloat(prodPrice),
+      show_on_pos: Boolean(prodShowOnPos),
+      show_on_storefront: Boolean(prodShowOnStorefront),
+      show_in_catering: Boolean(prodShowInCatering),
+      catering_price: prodCateringPrice !== '' ? parseFloat(prodCateringPrice) : null,
       description: prodDescription ? prodDescription.trim() : null,
       badge_enabled: Boolean(prodBadgeEnabled),
       badge_text: prodBadgeEnabled ? prodBadgeText : null,
@@ -618,7 +624,6 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
       deal_items: prodIsDeal ? prodDealItems : null,
       has_modifiers: isRestaurant ? Boolean(prodHasModifiers) : false,
       variants: prodHasVariants ? prodVariants.filter(v => v.name.trim() !== '') : [],
-      // Pharmacy specific attributes
       barcode: isPharmacy ? prodBarcode.trim() : null,
       brand_name: isPharmacy ? prodBrandName.trim() : null,
       generic_name: isPharmacy ? prodGenericName.trim() : null,
@@ -682,6 +687,10 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
     setProdLinkedCategories(prod.linked_categories || [])
     setProdMultiCategoryEnabled(Boolean(prod.linked_categories && prod.linked_categories.length > 0))
     setProdPrice(prod.price)
+    setProdShowOnPos(prod.show_on_pos ?? true)
+    setProdShowOnStorefront(prod.show_on_storefront ?? true)
+    setProdShowInCatering(prod.show_in_catering ?? false)
+    setProdCateringPrice(prod.catering_price !== null && prod.catering_price !== undefined ? prod.catering_price : '')
     setProdDescription(prod.description || '')
     setProdBadgeEnabled(prod.badge_enabled || false)
     setProdBadgeText(prod.badge_text || 'HOT SELLER')
@@ -712,6 +721,10 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
     setProdMultiCategoryEnabled(false)
     setExpandedMultiCats([])
     setProdPrice('')
+    setProdShowOnPos(true)
+    setProdShowOnStorefront(true)
+    setProdShowInCatering(false)
+    setProdCateringPrice('')
     setProdDescription('')
     setProdBadgeEnabled(false)
     setProdBadgeText('HOT SELLER')
@@ -734,7 +747,6 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
     setShowProductModal(false)
   }
 
-  // Recursive Level 2 & Level 3 renderer for unified mother category cards
   const renderNestedCategories = (children: any[]) => {
     if (!children || children.length === 0) return null
     return (
@@ -783,7 +795,6 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-gray-100 text-gray-800 flex flex-col font-sans">
       
-      {/* Top Header */}
       <header className="bg-slate-900 text-white border-b border-slate-800 px-8 py-5 flex justify-between items-center shadow-xs">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center font-black text-lg shadow-inner">
@@ -804,7 +815,6 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
         </a>
       </header>
 
-      {/* Sub-Tabs & Actions */}
       <div className="bg-white border-b border-gray-200 px-8 py-3 flex flex-wrap justify-between items-center gap-3">
         <div className="flex space-x-2">
           <button 
@@ -849,7 +859,6 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
         </div>
       </div>
 
-      {/* Main Content Body */}
       <main className="flex-1 p-8 max-w-7xl mx-auto w-full">
         
         {activeTab === 'PRODUCTS' && (
@@ -865,7 +874,6 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-xs text-gray-900 focus:outline-none focus:border-emerald-500 font-medium"
                 />
 
-                {/* Level 1: Mother Categories display (Strict Sequence) */}
                 <div className="flex space-x-2 overflow-x-auto pb-1 pt-1">
                   <button
                     onClick={() => { setSelectedMotherCategoryFilter('ALL'); setSelectedSubCategoryFilter(null); }}
@@ -896,7 +904,6 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
                   })}
                 </div>
 
-                {/* Subcategory dropdown / sub-filter bar if mother category has subcategories */}
                 {selectedMotherCategoryFilter !== 'ALL' && activeSubcategories.length > 0 && (
                   <div className="flex items-center space-x-2 pt-2 border-t border-gray-100 overflow-x-auto">
                     <span className="text-[10px] font-bold uppercase text-gray-400 whitespace-nowrap">Subcategory Filter:</span>
@@ -951,14 +958,9 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
                               🔗 {lc}
                             </span>
                           ))}
-                          {p.is_deal && (
-                            <span className="text-[10px] font-black uppercase bg-amber-100 text-amber-800 px-2 py-0.5 rounded">
-                              🔥 Bundle
-                            </span>
-                          )}
-                          {isPharmacy && p.is_prescription_required && (
-                            <span className="text-[10px] font-black uppercase bg-rose-100 text-rose-800 px-2 py-0.5 rounded">
-                              Rx Only
+                          {p.show_in_catering && (
+                            <span className="text-[10px] font-black uppercase bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded">
+                              🍽️ Catering
                             </span>
                           )}
                         </div>
@@ -982,50 +984,16 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
                         <span className="text-xs text-gray-400 font-mono">⠿</span>
                       </div>
 
-                      {/* Pharmacy Specific Badge / Labels on Card */}
-                      {isPharmacy && (
-                        <div className="mt-1 space-y-0.5 text-[11px]">
-                          {p.brand_name && <div className="font-semibold text-emerald-800">Brand: {p.brand_name}</div>}
-                          {p.generic_name && <div className="text-gray-500 italic">Generic: {p.generic_name} {p.dosage_strength}</div>}
-                          {p.batch_number && <div className="font-mono text-[10px] text-gray-400">Batch: {p.batch_number} {p.expiry_date ? `| Exp: ${p.expiry_date}` : ''}</div>}
-                        </div>
-                      )}
-
                       {p.description && (
                         <p className="text-[11px] text-gray-500 mt-1 line-clamp-2 leading-relaxed">{p.description}</p>
                       )}
 
-                      {p.variants && p.variants.length > 0 && (
-                        <div className="mt-2 bg-purple-50/60 p-2 rounded-xl border border-purple-200 space-y-0.5">
-                          <span className="text-[9px] font-bold uppercase text-purple-900 block">Variants / Options:</span>
-                          <div className="flex flex-wrap gap-1 pt-0.5">
-                            {p.variants.map((v: any, idx: number) => (
-                              <span key={idx} className="text-[10px] bg-white border border-purple-200 px-1.5 py-0.5 rounded text-purple-900 font-medium">
-                                {v.name} (+{currencySymbol} {v.price})
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {p.is_deal && p.deal_items && p.deal_items.length > 0 && (
-                        <div className="mt-2.5 bg-amber-50/60 p-2 rounded-xl border border-amber-200 space-y-1">
-                          <span className="text-[9px] font-extrabold uppercase text-amber-900 block">📦 Bundle Contents:</span>
-                          <ul className="text-[10px] text-gray-700 space-y-0.5">
-                            {p.deal_items.map((di: any, idx: number) => {
-                              const matched = products.find(item => item.id === di.itemId)
-                              return (
-                                <li key={idx} className="flex justify-between items-center bg-white/70 px-2 py-0.5 rounded border border-amber-100">
-                                  <span className="font-medium truncate pr-1">• {matched?.name || 'Item'}</span>
-                                  <span className="font-mono font-bold text-amber-900">Qty: {di.qty}</span>
-                                </li>
-                              )
-                            })}
-                          </ul>
-                        </div>
-                      )}
-
-                      <p className="text-emerald-600 font-mono font-extrabold text-xs mt-2">{currencySymbol} {p.price}</p>
+                      <div className="mt-2 space-y-1 font-mono">
+                        <div className="text-emerald-600 font-extrabold text-xs">Retail: {currencySymbol} {p.price}</div>
+                        {p.catering_price !== null && p.catering_price !== undefined && (
+                          <div className="text-indigo-700 font-extrabold text-[11px]">Catering Bulk: {currencySymbol} {p.catering_price}</div>
+                        )}
+                      </div>
                     </div>
 
                     <div className="pt-4 mt-4 border-t border-gray-100 space-y-2">
@@ -1075,7 +1043,6 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
                   onDrop={(e) => handleCategoryDrop(e, mother.id)}
                   className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm flex flex-col justify-between space-y-4 hover:shadow-md transition cursor-grab active:cursor-grabbing"
                 >
-                  {/* Mother Header Row */}
                   <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                     <div className="flex items-center space-x-2">
                       <span className="text-gray-400 font-mono text-xs">⠿</span>
@@ -1100,7 +1067,6 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
                     </div>
                   </div>
 
-                  {/* Action Trigger: Add Subcategory scoped to this mother family */}
                   <div>
                     <button
                       type="button"
@@ -1111,7 +1077,6 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
                     </button>
                   </div>
 
-                  {/* Nested Hierarchy Rows (Level 2 & Level 3 unified inside card) */}
                   {mother.children && mother.children.length > 0 && (
                     <div className="space-y-2 pt-1 border-t border-gray-100">
                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
@@ -1128,7 +1093,6 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
 
       </main>
 
-      {/* MODAL: HIERARCHICAL CATEGORY (Max 3 levels enforced) */}
       {showCategoryModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <form onSubmit={handleSaveCategory} className="bg-white rounded-2xl p-6 w-full max-w-md space-y-4 shadow-xl">
@@ -1136,7 +1100,7 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
               {editingCategoryId ? 'Edit Category' : 'Create Category / Subcategory'}
             </h2>
             <div>
-              <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Parent Category (Max Level 3 Enforced)</label>
+              <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Parent Category</label>
               <select
                 value={catParentId}
                 onChange={e => setCatParentId(e.target.value)}
@@ -1171,28 +1135,19 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
         </div>
       )}
 
-      {/* MODAL: PRODUCT / ITEM / DEAL CREATOR (Sticky Header/Footer with Scrollable Body) */}
       {showProductModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <form 
             onSubmit={handleSaveProduct} 
             className="bg-white rounded-2xl w-full max-w-lg shadow-xl flex flex-col max-h-[90vh] overflow-hidden"
           >
-            {/* STICKY HEADER */}
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-white z-10 shrink-0">
               <h2 className="text-sm font-black uppercase text-gray-900">
                 {editingProductId ? 'Edit Item' : 'Add New Item'}
               </h2>
-              <button 
-                type="button" 
-                onClick={closeProductModal}
-                className="text-gray-400 hover:text-gray-600 font-bold text-xs"
-              >
-                ✕
-              </button>
+              <button type="button" onClick={closeProductModal} className="text-gray-400 hover:text-gray-600 font-bold text-xs">✕</button>
             </div>
 
-            {/* SCROLLABLE MIDDLE CONFIGURATION SECTION */}
             <div className="p-6 space-y-3 text-xs overflow-y-auto flex-1">
               <div>
                 <label className="font-bold text-gray-700">Item Name</label>
@@ -1200,114 +1155,14 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
               </div>
 
               <div>
-                <label className="font-bold text-gray-700">Primary Category (Cascading / Exact Leaf Selector)</label>
+                <label className="font-bold text-gray-700">Primary Category</label>
                 <select value={prodCategory} onChange={e => setProdCategory(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 mt-1 font-medium" required>
                   <option value="">Select Exact Primary Category / Subcategory</option>
                   {flattenedCategories.map(c => <option key={c.id} value={c.name}>{c.label}</option>)}
                 </select>
               </div>
 
-              {/* CONDITIONAL PHARMACY-SPECIFIC INVENTORY ATTRIBUTES PANEL */}
-              {isPharmacy && (
-                <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-200 space-y-3">
-                  <span className="font-black text-emerald-900 uppercase block text-xs">
-                    💊 Pharmacy & Medical Attributes
-                  </span>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="font-bold text-gray-700 block mb-1">Barcode / QR Code</label>
-                      <input 
-                        type="text" 
-                        placeholder="Scan or type barcode..." 
-                        value={prodBarcode} 
-                        onChange={e => setProdBarcode(e.target.value)} 
-                        className="w-full bg-white border border-gray-200 rounded-xl px-3 py-1.5 font-mono text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="font-bold text-gray-700 block mb-1">Brand Name *</label>
-                      <input 
-                        type="text" 
-                        placeholder="e.g. Panadol Extra" 
-                        value={prodBrandName} 
-                        onChange={e => setProdBrandName(e.target.value)} 
-                        className="w-full bg-white border border-gray-200 rounded-xl px-3 py-1.5 font-medium text-xs"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="font-bold text-gray-700 block mb-1">Generic / Active Ingredient</label>
-                      <input 
-                        type="text" 
-                        placeholder="e.g. Paracetamol" 
-                        value={prodGenericName} 
-                        onChange={e => setProdGenericName(e.target.value)} 
-                        className="w-full bg-white border border-gray-200 rounded-xl px-3 py-1.5 font-medium text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="font-bold text-gray-700 block mb-1">Dosage Strength</label>
-                      <input 
-                        type="text" 
-                        placeholder="e.g. 500mg" 
-                        value={prodDosageStrength} 
-                        onChange={e => setProdDosageStrength(e.target.value)} 
-                        className="w-full bg-white border border-gray-200 rounded-xl px-3 py-1.5 font-medium text-xs"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="font-bold text-gray-700 block mb-1">Batch / Lot Number</label>
-                      <input 
-                        type="text" 
-                        placeholder="e.g. BAT-2026-A" 
-                        value={prodBatchNumber} 
-                        onChange={e => setProdBatchNumber(e.target.value)} 
-                        className="w-full bg-white border border-gray-200 rounded-xl px-3 py-1.5 font-mono text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="font-bold text-gray-700 block mb-1">Expiry Date</label>
-                      <input 
-                        type="date" 
-                        value={prodExpiryDate} 
-                        onChange={e => setProdExpiryDate(e.target.value)} 
-                        className="w-full bg-white border border-gray-200 rounded-xl px-3 py-1.5 font-mono text-xs"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="font-bold text-gray-700 block mb-1">Storage Condition</label>
-                    <input 
-                      type="text" 
-                      placeholder="e.g. Store below 25°C or Refrigerate" 
-                      value={prodStorageCondition} 
-                      onChange={e => setProdStorageCondition(e.target.value)} 
-                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-1.5 font-medium text-xs"
-                    />
-                  </div>
-
-                  <div className="pt-1">
-                    <label className="flex items-center space-x-2 cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        checked={prodIsRxRequired} 
-                        onChange={e => setProdIsRxRequired(e.target.checked)} 
-                        className="w-4 h-4 accent-rose-600 rounded"
-                      />
-                      <span className="font-bold text-rose-900 text-xs">Prescription Required (Rx Only)</span>
-                    </label>
-                  </div>
-                </div>
-              )}
-
-              {/* Multiple Category Linking Enabler (Conditional Toggle with Mother categories tree level expanders) */}
+              {/* MULTIPLE CATEGORY LINKING ENABLER */}
               <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-200 space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1444,8 +1299,60 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
               </div>
 
               <div>
-                <label className="font-bold text-gray-700">Base Price ({currencySymbol})</label>
+                <label className="font-bold text-gray-700">Base Retail Price ({currencySymbol})</label>
                 <input type="number" step="0.01" placeholder="550" value={prodPrice} onChange={e => setProdPrice(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 mt-1 font-medium" required />
+              </div>
+
+              {/* CHANNEL VISIBILITY & CATERING PRICING PANEL */}
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                <span className="font-black text-slate-900 uppercase block text-xs">
+                  🌐 Sales Channel Visibility & Wholesale Pricing
+                </span>
+
+                <div>
+                  <label className="font-bold text-gray-700 block mb-1">Catering Bulk Price ({currencySymbol})</label>
+                  <input 
+                    type="number" 
+                    step="0.01" 
+                    placeholder="Leave empty if regular price applies" 
+                    value={prodCateringPrice} 
+                    onChange={e => setProdCateringPrice(e.target.value)} 
+                    className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2 font-mono text-xs font-bold text-indigo-700" 
+                  />
+                  <p className="text-[10px] text-gray-400 mt-0.5">Special wholesale rate pulled automatically inside Catering Quotations.</p>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 pt-1 border-t border-slate-200">
+                  <label className="flex items-center space-x-1.5 cursor-pointer bg-white p-2 rounded-xl border border-slate-200">
+                    <input 
+                      type="checkbox" 
+                      checked={prodShowOnPos} 
+                      onChange={e => setProdShowOnPos(e.target.checked)} 
+                      className="w-3.5 h-3.5 accent-emerald-600 rounded" 
+                    />
+                    <span className="font-bold text-[11px] text-slate-800">Show on POS</span>
+                  </label>
+
+                  <label className="flex items-center space-x-1.5 cursor-pointer bg-white p-2 rounded-xl border border-slate-200">
+                    <input 
+                      type="checkbox" 
+                      checked={prodShowOnStorefront} 
+                      onChange={e => setProdShowOnStorefront(e.target.checked)} 
+                      className="w-3.5 h-3.5 accent-emerald-600 rounded" 
+                    />
+                    <span className="font-bold text-[11px] text-slate-800">Show on Store</span>
+                  </label>
+
+                  <label className="flex items-center space-x-1.5 cursor-pointer bg-white p-2 rounded-xl border border-slate-200">
+                    <input 
+                      type="checkbox" 
+                      checked={prodShowInCatering} 
+                      onChange={e => setProdShowInCatering(e.target.checked)} 
+                      className="w-3.5 h-3.5 accent-indigo-600 rounded" 
+                    />
+                    <span className="font-bold text-[11px] text-indigo-900">Catering Only</span>
+                  </label>
+                </div>
               </div>
 
               <div>
@@ -1459,7 +1366,6 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
                 />
               </div>
 
-              {/* Desktop Image Upload */}
               <div className="space-y-2">
                 <label className="font-bold text-gray-700">Item Image</label>
                 <input 
@@ -1634,7 +1540,6 @@ export default function TenantProductInventoryDashboard({ params }: PageProps) {
               </div>
             </div>
 
-            {/* STICKY FOOTER */}
             <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-2 bg-white z-10 shrink-0">
               <button type="button" onClick={closeProductModal} className="px-4 py-2 bg-gray-100 text-gray-600 rounded-xl text-xs font-bold">Cancel</button>
               <button type="submit" disabled={uploadingImage} className="px-4 py-2 bg-slate-900 hover:bg-black disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-sm">

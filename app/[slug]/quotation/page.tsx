@@ -22,6 +22,7 @@ export default function TenantCateringQuotationPage({ params }: PageProps) {
 
   // Quotations List & Builder States
   const [quotations, setQuotations] = useState<any[]>([])
+  const [products, setProducts] = useState<any[]>([])
   const [isCreating, setIsCreating] = useState(false)
   const [editingQuotationId, setEditingQuotationId] = useState<string | null>(null)
   const [selectedQuotation, setSelectedQuotation] = useState<any | null>(null)
@@ -38,8 +39,7 @@ export default function TenantCateringQuotationPage({ params }: PageProps) {
   const [guestCount, setGuestCount] = useState<number>(300)
   
   // Line Items List
-  const [items, setItems] = useState<any[]>([    
-  ])
+  const [items, setItems] = useState<any[]>([])
 
   // Additional Charges & Notes
   const [serviceCharges, setServiceCharges] = useState<number>(10000)
@@ -78,15 +78,13 @@ export default function TenantCateringQuotationPage({ params }: PageProps) {
         return
       }
 
-      const { data: quotes } = await supabase
-        .from('catering_quotations')
-        .select('*')
-        .eq('business_id', biz.id)
-        .order('created_at', { ascending: false })
+      const [{ data: quotes }, { data: prodData }] = await Promise.all([
+        supabase.from('catering_quotations').select('*').eq('business_id', biz.id).order('created_at', { ascending: false }),
+        supabase.from('products').select('*').eq('business_id', biz.id).order('sort_order', { ascending: true })
+      ])
 
-      if (quotes) {
-        setQuotations(quotes)
-      }
+      if (quotes) setQuotations(quotes)
+      if (prodData) setProducts(prodData)
 
       setLoading(false)
     }
@@ -101,6 +99,20 @@ export default function TenantCateringQuotationPage({ params }: PageProps) {
   const handleUpdateItem = (index: number, field: string, value: any) => {
     const updated = [...items]
     updated[index][field] = value
+
+    // If product selection changed via inventory dropdown
+    if (field === 'productId') {
+      const selectedProd = products.find(p => p.id === value)
+      if (selectedProd) {
+        updated[index].name = selectedProd.name
+        // Automatically pull catering bulk price if available, otherwise fallback to retail price
+        const bulkPrice = selectedProd.catering_price !== null && selectedProd.catering_price !== undefined 
+          ? selectedProd.catering_price 
+          : selectedProd.price
+        updated[index].unitPrice = bulkPrice || 0
+      }
+    }
+
     setItems(updated)
   }
 
@@ -139,8 +151,7 @@ export default function TenantCateringQuotationPage({ params }: PageProps) {
     setEventTime('')
     setVenueAddress('')
     setGuestCount(300)
-    setItems([      
-    ])
+    setItems([])
     setServiceCharges(10000)
     setTransportCharges(5000)
     setTaxPercent(0)
@@ -289,7 +300,6 @@ export default function TenantCateringQuotationPage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col font-sans select-none">
       
-      {/* Top Header Bar (Hidden on print) */}
       <header className="bg-slate-900 text-white border-b border-slate-800 px-8 py-4 flex justify-between items-center shrink-0 print:hidden">
         <div className="flex items-center space-x-3">
           <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center font-black">🍽️</div>
@@ -308,10 +318,8 @@ export default function TenantCateringQuotationPage({ params }: PageProps) {
         </div>
       </header>
 
-      {/* Main Container */}
       <main className="flex-1 p-8 max-w-7xl mx-auto w-full space-y-6 print:p-0 print:m-0 print:max-w-none print:w-full print:block">
         
-        {/* LIST VIEW */}
         {!isCreating && !selectedQuotation && (
           <div className="space-y-4 print:hidden">
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex justify-between items-center">
@@ -377,7 +385,6 @@ export default function TenantCateringQuotationPage({ params }: PageProps) {
           </div>
         )}
 
-        {/* CREATE / EDIT QUOTATION FORM */}
         {isCreating && (
           <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6 max-w-4xl mx-auto print:hidden">
             <div className="flex justify-between items-center border-b border-slate-100 pb-4">
@@ -458,7 +465,22 @@ export default function TenantCateringQuotationPage({ params }: PageProps) {
                         </select>
                       </div>
                       <div className="sm:col-span-5">
-                        <input type="text" placeholder="Item Name (e.g. Beef Biryani / Welcome Drinks)" value={item.name} onChange={e => handleUpdateItem(idx, 'name', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 font-medium" required />
+                        {/* DYNAMIC INVENTORY PRODUCT DROPDOWN */}
+                        <select 
+                          value={item.productId || ''} 
+                          onChange={e => handleUpdateItem(idx, 'productId', e.target.value)} 
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 font-bold text-xs text-indigo-900"
+                          required
+                        >
+                          <option value="">Select Item from Inventory Catalog</option>
+                          {products
+  .filter(p => p.show_in_catering === true)
+  .map(p => (
+    <option key={p.id} value={p.id}>
+      {p.name} ({business?.currency_symbol || 'Rs.'} {p.catering_price !== null && p.catering_price !== undefined ? p.catering_price : p.price})
+    </option>
+  ))}
+                        </select>
                       </div>
                       <div className="sm:col-span-2">
                         <input type="number" min={1} placeholder="Pax / Qty" value={item.paxQty} onChange={e => handleUpdateItem(idx, 'paxQty', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 font-mono" required />
@@ -518,10 +540,8 @@ export default function TenantCateringQuotationPage({ params }: PageProps) {
           </div>
         )}
 
-        {/* EXACT A4 PRINTABLE QUOTATION VIEWER */}
         {selectedQuotation && (
           <div className="space-y-4">
-            {/* Screen Action Bar (Hidden on print) */}
             <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs print:hidden max-w-[210mm] mx-auto">
               <button onClick={() => setSelectedQuotation(null)} className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition cursor-pointer">
                 ← Back to List
@@ -536,7 +556,6 @@ export default function TenantCateringQuotationPage({ params }: PageProps) {
               </div>
             </div>
 
-            {/* RENDER THE INDEPENDENT CATERING QUOTATION COMPONENT */}
             <CateringQuotation business={business} quotation={selectedQuotation} />
           </div>
         )}

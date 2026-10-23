@@ -214,6 +214,11 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
   const activeTableReservation = reservations.find(r => r.table_id === selectedTable?.id && r.status === 'RESERVED')
   const isTableLockedByReservation = selectedTable?.status === 'reserved' && activeTableReservation
 
+  // --- CHANNEL VISIBILITY FILTER FOR POS TERMINAL ---
+  const visiblePosProducts = useMemo(() => {
+    return (products || []).filter(p => p.show_on_pos !== false)
+  }, [products])
+
   // --- COMPREHENSIVE POS KEYBOARD SHORTCUT ENGINE ---
   useEffect(() => {
     const handleGlobalKeyDown = (event: KeyboardEvent) => {
@@ -448,6 +453,18 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
   const motherCategories = useMemo(() => {
     return (categories || []).filter(c => !c.parent_id || c.parent_id === '')
   }, [categories])
+
+  // --- REAL-TIME FAVORITES AUTO-SYNC HOOK ---
+  useEffect(() => {
+    if (business?.pos_favorites && Array.isArray(business.pos_favorites) && products.length > 0) {
+      const mappedFavs = business.pos_favorites.map((id: string) => products.find((p: any) => p.id === id)).filter(Boolean)
+      if (mappedFavs.length > 0) {
+        setFavorites(mappedFavs)
+      }
+    } else if (products.length > 0 && favorites.length === 0) {
+      setFavorites(products.slice(0, 6))
+    }
+  }, [products, business?.pos_favorites])
 
   const activeMotherCategoryObj = useMemo(() => {
     if (selectedMotherCategoryFilter === 'ALL') return null
@@ -727,6 +744,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         .from('products')
         .select('*')
         .eq('business_id', biz.id)
+        .neq('show_on_pos', false)
         .order('sort_order', { ascending: true })
 
       if (productData && productData.length > 0) {
@@ -848,10 +866,23 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         },
         (payload) => {
           if (payload.eventType === 'INSERT') {
-            setProducts(prev => [...prev, payload.new])
+            if (payload.new.show_on_pos !== false) {
+              setProducts(prev => [...prev, payload.new])
+            }
           } else if (payload.eventType === 'UPDATE') {
             const updatedProd = payload.new
-            setProducts(prev => prev.map(p => p.id === updatedProd.id ? { ...p, ...updatedProd } : p))
+            if (updatedProd.show_on_pos === false) {
+              setProducts(prev => prev.filter(p => p.id !== updatedProd.id))
+            } else {
+              setProducts(prev => {
+                const exists = prev.some(p => p.id === updatedProd.id)
+                if (exists) {
+                  return prev.map(p => p.id === updatedProd.id ? { ...p, ...updatedProd } : p)
+                } else {
+                  return [...prev, updatedProd]
+                }
+              })
+            }
           } else if (payload.eventType === 'DELETE') {
             const deletedId = payload.old.id
             setProducts(prev => prev.filter(p => p.id !== deletedId))
@@ -918,7 +949,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
   }
 
   const getOrderedFilteredProducts = () => {
-    const list = products || []
+    const list = visiblePosProducts || []
     const searchedProducts = list.filter(p => {
       return (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
              (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -2081,7 +2112,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                       className={`w-full border rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white focus:border-emerald-500' : 'bg-white border-gray-200 text-gray-900 focus:border-slate-900'}`}
                     />
                     <div className="max-h-[50vh] overflow-y-auto space-y-1">
-                      {products
+                      {visiblePosProducts
                         .filter(p => p.name.toLowerCase().includes(favSearchQuery.toLowerCase()))
                         .map(p => {
                           const isFav = favorites.some(f => f.id === p.id)
@@ -2211,10 +2242,10 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                     : (isDarkMode ? 'bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700' : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200')
                 }`}
               >
-                ALL ({products.length})
+                ALL ({visiblePosProducts.length})
               </button>
               {motherCategories.map(mother => {
-                const count = products.filter(p => {
+                const count = visiblePosProducts.filter(p => {
                   const primary = p.category || 'GENERAL'
                   const linked = p.linked_categories || []
                   return [primary, ...linked].some(c => getDescendantNames(mother.name).includes(c))
@@ -3179,7 +3210,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                           type="button"
                           onClick={() => { setSingleReceivedCash(amt); setCustomReceivedCash('') }}
                           className={`py-2 rounded-lg font-mono font-bold text-xs border cursor-pointer ${
-                            singleReceivedCash === amt 
+                            singleMethod === 'CASH' && singleReceivedCash === amt 
                               ? 'bg-emerald-700 text-white border-emerald-700' 
                               : isDarkMode ? 'bg-slate-800 text-slate-200 border-slate-700' : 'bg-white text-gray-800 border-gray-300'
                           }`}

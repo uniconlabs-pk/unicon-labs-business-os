@@ -70,7 +70,7 @@ export default function RestaurantStorefrontReplica({ params }: PageProps) {
 
       const [{ data: catData }, { data: productData }] = await Promise.all([
         supabase.from('categories').select('*').eq('business_id', biz.id).order('sort_order', { ascending: true }),
-        supabase.from('products').select('*').eq('business_id', biz.id).order('sort_order', { ascending: true })
+        supabase.from('products').select('*').eq('business_id', biz.id).neq('show_on_storefront', false).order('sort_order', { ascending: true })
       ])
 
       if (catData) setCategories(catData)
@@ -85,7 +85,58 @@ export default function RestaurantStorefrontReplica({ params }: PageProps) {
     fetchStorefrontData()
   }, [slug, router])
 
+  // --- REAL-TIME PRODUCTS SYNC SUBSCRIPTION ---
+  useEffect(() => {
+    if (!business?.id) return
+
+    const channel = supabase
+      .channel(`storefront-realtime-${business.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'products',
+          filter: `business_id=eq.${business.id}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            if (payload.new.show_on_storefront !== false) {
+              setProducts(prev => [...prev, payload.new])
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedProd = payload.new
+            setProducts(prev => {
+              // If show_on_storefront was toggled off, remove it from storefront list
+              if (updatedProd.show_on_storefront === false) {
+                return prev.filter(p => p.id !== updatedProd.id)
+              }
+              const exists = prev.some(p => p.id === updatedProd.id)
+              if (exists) {
+                return prev.map(p => p.id === updatedProd.id ? { ...p, ...updatedProd } : p)
+              } else {
+                return [...prev, updatedProd]
+              }
+            })
+          } else if (payload.eventType === 'DELETE') {
+            const deletedId = payload.old.id
+            setProducts(prev => prev.filter(p => p.id !== deletedId))
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [business?.id])
+
   const currencySymbol = business?.currency_symbol || 'Rs.'
+
+  // --- CHANNEL VISIBILITY FILTER FOR STOREFRONT ---
+  const visibleStorefrontProducts = useMemo(() => {
+    return (products || []).filter(p => p.show_on_storefront !== false)
+  }, [products])
 
   // Strict Mother Categories Only
   const motherCategories = useMemo(() => {
@@ -117,7 +168,7 @@ export default function RestaurantStorefrontReplica({ params }: PageProps) {
 
   // Filtered Products for Single Category View
   const filteredProducts = useMemo(() => {
-    const list = products || []
+    const list = visibleStorefrontProducts || []
     return list.filter(p => {
       const matchesSearch = (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                             (p.description || '').toLowerCase().includes(searchQuery.toLowerCase())
@@ -136,11 +187,11 @@ export default function RestaurantStorefrontReplica({ params }: PageProps) {
         return [primary, ...linked].some(c => targetNames.includes(c))
       }
     }).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-  }, [products, searchQuery, selectedCategory, selectedSubCategory, getDescendantNames])
+  }, [visibleStorefrontProducts, searchQuery, selectedCategory, selectedSubCategory, getDescendantNames])
 
   // Grouped Categories for "ALL" View
   const allCategoriesGrouped = useMemo(() => {
-    const list = products || []
+    const list = visibleStorefrontProducts || []
     const searched = list.filter(p => {
       const matchesSearch = (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                             (p.description || '').toLowerCase().includes(searchQuery.toLowerCase())
@@ -160,7 +211,7 @@ export default function RestaurantStorefrontReplica({ params }: PageProps) {
         items: catItems
       }
     }).filter(group => group.items.length > 0)
-  }, [motherCategories, products, searchQuery, getDescendantNames])
+  }, [motherCategories, visibleStorefrontProducts, searchQuery, getDescendantNames])
 
   const triggerScrollReset = () => {
     requestAnimationFrame(() => {
@@ -327,7 +378,7 @@ export default function RestaurantStorefrontReplica({ params }: PageProps) {
     : 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1600&q=80'
 
   const totalAvailableCount = selectedCategory === 'ALL' 
-    ? products.filter(p => p.in_stock !== false).length 
+    ? visibleStorefrontProducts.filter(p => p.in_stock !== false).length 
     : filteredProducts.length
 
   return (

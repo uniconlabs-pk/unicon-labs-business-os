@@ -1166,23 +1166,24 @@ export default function TenantDashboard({ params }: PageProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center font-bold text-gray-700">
-        Loading {slug} Ecosystem...
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center font-bold text-blue-600 space-y-3">
+        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-xs uppercase tracking-widest text-blue-600 font-black">Loading {slug} Ecosystem...</p>
       </div>
     )
   }
 
   if (business?.subscription_status === 'suspended') {
     return (
-      <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center p-4 font-sans">
-        <div className="bg-red-950/40 border border-red-900/60 rounded-3xl p-8 max-w-md w-full text-center space-y-4 shadow-2xl backdrop-blur-md">
-          <div className="w-16 h-16 bg-red-600 rounded-2xl mx-auto flex items-center justify-center text-3xl shadow-lg">
+      <div className="min-h-screen bg-slate-100 text-slate-800 flex items-center justify-center p-4 font-sans">
+        <div className="bg-white border border-red-200 rounded-3xl p-8 max-w-md w-full text-center space-y-4 shadow-2xl">
+          <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl mx-auto flex items-center justify-center text-3xl shadow-inner">
             🚫
           </div>
           <div className="space-y-1">
-            <h1 className="text-lg font-black uppercase tracking-wider text-red-400">Account Suspended</h1>
-            <p className="text-xs text-gray-300">
-              The store <span className="font-bold text-white">{business?.name}</span> has been temporarily suspended by the Master Administrator.
+            <h1 className="text-lg font-black uppercase tracking-wider text-red-600">Account Suspended</h1>
+            <p className="text-xs text-slate-500">
+              The store <span className="font-bold text-slate-800">{business?.name}</span> has been temporarily suspended by the Master Administrator.
             </p>
           </div>
           <div className="pt-2">
@@ -1206,88 +1207,90 @@ export default function TenantDashboard({ params }: PageProps) {
     : getBannerBackground(business?.business_type)
 
   return (
-    <div className="min-h-screen bg-gray-100 text-gray-800 flex flex-row h-screen overflow-hidden font-sans select-none text-xs">
+    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-row h-screen overflow-hidden font-sans select-none text-xs antialiased">
       
-      {/* LEFT MEGA MENU SIDEBAR */}
-      <aside className="w-64 bg-slate-900 text-white border-r border-slate-800 flex flex-col shrink-0 justify-between shadow-lg z-20 overflow-y-auto">
-        <div className="p-5 space-y-6">
+      {/* HOVER-EXPANDABLE COLLAPSIBLE MEGA MENU SIDEBAR (SHRINK STRIP -> EXPAND ON HOVER) */}
+      <aside className="w-20 hover:w-68 bg-white text-slate-700 border-r border-slate-200 flex flex-col shrink-0 justify-between shadow-md z-20 overflow-y-auto transition-all duration-300 ease-in-out group overflow-x-hidden">
+        <div className="p-4 space-y-6">
           {/* Brand header */}
-          <div className="flex items-center space-x-3 pb-4 border-b border-slate-800">
-            <div className="w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center font-black text-lg shadow-inner overflow-hidden">
+          <div className="flex items-center space-x-3.5 pb-4 border-b border-slate-100 whitespace-nowrap">
+            <div className="w-11 h-11 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-2xl flex items-center justify-center font-black text-lg shadow-md shadow-blue-500/20 overflow-hidden shrink-0 border border-blue-400/30">
               {business?.logo_url ? (
-                <img src={business.logo_url} alt={business.name} className="w-full h-full object-contain bg-white" />
+                <img src={business.logo_url} alt={business.name} className="w-full h-full object-contain bg-white p-1" />
               ) : (
                 <span>🏢</span>
               )}
             </div>
-            <div className="overflow-hidden">
-              <h1 className="text-xs font-black uppercase tracking-wide text-white truncate">{business?.name || 'Dashboard'}</h1>
-              <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded uppercase ${profile.badgeColor}`}>
+            <div className="overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <h1 className="text-xs font-black uppercase tracking-wider text-slate-900 truncate">{business?.name || 'Dashboard'}</h1>
+              <span className={`inline-block mt-1 text-[9px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider shadow-2xs bg-blue-50 text-blue-700 border border-blue-200`}>
                 {profile.displayName}
               </span>
             </div>
           </div>
 
-          {/* Navigation Items */}
-          <nav className="space-y-1">
+          {/* Navigation Items with Line-Art Vector Icons */}
+          <nav className="space-y-1.5">
             <a 
               href={`/${slug}`} 
               onClick={() => selectReportView(null)}
-              className={`flex items-center space-x-3 px-3.5 py-2.5 rounded-xl font-bold text-xs transition shadow-2xs ${
-                activeReportView === null ? 'bg-slate-800 text-white' : 'text-gray-300 hover:bg-slate-800 hover:text-white'
+              className={`flex items-center space-x-3.5 px-3 py-3 rounded-2xl font-bold text-xs transition-all duration-200 whitespace-nowrap ${
+                activeReportView === null 
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20 border border-blue-500/30' 
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
-              <span>🏠</span>
-              <span>HOME</span>
+              <svg className="w-5 h-5 shrink-0 stroke-current fill-none stroke-[2]" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 tracking-wide">HOME CONTROL</span>
             </a>
 
             {effectiveModules.hasPOS && (
               <a 
                 href={`/${slug}/pos`} 
-                className="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-gray-300 hover:bg-slate-800 hover:text-white font-semibold text-xs transition"
+                className="flex items-center space-x-3.5 px-3 py-3 rounded-2xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-semibold text-xs transition-all duration-200 whitespace-nowrap"
               >
-                <span>🖥️</span>
-                <span>POS Controls</span>
+                <svg className="w-5 h-5 shrink-0 stroke-current fill-none stroke-[2]" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2" /><line x1="8" x2="16" y1="21" y2="21" /><line x1="12" x2="12" y1="17" y2="21" /></svg>
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 tracking-wide">POS Controls</span>
               </a>
             )}
 
             {effectiveModules.hasKDS && (
               <a 
                 href={`/${slug}/kds`} 
-                className="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-gray-300 hover:bg-slate-800 hover:text-white font-semibold text-xs transition"
+                className="flex items-center space-x-3.5 px-3 py-3 rounded-2xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-semibold text-xs transition-all duration-200 whitespace-nowrap"
               >
-                <span>🍳</span>
-                <span>KDS Controls</span>
+                <svg className="w-5 h-5 shrink-0 stroke-current fill-none stroke-[2]" viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1" /><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z" /><line x1="6" x2="14" y1="12" y2="12" /></svg>
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 tracking-wide">KDS Controls</span>
               </a>
             )}
 
             {effectiveModules.hasDispatchQueue && (
               <a 
                 href={`/${slug}/dispatch`} 
-                className="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-gray-300 hover:bg-slate-800 hover:text-white font-semibold text-xs transition"
+                className="flex items-center space-x-3.5 px-3 py-3 rounded-2xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-semibold text-xs transition-all duration-200 whitespace-nowrap"
               >
-                <span>📦</span>
-                <span>DISPATCH Controls</span>
+                <svg className="w-5 h-5 shrink-0 stroke-current fill-none stroke-[2]" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" x2="12" y1="22.08" y2="12" /></svg>
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 tracking-wide">DISPATCH Controls</span>
               </a>
             )}
 
             {effectiveModules.hasStorefront && (
               <a 
                 href={`/${slug}/storefront`} 
-                className="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-gray-300 hover:bg-slate-800 hover:text-white font-semibold text-xs transition"
+                className="flex items-center space-x-3.5 px-3 py-3 rounded-2xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-semibold text-xs transition-all duration-200 whitespace-nowrap"
               >
-                <span>🛍</span>
-                <span>STOREFRONT Controls</span>
+                <svg className="w-5 h-5 shrink-0 stroke-current fill-none stroke-[2]" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" /><line x1="3" x2="21" y1="6" y2="6" /><path d="M16 10a4 4 0 0 1-8 0" /></svg>
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 tracking-wide">STOREFRONT Controls</span>
               </a>
             )}
 
             {effectiveModules.hasERP && (
               <a 
                 href={`/${slug}/finance`} 
-                className="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-gray-300 hover:bg-slate-800 hover:text-white font-semibold text-xs transition"
+                className="flex items-center space-x-3.5 px-3 py-3 rounded-2xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-semibold text-xs transition-all duration-200 whitespace-nowrap"
               >
-                <span>📊</span>
-                <span>ERP Controls</span>
+                <svg className="w-5 h-5 shrink-0 stroke-current fill-none stroke-[2]" viewBox="0 0 24 24"><line x1="18" x2="18" y1="20" y2="10" /><line x1="12" x2="12" y1="20" y2="4" /><line x1="6" x2="6" y1="20" y2="14" /></svg>
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 tracking-wide">ERP Controls</span>
               </a>
             )}
 
@@ -1295,32 +1298,32 @@ export default function TenantDashboard({ params }: PageProps) {
             {business?.has_catering_quotation === true && (
               <a 
                 href={`/${slug}/quotation`} 
-                className="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-amber-300 hover:bg-slate-800 font-semibold text-xs transition"
+                className="flex items-center space-x-3.5 px-3 py-3 rounded-2xl text-amber-700 hover:bg-amber-50 font-semibold text-xs transition-all duration-200 whitespace-nowrap border border-amber-200"
               >
-                <span>📋</span>
-                <span>Catering Quotations</span>
+                <svg className="w-5 h-5 shrink-0 stroke-current fill-none stroke-[2]" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" x2="8" y1="13" y2="13" /><line x1="16" x2="8" y1="17" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 tracking-wide">Catering Quotations</span>
               </a>
             )}
 
             {/* Reports & Database Collapsible Category Section */}
-            <div className="pt-2 pb-1">
+            <div className="pt-3 pb-1">
               <button 
                 onClick={() => setIsReportsMenuOpen(!isReportsMenuOpen)}
-                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-gray-300 hover:bg-slate-800 hover:text-white font-semibold text-xs transition cursor-pointer"
+                className="w-full flex items-center justify-between px-3 py-3 rounded-2xl text-slate-700 hover:bg-slate-100 hover:text-slate-900 font-semibold text-xs transition-all cursor-pointer whitespace-nowrap"
               >
-                <div className="flex items-center space-x-3">
-                  <span>📂</span>
-                  <span>Reports & Database</span>
+                <div className="flex items-center space-x-3.5">
+                  <svg className="w-5 h-5 shrink-0 stroke-current fill-none stroke-[2]" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
+                  <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 tracking-wide">Reports & Database</span>
                 </div>
-                <span className="text-[10px] font-mono">{isReportsMenuOpen ? '▼' : '▶'}</span>
+                <span className="text-[10px] font-mono text-blue-600 bg-blue-50 px-2 py-1 rounded-lg border border-blue-200 opacity-0 group-hover:opacity-100 transition-opacity">{isReportsMenuOpen ? '▼' : '▶'}</span>
               </button>
 
               {isReportsMenuOpen && (
-                <div className="space-y-1 pl-4 pt-1 border-l-2 border-slate-700 ml-3.5 mt-1">
+                <div className="space-y-1 pl-4 pt-1.5 border-l-2 border-blue-500 ml-4 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                   <button 
                     onClick={() => selectReportView('cash_liquidity')}
-                    className={`w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg font-medium text-[11px] transition text-left cursor-pointer ${
-                      activeReportView === 'cash_liquidity' ? 'bg-emerald-600 text-white font-bold' : 'text-gray-300 hover:bg-slate-800 hover:text-white'
+                    className={`w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-xl font-medium text-[11px] transition-all text-left cursor-pointer whitespace-nowrap ${
+                      activeReportView === 'cash_liquidity' ? 'bg-blue-600 text-white font-bold shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                     }`}
                   >
                     <span>💵</span>
@@ -1328,8 +1331,8 @@ export default function TenantDashboard({ params }: PageProps) {
                   </button>
                   <button 
                     onClick={() => selectReportView('sales')}
-                    className={`w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg font-medium text-[11px] transition text-left cursor-pointer ${
-                      activeReportView === 'sales' ? 'bg-emerald-600 text-white font-bold' : 'text-gray-300 hover:bg-slate-800 hover:text-white'
+                    className={`w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-xl font-medium text-[11px] transition-all text-left cursor-pointer whitespace-nowrap ${
+                      activeReportView === 'sales' ? 'bg-blue-600 text-white font-bold shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                     }`}
                   >
                     <span>📈</span>
@@ -1337,8 +1340,8 @@ export default function TenantDashboard({ params }: PageProps) {
                   </button>
                   <button 
                     onClick={() => selectReportView('sales_returns')}
-                    className={`w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg font-medium text-[11px] transition text-left cursor-pointer ${
-                      activeReportView === 'sales_returns' ? 'bg-emerald-600 text-white font-bold' : 'text-gray-300 hover:bg-slate-800 hover:text-white'
+                    className={`w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-xl font-medium text-[11px] transition-all text-left cursor-pointer whitespace-nowrap ${
+                      activeReportView === 'sales_returns' ? 'bg-blue-600 text-white font-bold shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                     }`}
                   >
                     <span>🔄</span>
@@ -1346,8 +1349,8 @@ export default function TenantDashboard({ params }: PageProps) {
                   </button>
                   <button 
                     onClick={() => selectReportView('customers')}
-                    className={`w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg font-medium text-[11px] transition text-left cursor-pointer ${
-                      activeReportView === 'customers' ? 'bg-emerald-600 text-white font-bold' : 'text-gray-300 hover:bg-slate-800 hover:text-white'
+                    className={`w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-xl font-medium text-[11px] transition-all text-left cursor-pointer whitespace-nowrap ${
+                      activeReportView === 'customers' ? 'bg-blue-600 text-white font-bold shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                     }`}
                   >
                     <span>👥</span>
@@ -1355,8 +1358,8 @@ export default function TenantDashboard({ params }: PageProps) {
                   </button>
                   <button 
                     onClick={() => selectReportView('staff')}
-                    className={`w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg font-medium text-[11px] transition text-left cursor-pointer ${
-                      activeReportView === 'staff' ? 'bg-emerald-600 text-white font-bold' : 'text-gray-300 hover:bg-slate-800 hover:text-white'
+                    className={`w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-xl font-medium text-[11px] transition-all text-left cursor-pointer whitespace-nowrap ${
+                      activeReportView === 'staff' ? 'bg-blue-600 text-white font-bold shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                     }`}
                   >
                     <span>🆔</span>
@@ -1368,98 +1371,101 @@ export default function TenantDashboard({ params }: PageProps) {
 
             <button 
               onClick={() => setShowSettingsDrawer(true)}
-              className="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-gray-300 hover:bg-slate-800 hover:text-white font-semibold text-xs transition text-left cursor-pointer mt-1"
+              className="w-full flex items-center space-x-3.5 px-3 py-3 rounded-2xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-semibold text-xs transition-all text-left cursor-pointer whitespace-nowrap"
             >
-              <span>⚙</span>
-              <span>General Settings</span>
+              <svg className="w-5 h-5 shrink-0 stroke-current fill-none stroke-[2]" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 tracking-wide">General Settings</span>
             </button>
           </nav>
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-slate-800 bg-slate-950/40">
+        <div className="p-4 border-t border-slate-100 bg-slate-50 whitespace-nowrap">
           <button 
             onClick={handleSignOut}
-            className="w-full py-2 bg-slate-800 hover:bg-red-900/60 text-gray-300 hover:text-white rounded-xl font-bold text-xs transition flex items-center justify-center space-x-2"
+            className="w-full py-2.5 bg-white hover:bg-red-50 text-slate-700 hover:text-red-600 rounded-xl font-bold text-xs transition-all duration-200 flex items-center justify-center space-x-2 border border-slate-200 hover:border-red-200 shadow-2xs"
           >
-            <span>🚪</span>
-            <span>Sign Out</span>
+            <svg className="w-4 h-4 shrink-0 stroke-current fill-none stroke-[2]" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" x2="9" y1="12" y2="12" /></svg>
+            <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">Sign Out</span>
           </button>
         </div>
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <div className="flex-1 flex flex-col overflow-y-auto bg-gray-100">
+      <div className="flex-1 flex flex-col overflow-y-auto bg-slate-50">
         
-        {/* TOP HEADER */}
-        <header className="bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center shrink-0 shadow-2xs">
-          <div>
-            <h2 className="text-sm font-black uppercase text-gray-900 tracking-wide">
-              {activeReportView === null && 'Command Center & Operations'}
+        {/* STREAMLINED HERO COMMAND HEADER WITH INTEGRATED WELCOME BANNER BACKGROUND */}
+        <header 
+          className="sticky top-0 px-8 py-10 flex justify-between items-center shrink-0 z-30 shadow-md bg-cover bg-center border-b border-blue-200 text-white relative overflow-hidden"
+          style={{
+            backgroundImage: `linear-gradient(to right, rgba(15, 23, 42, 0.95) 40%, rgba(30, 41, 59, 0.85) 80%, rgba(30, 41, 59, 0.5) 100%), url('${activeBannerImg}')`
+          }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 via-transparent to-indigo-600/30 pointer-events-none"></div>
+          
+          <div className="relative z-10 max-w-xl space-y-1.5">
+            <span className="bg-blue-600/30 border border-blue-400/40 text-blue-200 text-[9px] font-black uppercase px-2.5 py-0.5 rounded-lg tracking-widest backdrop-blur-md shadow-inner">
+              Active {profile.displayName} Portal
+            </span>
+            <h2 className="text-sm font-black uppercase text-white tracking-wider">
+              {activeReportView === null && `Welcome back, ${business?.name || 'Dashboard'}`}
               {activeReportView === 'sales' && 'Advanced Sales Report & Audit Hub'}
               {activeReportView === 'sales_returns' && 'Sales Return Passes & Audit Hub'}
               {activeReportView === 'cash_liquidity' && 'Cash Liquidity & Inflow Realization Hub'}
               {activeReportView === 'customers' && 'Customer Database & CRM Directory'}
               {activeReportView === 'staff' && 'Staff Directory & Security Badge Hub'}
             </h2>
-            <p className="text-[11px] text-gray-500">Tenant Slug: <span className="font-mono font-bold text-gray-800">{slug}</span></p>
+            <p className="text-[10px] text-slate-300 leading-relaxed font-medium">Manage your catalog, POS terminals, staff access, and live business operations with high-performance real-time telemetry.</p>
           </div>
-          <div className="flex items-center space-x-3">
+
+          <div className="relative z-10 flex items-center space-x-3">
             {activeReportView !== null && (
               <button 
                 onClick={() => selectReportView(null)}
-                className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold rounded-xl text-xs transition cursor-pointer"
+                className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl text-xs transition-all cursor-pointer border border-white/20 backdrop-blur-md shadow-2xs"
               >
                 ← Back to Home Dashboard
               </button>
             )}
-            <button 
-              onClick={() => setShowSettingsDrawer(true)}
-              className="px-3 py-1.5 bg-slate-900 hover:bg-black text-white font-bold rounded-xl text-xs transition shadow-2xs flex items-center space-x-1 cursor-pointer"
-            >
-              <span>⚙️</span>
-              <span>Settings</span>
-            </button>
+            <div className="hidden md:flex flex-col items-end space-y-1">
+              <div className="px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 backdrop-blur-xl shadow-md text-right">
+                <span className="text-[9px] text-slate-300 block uppercase font-bold">System Status</span>
+                <span className="text-[10px] font-mono font-black text-emerald-400 flex items-center space-x-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>Operational 100%</span>
+                </span>
+              </div>
+            </div>
           </div>
         </header>
 
         {/* DASHBOARD BODY OR FULL-SCREEN REPORT VIEW */}
-        <main className="flex-1 px-8 pt-4 pb-8 max-w-7xl mx-auto w-full space-y-4">
+        <main className="flex-1 px-8 pt-6 pb-12 max-w-7xl mx-auto w-full space-y-6">
           
           {activeReportView === null ? (
             <>
-              {/* WELCOME BANNER */}
-              <div 
-                className="text-white px-7 py-6 rounded-3xl shadow-md flex justify-between items-center bg-cover bg-right border border-black/10 relative overflow-hidden min-h-[175px]"
-                style={{
-                  backgroundImage: `linear-gradient(to right, rgba(0, 0, 0, 0.98) 40%, rgba(0, 0, 0, 0.55) 75%, rgba(0, 0, 0, 0.2) 100%), url('${activeBannerImg}')`
-                }}
-              >
-                <div className="relative z-10 max-w-xl space-y-2">
-                  <span className="bg-emerald-600 text-white text-[10px] font-black uppercase px-2.5 py-1 rounded-lg tracking-wider">Active {profile.displayName} Portal</span>
-                  <h2 className="text-xl font-black">Welcome back, {business?.name}</h2>
-                  <p className="text-xs text-gray-300 leading-relaxed">Manage your catalog, POS terminals, staff access, and live business operations seamlessly.</p>
-                </div>
-              </div>
-
               {/* FINANCIAL CHARTS & ANALYTICS HUB */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
-                {/* 1. SALES TREND GRAPH (HIDDEN UNLESS HOVERED, REDUCED BOX SIZE BY 50%, NO TITLE TEXT) */}
-                <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm space-y-4">
+                {/* 1. SALES TREND GRAPH */}
+                <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl pointer-events-none"></div>
+                  
                   <div className="flex justify-between items-center">
                     <div>
-                      <h3 className="font-black text-xs uppercase text-gray-900 tracking-wide">Sales Trend Realization</h3>
-                      <p className="text-[10px] text-gray-500">Total gross revenue performance over selected timeframe.</p>
+                      <h3 className="font-black text-xs uppercase text-slate-900 tracking-wider flex items-center space-x-2">
+                        <span>📈 Sales Trend Realization</span>
+                      </h3>
+                      <p className="text-[10px] text-slate-500 mt-0.5">Total gross revenue performance over selected timeframe.</p>
                     </div>
-                    <div className="flex bg-gray-100 p-0.5 rounded-xl border border-gray-200 space-x-1">
+                    <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 space-x-1 shadow-inner">
                       {[10, 15, 30].map(days => (
                         <button
                           key={days}
                           type="button"
                           onClick={() => setSalesDaysFilter(days)}
-                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
-                            salesDaysFilter === days ? 'bg-white text-gray-900 shadow-2xs' : 'text-gray-500 hover:text-gray-900'
+                          className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                            salesDaysFilter === days ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
                           }`}
                         >
                           {days}D
@@ -1468,37 +1474,37 @@ export default function TenantDashboard({ params }: PageProps) {
                     </div>
                   </div>
 
-                  {/* STICKY TOP-CENTER INFO BOX (ONLY SHOWS ON HOVER, REDUCED SIZE) */}
-                  <div className="h-8 flex items-center justify-center">
+                  {/* STICKY TOP-CENTER INFO BOX */}
+                  <div className="h-9 flex items-center justify-center">
                     {hoveredSalesDay ? (
-                      <div className="bg-slate-900 text-white px-3 py-1 rounded-xl shadow-md text-center max-w-[200px] flex items-center justify-center transition-all border border-slate-700 animate-fadeIn">
-                        <span className="text-[10px] font-mono font-black text-emerald-400 truncate">
+                      <div className="bg-slate-900 text-white px-4 py-1.5 rounded-xl shadow-md text-center max-w-[240px] flex items-center justify-center transition-all border border-slate-700 animate-fadeIn">
+                        <span className="text-[11px] font-mono font-black text-blue-400 truncate">
                           {hoveredSalesDay.formattedDate}: {business?.currency_symbol || 'Rs.'} {hoveredSalesDay.totalSale.toLocaleString()}
                         </span>
                       </div>
                     ) : (
-                      <div className="text-[10px] font-medium text-gray-400 italic">
+                      <div className="text-[10px] font-medium text-slate-400 italic bg-slate-50 px-3 py-1 rounded-lg border border-slate-200">
                         Roll over any bar/candle to view specific day details
                       </div>
                     )}
                   </div>
 
-                  <div className="h-44 flex items-end justify-between gap-1 pt-2 pb-2 px-2 border-b border-gray-100 bg-gray-50/50 rounded-xl overflow-hidden">
+                  <div className="h-48 flex items-end justify-between gap-1.5 pt-3 pb-2 px-3 border-b border-slate-100 bg-slate-50/70 rounded-2xl overflow-hidden shadow-inner">
                     {salesTrendData.map((item, idx) => {
                       const maxSale = Math.max(...salesTrendData.map(d => d.totalSale), 1)
-                      const heightPercent = Math.max(8, Math.round((item.totalSale / maxSale) * 100))
+                      const heightPercent = Math.max(10, Math.round((item.totalSale / maxSale) * 100))
                       return (
                         <div 
                           key={idx} 
-                          className="flex-1 flex flex-col items-center h-full justify-end cursor-pointer group"
+                          className="flex-1 flex flex-col items-center h-full justify-end cursor-pointer group/bar"
                           onMouseEnter={() => setHoveredSalesDay(item)}
                           onMouseLeave={() => setHoveredSalesDay(null)}
                         >
                           <div 
-                            className="w-full bg-emerald-600 group-hover:bg-emerald-400 rounded-t-xs transition-all duration-300"
+                            className="w-full bg-gradient-to-t from-blue-600 to-indigo-500 group-hover/bar:from-blue-500 group-hover/bar:to-indigo-400 rounded-t-md transition-all duration-300 shadow-sm"
                             style={{ height: `${heightPercent}%` }}
                           />
-                          <span className="text-[8px] font-mono text-gray-400 mt-1.5 truncate w-full text-center">
+                          <span className="text-[8px] font-mono text-slate-400 mt-2 truncate w-full text-center group-hover/bar:text-slate-900 transition-colors font-medium">
                             {salesDaysFilter === 30 && idx % 3 !== 0 ? '' : item.formattedDate}
                           </span>
                         </div>
@@ -1506,27 +1512,31 @@ export default function TenantDashboard({ params }: PageProps) {
                     })}
                   </div>
 
-                  <div className="flex justify-between items-center pt-1 text-[11px]">
-                    <span className="text-gray-500 font-medium">Total Period Sales:</span>
-                    <span className="font-mono font-black text-emerald-700 text-sm">
+                  <div className="flex justify-between items-center pt-2 text-[11px]">
+                    <span className="text-slate-500 font-medium">Total Period Sales:</span>
+                    <span className="font-mono font-black text-blue-600 text-sm tracking-wide">
                       {business?.currency_symbol || 'Rs.'} {salesTrendData.reduce((sum, d) => sum + d.totalSale, 0).toLocaleString()}
                     </span>
                   </div>
                 </div>
 
-                {/* 2. TOP 10 SELLING ITEMS OR DEALS (WITH REVENUE / UNITS TOGGLE) */}
-                <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm space-y-4">
+                {/* 2. TOP 10 SELLING ITEMS OR DEALS */}
+                <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none"></div>
+
                   <div className="flex justify-between items-center">
                     <div>
-                      <h3 className="font-black text-xs uppercase text-gray-900 tracking-wide">Top 10 Selling Items & Deals</h3>
-                      <p className="text-[10px] text-gray-500">Ranked by {topRankingMode === 'revenue' ? 'total revenue' : 'total units sold'} in last 30 days.</p>
+                      <h3 className="font-black text-xs uppercase text-slate-900 tracking-wider flex items-center space-x-2">
+                        <span>🔥 Top 10 Selling Items & Deals</span>
+                      </h3>
+                      <p className="text-[10px] text-slate-500 mt-0.5">Ranked by {topRankingMode === 'revenue' ? 'total revenue' : 'total units sold'} in last 30 days.</p>
                     </div>
-                    <div className="flex bg-gray-100 p-0.5 rounded-xl border border-gray-200 space-x-1">
+                    <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 space-x-1 shadow-inner">
                       <button
                         type="button"
                         onClick={() => setTopRankingMode('revenue')}
-                        className={`px-2 py-1 rounded-lg text-[9px] font-bold transition cursor-pointer uppercase ${
-                          topRankingMode === 'revenue' ? 'bg-indigo-600 text-white shadow-2xs' : 'text-gray-500 hover:text-gray-900'
+                        className={`px-3 py-1.5 rounded-lg text-[9px] font-bold transition-all cursor-pointer uppercase ${
+                          topRankingMode === 'revenue' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
                         }`}
                       >
                         Revenue
@@ -1534,8 +1544,8 @@ export default function TenantDashboard({ params }: PageProps) {
                       <button
                         type="button"
                         onClick={() => setTopRankingMode('units')}
-                        className={`px-2 py-1 rounded-lg text-[9px] font-bold transition cursor-pointer uppercase ${
-                          topRankingMode === 'units' ? 'bg-indigo-600 text-white shadow-2xs' : 'text-gray-500 hover:text-gray-900'
+                        className={`px-3 py-1.5 rounded-lg text-[9px] font-bold transition-all cursor-pointer uppercase ${
+                          topRankingMode === 'units' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
                         }`}
                       >
                         Units
@@ -1543,43 +1553,43 @@ export default function TenantDashboard({ params }: PageProps) {
                     </div>
                   </div>
 
-                  <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+                  <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
                     {topSellingItemsData.length > 0 ? (
                       topSellingItemsData.map((item, idx) => {
                         const maxVal = topRankingMode === 'revenue' 
                           ? Math.max(...topSellingItemsData.map(i => i.revenue), 1)
                           : Math.max(...topSellingItemsData.map(i => i.qty), 1)
                         const currentVal = topRankingMode === 'revenue' ? item.revenue : item.qty
-                        const widthPercent = Math.max(10, Math.round((currentVal / maxVal) * 100))
+                        const widthPercent = Math.max(12, Math.round((currentVal / maxVal) * 100))
                         
                         return (
-                          <div key={idx} className="space-y-1 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
+                          <div key={idx} className="space-y-1.5 bg-slate-50 p-3 rounded-2xl border border-slate-200 shadow-2xs group/item hover:border-blue-300 transition-all">
                             <div className="flex justify-between items-center text-[11px]">
-                              <div className="flex items-center space-x-2 truncate">
-                                <span className="font-mono font-black text-indigo-600 w-4">#{idx + 1}</span>
-                                <span className="font-bold text-gray-900 truncate">{item.name}</span>
+                              <div className="flex items-center space-x-2.5 truncate">
+                                <span className="font-mono font-black text-blue-600 w-5 bg-blue-50 px-1 py-0.5 rounded text-center border border-blue-200">#{idx + 1}</span>
+                                <span className="font-bold text-slate-800 truncate group-hover/item:text-slate-950">{item.name}</span>
                               </div>
-                              <div className="flex items-center space-x-3 shrink-0 font-mono">
-                                <span className="text-gray-500 font-medium">{item.qty} units</span>
-                                <span className="font-bold text-emerald-700">{business?.currency_symbol || 'Rs.'} {item.revenue.toLocaleString()}</span>
+                              <div className="flex items-center space-x-3 shrink-0 font-mono text-[11px]">
+                                <span className="text-slate-500 font-medium">{item.qty} units</span>
+                                <span className="font-bold text-blue-600">{business?.currency_symbol || 'Rs.'} {item.revenue.toLocaleString()}</span>
                               </div>
                             </div>
-                            <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
-                              <div className="bg-indigo-600 h-full rounded-full transition-all duration-500" style={{ width: `${widthPercent}%` }} />
+                            <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden border border-slate-300/60">
+                              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 h-full rounded-full transition-all duration-500 shadow-2xs" style={{ width: `${widthPercent}%` }} />
                             </div>
                           </div>
                         )
                       })
                     ) : (
-                      <div className="text-center py-12 text-gray-400 font-medium">
+                      <div className="text-center py-12 text-slate-400 font-medium bg-slate-50 rounded-2xl border border-slate-200">
                         No item sales history recorded for the last 30 days yet.
                       </div>
                     )}
                   </div>
 
-                  <div className="flex justify-between items-center pt-1 text-[11px] border-t border-gray-100">
-                    <span className="text-gray-500 font-medium">Tracked Catalog Items:</span>
-                    <span className="font-mono font-bold text-gray-800">{topSellingItemsData.length} items ranked</span>
+                  <div className="flex justify-between items-center pt-2 text-[11px] border-t border-slate-100">
+                    <span className="text-slate-500 font-medium">Tracked Catalog Items:</span>
+                    <span className="font-mono font-bold text-slate-800">{topSellingItemsData.length} items ranked</span>
                   </div>
                 </div>
 
@@ -1587,136 +1597,139 @@ export default function TenantDashboard({ params }: PageProps) {
 
               {/* DATABASE METRICS COUNTERS */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
+                <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between group hover:border-blue-300 transition-all">
                   <div>
-                    <span className="text-[10px] font-extrabold uppercase text-gray-400">{profile.terminology.productsLabel}</span>
-                    <div className="text-2xl font-black font-mono text-gray-900 mt-0.5">{stats.productsCount}</div>
+                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">{profile.terminology.productsLabel}</span>
+                    <div className="text-2xl font-black font-mono text-slate-900 mt-1 group-hover:text-blue-600 transition-colors">{stats.productsCount}</div>
                   </div>
-                  <div className="w-10 h-10 bg-emerald-50 text-emerald-700 rounded-xl flex items-center justify-center font-bold">📦</div>
+                  <div className="w-12 h-12 bg-blue-50 text-blue-600 border border-blue-200 rounded-2xl flex items-center justify-center font-bold text-lg shadow-2xs">📦</div>
                 </div>
 
-                <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
+                <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between group hover:border-blue-300 transition-all">
                   <div>
-                    <span className="text-[10px] font-extrabold uppercase text-gray-400">Active Categories</span>
-                    <div className="text-2xl font-black font-mono text-gray-900 mt-0.5">{stats.categoriesCount}</div>
+                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Active Categories</span>
+                    <div className="text-2xl font-black font-mono text-slate-900 mt-1 group-hover:text-blue-600 transition-colors">{stats.categoriesCount}</div>
                   </div>
-                  <div className="w-10 h-10 bg-blue-50 text-blue-700 rounded-xl flex items-center justify-center font-bold">🏷</div>
+                  <div className="w-12 h-12 bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-2xl flex items-center justify-center font-bold text-lg shadow-2xs">🏷</div>
                 </div>
 
-                <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
+                <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between group hover:border-blue-300 transition-all">
                   <div>
-                    <span className="text-[10px] font-extrabold uppercase text-gray-400">Registered Staff</span>
-                    <div className="text-2xl font-black font-mono text-gray-900 mt-0.5">{stats.staffCount}</div>
+                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Registered Staff</span>
+                    <div className="text-2xl font-black font-mono text-slate-900 mt-1 group-hover:text-blue-600 transition-colors">{stats.staffCount}</div>
                   </div>
-                  <div className="w-10 h-10 bg-indigo-50 text-indigo-700 rounded-xl flex items-center justify-center font-bold">👥</div>
+                  <div className="w-12 h-12 bg-blue-50 text-blue-600 border border-blue-200 rounded-2xl flex items-center justify-center font-bold text-lg shadow-2xs">👥</div>
                 </div>
 
                 {effectiveModules.hasTables ? (
-                  <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
+                  <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between group hover:border-blue-300 transition-all">
                     <div>
-                      <span className="text-[10px] font-extrabold uppercase text-gray-400">Configured Tables</span>
-                      <div className="text-2xl font-black font-mono text-gray-900 mt-0.5">{stats.tablesCount}</div>
+                      <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Configured Tables</span>
+                      <div className="text-2xl font-black font-mono text-slate-900 mt-1 group-hover:text-blue-600 transition-colors">{stats.tablesCount}</div>
                     </div>
-                    <div className="w-10 h-10 bg-amber-50 text-amber-700 rounded-xl flex items-center justify-center font-bold">🪑</div>
+                    <div className="w-12 h-12 bg-amber-50 text-amber-600 border border-amber-200 rounded-2xl flex items-center justify-center font-bold text-lg shadow-2xs">🪑</div>
                   </div>
                 ) : (
-                  <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
+                  <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between group hover:border-blue-300 transition-all">
                     <div>
-                      <span className="text-[10px] font-extrabold uppercase text-gray-400">Operational Mode</span>
-                      <div className="text-sm font-black text-emerald-600 mt-1 uppercase tracking-wider">Optimized & Active</div>
+                      <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Operational Mode</span>
+                      <div className="text-xs font-black text-blue-600 mt-1 uppercase tracking-wider flex items-center space-x-1.5">
+                        <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+                        <span>Optimized & Active</span>
+                      </div>
                     </div>
-                    <div className="w-10 h-10 bg-teal-50 text-teal-700 rounded-xl flex items-center justify-center font-bold">⚡</div>
+                    <div className="w-12 h-12 bg-cyan-50 text-cyan-600 border border-cyan-200 rounded-2xl flex items-center justify-center font-bold text-lg shadow-2xs">⚡</div>
                   </div>
                 )}
               </div>
 
               {/* CORE COMMAND MODULES */}
-              <div className="space-y-3">
+              <div className="space-y-3.5">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-gray-900 flex items-center space-x-2">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center space-x-2">
                     <span>⚡ Core Command Modules</span>
-                    <span className="bg-amber-100 text-amber-800 text-[9px] font-extrabold px-2 py-0.5 rounded-full">Secure Protocol Active</span>
+                    <span className="bg-blue-50 text-blue-700 border border-blue-200 text-[9px] font-extrabold px-2.5 py-0.5 rounded-full">Secure Protocol Active</span>
                   </h3>
-                  <span className="text-[11px] text-gray-400 font-medium">Real-time operational nodes</span>
+                  <span className="text-[11px] text-slate-500 font-medium">Real-time operational nodes</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   {effectiveModules.hasPOS && (
-                    <a href={`/${slug}/pos`} className="bg-gray-900 text-white p-5 rounded-2xl shadow-md hover:bg-black transition group space-y-2.5 border border-yellow-500/40">
+                    <a href={`/${slug}/pos`} className="bg-white p-5 rounded-3xl shadow-sm hover:shadow-md transition-all duration-200 group space-y-3 border border-slate-200 hover:border-blue-400 hover:-translate-y-1">
                       <div className="flex justify-between items-center">
-                        <div className="w-9 h-9 rounded-xl bg-yellow-500 text-black flex items-center justify-center font-bold text-base shadow-inner">🖥</div>
-                        <span className="text-[9px] font-mono bg-yellow-400/20 text-yellow-300 px-2 py-0.5 rounded font-bold uppercase">POS Live</span>
+                        <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-black text-lg shadow-md shadow-amber-500/20">🖥</div>
+                        <span className="text-[9px] font-mono bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-lg font-bold uppercase">POS Live</span>
                       </div>
-                      <h4 className="font-extrabold text-xs tracking-wide group-hover:underline">{profile.terminology.posTitle}</h4>
-                      <p className="text-[11px] text-gray-300 leading-relaxed">Launch register & process orders.</p>
+                      <h4 className="font-black text-xs tracking-wide text-slate-900 group-hover:text-blue-600 transition-colors">{profile.terminology.posTitle}</h4>
+                      <p className="text-[11px] text-slate-500 leading-relaxed font-medium">Launch register & process orders.</p>
                     </a>
                   )}
 
                   {effectiveModules.hasKDS && (
-                    <a href={`/${slug}/kds`} className="bg-gray-900 text-white p-5 rounded-2xl shadow-md hover:bg-black transition group space-y-2.5 border border-red-500/40">
+                    <a href={`/${slug}/kds`} className="bg-white p-5 rounded-3xl shadow-sm hover:shadow-md transition-all duration-200 group space-y-3 border border-slate-200 hover:border-blue-400 hover:-translate-y-1">
                       <div className="flex justify-between items-center">
-                        <div className="w-9 h-9 rounded-xl bg-red-500 text-white flex items-center justify-center font-bold text-base shadow-inner">🍳</div>
-                        <span className="text-[9px] font-mono bg-red-400/20 text-red-300 px-2 py-0.5 rounded font-bold uppercase">KDS Routing</span>
+                        <div className="w-10 h-10 rounded-2xl bg-red-600 text-white flex items-center justify-center font-black text-lg shadow-md shadow-red-600/20">🍳</div>
+                        <span className="text-[9px] font-mono bg-red-50 text-red-700 border border-red-200 px-2.5 py-1 rounded-lg font-bold uppercase">KDS Routing</span>
                       </div>
-                      <h4 className="font-extrabold text-xs tracking-wide group-hover:underline">Kitchen Display (KDS)</h4>
-                      <p className="text-[11px] text-gray-300 leading-relaxed">Real-time kitchen order tickets.</p>
+                      <h4 className="font-black text-xs tracking-wide text-slate-900 group-hover:text-blue-600 transition-colors">Kitchen Display (KDS)</h4>
+                      <p className="text-[11px] text-slate-500 leading-relaxed font-medium">Real-time kitchen order tickets.</p>
                     </a>
                   )}
 
                   {effectiveModules.hasDispatchQueue && (
-                    <a href={`/${slug}/dispatch`} className="bg-gray-900 text-white p-5 rounded-2xl shadow-md hover:bg-black transition group space-y-2.5 border border-blue-400/40">
+                    <a href={`/${slug}/dispatch`} className="bg-white p-5 rounded-3xl shadow-sm hover:shadow-md transition-all duration-200 group space-y-3 border border-slate-200 hover:border-blue-400 hover:-translate-y-1">
                       <div className="flex justify-between items-center">
-                        <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-base shadow-inner">📦</div>
-                        <span className="text-[9px] font-mono bg-blue-400/20 text-blue-300 px-2 py-0.5 rounded font-bold uppercase">Dispatch Live</span>
+                        <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-lg shadow-md shadow-blue-600/20">📦</div>
+                        <span className="text-[9px] font-mono bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-lg font-bold uppercase">Dispatch Live</span>
                       </div>
-                      <h4 className="font-extrabold text-xs tracking-wide group-hover:underline">Dispatch & Fulfillment</h4>
-                      <p className="text-[11px] text-gray-300 leading-relaxed">Manage delivery queue & rider assignment.</p>
+                      <h4 className="font-black text-xs tracking-wide text-slate-900 group-hover:text-blue-600 transition-colors">Dispatch & Fulfillment</h4>
+                      <p className="text-[11px] text-slate-500 leading-relaxed font-medium">Manage delivery queue & rider assignment.</p>
                     </a>
                   )}
 
                   {effectiveModules.hasStorefront && (
-                    <a href={`/${slug}/storefront`} className="bg-gray-900 text-white p-5 rounded-2xl shadow-md hover:bg-black transition group space-y-2.5 border border-purple-500/40">
+                    <a href={`/${slug}/storefront`} className="bg-white p-5 rounded-3xl shadow-sm hover:shadow-md transition-all duration-200 group space-y-3 border border-slate-200 hover:border-blue-400 hover:-translate-y-1">
                       <div className="flex justify-between items-center">
-                        <div className="w-9 h-9 rounded-xl bg-purple-500 text-white flex items-center justify-center font-bold text-base shadow-inner">🛍️</div>
-                        <span className="text-[9px] font-mono bg-purple-400/20 text-purple-300 px-2 py-0.5 rounded font-bold uppercase">Public Portal</span>
+                        <div className="w-10 h-10 rounded-2xl bg-purple-600 text-white flex items-center justify-center font-black text-lg shadow-md shadow-purple-600/20">🛍️</div>
+                        <span className="text-[9px] font-mono bg-purple-50 text-purple-700 border border-purple-200 px-2.5 py-1 rounded-lg font-bold uppercase">Public Portal</span>
                       </div>
-                      <h4 className="font-extrabold text-xs tracking-wide group-hover:underline">Live Storefront</h4>
-                      <p className="text-[11px] text-gray-300 leading-relaxed">Customer-facing order portal.</p>
+                      <h4 className="font-black text-xs tracking-wide text-slate-900 group-hover:text-blue-600 transition-colors">Live Storefront</h4>
+                      <p className="text-[11px] text-slate-500 leading-relaxed font-medium">Customer-facing order portal.</p>
                     </a>
                   )}
                 </div>
               </div>
 
               {/* ACTIVE POS SESSIONS & DEVICE LOCK CONTROL */}
-              <div className="space-y-3 pt-2">
+              <div className="space-y-3.5 pt-2">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-gray-900 flex items-center space-x-2">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center space-x-2">
                     <span>🟢 Active POS Sessions & Device Locks ({activeSessionsList.length})</span>
-                    <span className="bg-emerald-100 text-emerald-800 text-[9px] font-extrabold px-2 py-0.5 rounded-full">Live Monitor</span>
+                    <span className="bg-blue-50 text-blue-700 border border-blue-200 text-[9px] font-extrabold px-2.5 py-0.5 rounded-full">Live Monitor</span>
                   </h3>
                   <button 
                     type="button" 
                     onClick={() => business?.id && fetchActiveSessions(business.id)}
-                    className="px-3 py-1 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl text-[10px] font-bold shadow-2xs transition cursor-pointer flex items-center space-x-1"
+                    className="px-3.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-xl text-[10px] font-bold shadow-2xs transition cursor-pointer flex items-center space-x-1"
                   >
                     <span>🔄</span>
                     <span>Refresh Sessions</span>
                   </button>
                 </div>
 
-                <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-2xs">
+                <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-gray-100 text-gray-500 uppercase text-[10px] font-bold">
+                    <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b border-slate-200">
                       <tr>
-                        <th className="p-3">Staff Member & Role</th>
-                        <th className="p-3">Department / Code</th>
-                        <th className="p-3">Session Active Since</th>
-                        <th className="p-3 text-right">Security Action</th>
+                        <th className="p-3.5">Staff Member & Role</th>
+                        <th className="p-3.5">Department / Code</th>
+                        <th className="p-3.5">Session Active Since</th>
+                        <th className="p-3.5 text-right">Security Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-slate-100">
                       {loadingSessions ? (
-                        <tr><td colSpan={4} className="text-center py-8 text-gray-400 font-bold">Querying active terminal sessions...</td></tr>
+                        <tr><td colSpan={4} className="text-center py-8 text-slate-400 font-bold">Querying active terminal sessions...</td></tr>
                       ) : activeSessionsList.length > 0 ? (
                         activeSessionsList.map(sess => {
                           const staffInfo = sess.staff_profiles || {}
@@ -1727,23 +1740,23 @@ export default function TenantDashboard({ params }: PageProps) {
                           const loginTime = sess.last_heartbeat_at ? new Date(sess.last_heartbeat_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent'
                           
                           return (
-                            <tr key={sess.id} className="hover:bg-gray-50 transition">
-                              <td className="p-3">
-                                <div className="font-bold text-gray-900">{staffName}</div>
-                                <div className="text-[10px] text-indigo-700 font-semibold">{staffRole}</div>
+                            <tr key={sess.id} className="hover:bg-slate-50 transition">
+                              <td className="p-3.5">
+                                <div className="font-bold text-slate-900">{staffName}</div>
+                                <div className="text-[10px] text-blue-600 font-semibold">{staffRole}</div>
                               </td>
-                              <td className="p-3">
-                                <div className="font-semibold text-gray-800">{staffDept}</div>
-                                <div className="text-[10px] text-gray-400 font-mono">{staffCode}</div>
+                              <td className="p-3.5">
+                                <div className="font-semibold text-slate-700">{staffDept}</div>
+                                <div className="text-[10px] text-slate-400 font-mono">{staffCode}</div>
                               </td>
-                              <td className="p-3 font-mono text-[11px] text-gray-600">
+                              <td className="p-3.5 font-mono text-[11px] text-slate-600">
                                 {loginTime}
                               </td>
-                              <td className="p-3 text-right">
+                              <td className="p-3.5 text-right">
                                 <button
                                   type="button"
                                   onClick={() => handleForceLogoutSession(sess.id, staffName)}
-                                  className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-[10px] font-bold shadow-2xs transition cursor-pointer"
+                                  className="px-3.5 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-[10px] font-bold shadow-2xs transition cursor-pointer"
                                 >
                                   Force Logout 🚫
                                 </button>
@@ -1753,7 +1766,7 @@ export default function TenantDashboard({ params }: PageProps) {
                         })
                       ) : (
                         <tr>
-                          <td colSpan={4} className="text-center py-10 text-gray-400 font-medium">
+                          <td colSpan={4} className="text-center py-10 text-slate-400 font-medium">
                             No active POS sessions currently running. All terminal seats are fully available.
                           </td>
                         </tr>
@@ -1764,53 +1777,53 @@ export default function TenantDashboard({ params }: PageProps) {
               </div>
 
               {/* INVENTORY & MANAGEMENT MODULES */}
-              <div className="space-y-3 pt-2">
+              <div className="space-y-3.5 pt-2">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-gray-900">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-900">
                     🛠 Inventory & Administrative Management
                   </h3>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <a href={`/${slug}/products`} className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:border-black transition group space-y-2">
+                  <a href={`/${slug}/products`} className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm hover:border-blue-400 hover:-translate-y-1 transition-all group space-y-2.5">
                     <div className="flex justify-between items-center">
-                      <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-base">📦</div>
-                      <span className="text-[9px] font-mono bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-bold uppercase">Catalog</span>
+                      <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-bold text-base shadow-2xs">📦</div>
+                      <span className="text-[9px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded-lg font-bold uppercase">Catalog</span>
                     </div>
-                    <h4 className="font-bold text-xs text-gray-900 group-hover:underline">Product & Inventory Management</h4>
-                    <p className="text-[11px] text-gray-500">Categories, items, prices, modifiers, variants & bundles.</p>
+                    <h4 className="font-bold text-xs text-slate-900 group-hover:text-blue-600 transition-colors">Product & Inventory Management</h4>
+                    <p className="text-[11px] text-slate-500">Categories, items, prices, modifiers, variants & bundles.</p>
                   </a>
 
                   <button 
                     onClick={() => { resetStaffForm(); fetchActiveSessions(business.id); setShowStaffDrawer(true); }}
-                    className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:border-black transition group space-y-2 text-left w-full cursor-pointer"
+                    className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm hover:border-blue-400 hover:-translate-y-1 transition-all group space-y-2.5 text-left w-full cursor-pointer"
                   >
                     <div className="flex justify-between items-center">
-                      <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-base">🔑</div>
-                      <span className="text-[9px] font-mono bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded font-bold uppercase">Security & PINs</span>
+                      <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center justify-center font-bold text-base shadow-2xs">🔑</div>
+                      <span className="text-[9px] font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-lg font-bold uppercase">Security & PINs</span>
                     </div>
-                    <h4 className="font-bold text-xs text-gray-900 group-hover:underline">Staff & QR ID Badges</h4>
-                    <p className="text-[11px] text-gray-500">Manage staff PINs, QR badges & active session locks.</p>
+                    <h4 className="font-bold text-xs text-slate-900 group-hover:text-blue-600 transition-colors">Staff & QR ID Badges</h4>
+                    <p className="text-[11px] text-slate-500">Manage staff PINs, QR badges & active session locks.</p>
                   </button>
 
                   {effectiveModules.hasTables && (
-                    <a href={`/${slug}/tables`} className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:border-black transition group space-y-2">
+                    <a href={`/${slug}/tables`} className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm hover:border-blue-400 hover:-translate-y-1 transition-all group space-y-2.5">
                       <div className="flex justify-between items-center">
-                        <div className="w-9 h-9 rounded-xl bg-orange-50 text-orange-700 flex items-center justify-center font-bold text-base">🪑</div>
-                        <span className="text-[9px] font-mono bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-bold uppercase">Seating</span>
+                        <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center font-bold text-base shadow-2xs">🪑</div>
+                        <span className="text-[9px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded-lg font-bold uppercase">Seating</span>
                       </div>
-                      <h4 className="font-bold text-xs text-gray-900 group-hover:underline">Dine-In & Zone Management</h4>
-                      <p className="text-[11px] text-gray-500">Configure hall zones, tables, and seating capacities.</p>
+                      <h4 className="font-bold text-xs text-slate-900 group-hover:text-blue-600 transition-colors">Dine-In & Zone Management</h4>
+                      <p className="text-[11px] text-slate-500">Configure hall zones, tables, and seating capacities.</p>
                     </a>
                   )}
 
-                  <a href={`/${slug}/orders`} className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:border-black transition group space-y-2">
+                  <a href={`/${slug}/orders`} className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm hover:border-blue-400 hover:-translate-y-1 transition-all group space-y-2.5">
                     <div className="flex justify-between items-center">
-                      <div className="w-9 h-9 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold text-base">📋</div>
-                      <span className="text-[9px] font-mono bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-bold uppercase">Audit Log</span>
+                      <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-600 border border-teal-200 flex items-center justify-center font-bold text-base shadow-2xs">📋</div>
+                      <span className="text-[9px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded-lg font-bold uppercase">Audit Log</span>
                     </div>
-                    <h4 className="font-bold text-xs text-gray-900 group-hover:underline">{profile.terminology.ordersLabel}</h4>
-                    <p className="text-[11px] text-gray-500">Past transaction logs and customer order histories.</p>
+                    <h4 className="font-bold text-xs text-slate-900 group-hover:text-blue-600 transition-colors">{profile.terminology.ordersLabel}</h4>
+                    <p className="text-[11px] text-slate-500">Past transaction logs and customer order histories.</p>
                   </a>
                 </div>
               </div>
@@ -1822,8 +1835,8 @@ export default function TenantDashboard({ params }: PageProps) {
               {/* SUB-VIEW 1: SALES REPORT */}
               {activeReportView === 'sales' && (
                 <div className="space-y-4">
-                  <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs space-y-3">
-                    <div className="font-black text-gray-900 uppercase tracking-wide text-[11px] flex justify-between items-center">
+                  <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+                    <div className="font-black text-slate-900 uppercase tracking-wider text-[11px] flex justify-between items-center">
                       <span>🔍 Sales Report Filters</span>
                       <button 
                         onClick={() => { setFilterDateFrom(''); setFilterDateTo(''); setFilterCustQuery(''); setFilterOrderNo(''); setFilterOrderType('ALL'); setFilterPaymentMode('ALL'); setFilterWaiterName(''); setFilterRiderName(''); }}
@@ -1833,26 +1846,26 @@ export default function TenantDashboard({ params }: PageProps) {
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Date From</label>
-                        <input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 font-mono" />
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Date From</label>
+                        <input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs" />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Date To</label>
-                        <input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 font-mono" />
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Date To</label>
+                        <input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs" />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Customer Name / Phone</label>
-                        <input type="text" placeholder="Search customer..." value={filterCustQuery} onChange={e => setFilterCustQuery(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-medium" />
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Customer Name / Phone</label>
+                        <input type="text" placeholder="Search customer..." value={filterCustQuery} onChange={e => setFilterCustQuery(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-xs" />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Order Number / ID</label>
-                        <input type="text" placeholder="KB-..." value={filterOrderNo} onChange={e => setFilterOrderNo(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-mono" />
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Order Number / ID</label>
+                        <input type="text" placeholder="KB-..." value={filterOrderNo} onChange={e => setFilterOrderNo(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs" />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Order Type</label>
-                        <select value={filterOrderType} onChange={e => setFilterOrderType(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-bold uppercase">
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Order Type</label>
+                        <select value={filterOrderType} onChange={e => setFilterOrderType(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold uppercase text-xs">
                           <option value="ALL">ALL TYPES</option>
                           <option value="DINE-IN">DINE-IN</option>
                           <option value="TAKEAWAY">TAKEAWAY</option>
@@ -1861,8 +1874,8 @@ export default function TenantDashboard({ params }: PageProps) {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Payment Mode</label>
-                        <select value={filterPaymentMode} onChange={e => setFilterPaymentMode(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-bold uppercase">
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Payment Mode</label>
+                        <select value={filterPaymentMode} onChange={e => setFilterPaymentMode(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold uppercase text-xs">
                           <option value="ALL">ALL MODES</option>
                           <option value="CASH">CASH</option>
                           <option value="CARD">CARD</option>
@@ -1871,30 +1884,30 @@ export default function TenantDashboard({ params }: PageProps) {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Waiter Name</label>
-                        <input type="text" placeholder="Search waiter..." value={filterWaiterName} onChange={e => setFilterWaiterName(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-medium" />
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Waiter Name</label>
+                        <input type="text" placeholder="Search waiter..." value={filterWaiterName} onChange={e => setFilterWaiterName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-xs" />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Delivery Rider Name</label>
-                        <input type="text" placeholder="Search rider..." value={filterRiderName} onChange={e => setFilterRiderName(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-medium" />
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Delivery Rider Name</label>
+                        <input type="text" placeholder="Search rider..." value={filterRiderName} onChange={e => setFilterRiderName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-xs" />
                       </div>
                     </div>
                   </div>
 
-                  <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-2xs">
+                  <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-gray-100 text-gray-500 uppercase text-[10px] font-bold">
+                      <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b border-slate-200">
                         <tr>
-                          <th className="p-3">Order # / Date</th>
-                          <th className="p-3">Type & Payment</th>
-                          <th className="p-3">Customer Details</th>
-                          <th className="p-3">Staff / Waiter / Rider</th>
-                          <th className="p-3 text-right">Grand Total</th>
+                          <th className="p-3.5">Order # / Date</th>
+                          <th className="p-3.5">Type & Payment</th>
+                          <th className="p-3.5">Customer Details</th>
+                          <th className="p-3.5">Staff / Waiter / Rider</th>
+                          <th className="p-3.5 text-right">Grand Total</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
+                      <tbody className="divide-y divide-slate-100">
                         {loadingSales ? (
-                          <tr><td colSpan={5} className="text-center py-12 text-gray-400 font-bold">Querying sales archive...</td></tr>
+                          <tr><td colSpan={5} className="text-center py-12 text-slate-400 font-bold">Querying sales archive...</td></tr>
                         ) : filteredSalesReports.length > 0 ? (
                           filteredSalesReports.map(ord => {
                             const isPendingCash = (ord.settlement_status || '').toUpperCase() === 'PENDING_CASH' || 
@@ -1904,46 +1917,46 @@ export default function TenantDashboard({ params }: PageProps) {
                               ));
 
                             return (
-                              <tr key={ord.id} className="hover:bg-gray-50 transition">
-                                <td className="p-3">
-                                  <div className="font-mono font-black text-gray-900">{ord.order_number ? `KB-${String(ord.order_number).padStart(6, '0')}` : 'SAVED'}</div>
-                                  <div className="text-[10px] text-gray-400 font-mono">{new Date(ord.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</div>
+                              <tr key={ord.id} className="hover:bg-slate-50 transition">
+                                <td className="p-3.5">
+                                  <div className="font-mono font-black text-slate-900">{ord.order_number ? `KB-${String(ord.order_number).padStart(6, '0')}` : 'SAVED'}</div>
+                                  <div className="text-[10px] text-slate-400 font-mono">{new Date(ord.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</div>
                                 </td>
-                                <td className="p-3">
-                                  <div className="flex items-center space-x-1 mb-1">
-                                    <span className="bg-slate-100 text-slate-800 font-bold px-2 py-0.5 rounded text-[9px] uppercase">{ord.service_type || 'COUNTER'}</span>
-                                    <span className="text-[10px] text-emerald-700 font-semibold">{ord.payment_method || 'CASH'}</span>
+                                <td className="p-3.5">
+                                  <div className="flex items-center space-x-1.5 mb-1">
+                                    <span className="bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded text-[9px] uppercase border border-slate-200">{ord.service_type || 'COUNTER'}</span>
+                                    <span className="text-[10px] text-blue-600 font-semibold">{ord.payment_method || 'CASH'}</span>
                                   </div>
                                   <div>
                                     {isPendingCash ? (
-                                      <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider inline-flex items-center space-x-1 animate-pulse">
+                                      <span className="bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider inline-flex items-center space-x-1 animate-pulse">
                                         <span>⏳</span>
                                         <span>PENDING CASH</span>
                                       </span>
                                     ) : (
-                                      <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider inline-flex items-center space-x-1">
+                                      <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider inline-flex items-center space-x-1">
                                         <span>✓</span>
                                         <span>SETTLED</span>
                                       </span>
                                     )}
                                   </div>
                                 </td>
-                                <td className="p-3">
-                                  <div className="font-bold text-gray-900">{ord.customer_name || 'Walk-In'}</div>
-                                  <div className="text-[10px] text-gray-500 font-mono">{ord.customer_phone || 'No Phone'}</div>
+                                <td className="p-3.5">
+                                  <div className="font-bold text-slate-900">{ord.customer_name || 'Walk-In'}</div>
+                                  <div className="text-[10px] text-slate-500 font-mono">{ord.customer_phone || 'No Phone'}</div>
                                 </td>
-                                <td className="p-3 text-[11px] text-gray-600">
-                                  <div>Waiter: <span className="font-bold text-gray-900">{ord.waiter_name || 'N/A'}</span></div>
-                                  <div>Rider: <span className="font-bold text-gray-900">{ord.rider_name || ord.rider || 'N/A'}</span></div>
+                                <td className="p-3.5 text-[11px] text-slate-600">
+                                  <div>Waiter: <span className="font-bold text-slate-900">{ord.waiter_name || 'N/A'}</span></div>
+                                  <div>Rider: <span className="font-bold text-slate-900">{ord.rider_name || ord.rider || 'N/A'}</span></div>
                                 </td>
-                                <td className="p-3 text-right font-mono font-black text-emerald-700 text-sm">
+                                <td className="p-3.5 text-right font-mono font-black text-blue-600 text-sm">
                                   {business?.currency_symbol || 'Rs.'} {ord.total_amount}
                                 </td>
                               </tr>
                             )
                           })
                         ) : (
-                          <tr><td colSpan={5} className="text-center py-12 text-gray-400">No matching sales records found.</td></tr>
+                          <tr><td colSpan={5} className="text-center py-12 text-slate-400 font-medium">No matching sales records found.</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -1954,8 +1967,8 @@ export default function TenantDashboard({ params }: PageProps) {
               {/* SUB-VIEW: SALES RETURN REPORT */}
               {activeReportView === 'sales_returns' && (
                 <div className="space-y-4">
-                  <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs space-y-3">
-                    <div className="font-black text-gray-900 uppercase tracking-wide text-[11px] flex justify-between items-center">
+                  <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+                    <div className="font-black text-slate-900 uppercase tracking-wider text-[11px] flex justify-between items-center">
                       <span>🔍 Sales Return Report Filters</span>
                       <button 
                         onClick={() => { setFilterSrrDateFrom(''); setFilterSrrDateTo(''); setFilterSrrNo(''); setFilterSrrOrderNo(''); setFilterSrrOrderType('ALL'); setFilterSrrItem(''); setFilterSrrAuthorizedBy(''); }}
@@ -1965,26 +1978,26 @@ export default function TenantDashboard({ params }: PageProps) {
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Date From</label>
-                        <input type="date" value={filterSrrDateFrom} onChange={e => setFilterSrrDateFrom(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-xs" />
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Date From</label>
+                        <input type="date" value={filterSrrDateFrom} onChange={e => setFilterSrrDateFrom(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1.5 font-mono text-xs" />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Date To</label>
-                        <input type="date" value={filterSrrDateTo} onChange={e => setFilterSrrDateTo(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-xs" />
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Date To</label>
+                        <input type="date" value={filterSrrDateTo} onChange={e => setFilterSrrDateTo(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1.5 font-mono text-xs" />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5">SRR Number</label>
-                        <input type="text" placeholder="Search SRR..." value={filterSrrNo} onChange={e => setFilterSrrNo(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-mono text-xs" />
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">SRR Number</label>
+                        <input type="text" placeholder="Search SRR..." value={filterSrrNo} onChange={e => setFilterSrrNo(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 font-mono text-xs" />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Order Number</label>
-                        <input type="text" placeholder="Search order..." value={filterSrrOrderNo} onChange={e => setFilterSrrOrderNo(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-mono text-xs" />
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Order Number</label>
+                        <input type="text" placeholder="Search order..." value={filterSrrOrderNo} onChange={e => setFilterSrrOrderNo(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 font-mono text-xs" />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Order Type</label>
-                        <select value={filterSrrOrderType} onChange={e => setFilterSrrOrderType(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-bold uppercase text-xs">
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Order Type</label>
+                        <select value={filterSrrOrderType} onChange={e => setFilterSrrOrderType(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold uppercase text-xs">
                           <option value="ALL">ALL TYPES</option>
                           <option value="DINE-IN">DINE-IN</option>
                           <option value="TAKEAWAY">TAKEAWAY</option>
@@ -1993,55 +2006,55 @@ export default function TenantDashboard({ params }: PageProps) {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Item Name</label>
-                        <input type="text" placeholder="Search item..." value={filterSrrItem} onChange={e => setFilterSrrItem(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs" />
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Item Name</label>
+                        <input type="text" placeholder="Search item..." value={filterSrrItem} onChange={e => setFilterSrrItem(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs" />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Authorized By</label>
-                      <input type="text" placeholder="Search authorizer..." value={filterSrrAuthorizedBy} onChange={e => setFilterSrrAuthorizedBy(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs" />
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Authorized By</label>
+                      <input type="text" placeholder="Search authorizer..." value={filterSrrAuthorizedBy} onChange={e => setFilterSrrAuthorizedBy(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs" />
                     </div>
                   </div>
 
-                  <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-2xs">
+                  <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-gray-100 text-gray-500 uppercase text-[10px] font-bold">
+                      <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b border-slate-200">
                         <tr>
-                          <th className="p-3">Date/Time</th>
-                          <th className="p-3">SRR Number</th>
-                          <th className="p-3">Order Number</th>
-                          <th className="p-3">Order Type & Payment</th>
-                          <th className="p-3">Returned Items Description</th>
-                          <th className="p-3">Return Reason</th>
-                          <th className="p-3">Authorized By</th>
-                          <th className="p-3 text-right">Amount</th>
+                          <th className="p-3.5">Date/Time</th>
+                          <th className="p-3.5">SRR Number</th>
+                          <th className="p-3.5">Order Number</th>
+                          <th className="p-3.5">Order Type & Payment</th>
+                          <th className="p-3.5">Returned Items Description</th>
+                          <th className="p-3.5">Return Reason</th>
+                          <th className="p-3.5">Authorized By</th>
+                          <th className="p-3.5 text-right">Amount</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
+                      <tbody className="divide-y divide-slate-100">
                         {loadingSalesReturns ? (
-                          <tr><td colSpan={8} className="text-center py-12 text-gray-400 font-bold">Querying sales return passes...</td></tr>
+                          <tr><td colSpan={8} className="text-center py-12 text-slate-400 font-bold">Querying sales return passes...</td></tr>
                         ) : filteredSalesReturnsReports.length > 0 ? (
                           filteredSalesReturnsReports.map(srr => (
-                            <tr key={srr.id} className="hover:bg-gray-50 transition">
-                              <td className="p-3 font-mono text-[10px] text-gray-500">
+                            <tr key={srr.id} className="hover:bg-slate-50 transition">
+                              <td className="p-3.5 font-mono text-[10px] text-slate-400">
                                 {new Date(srr.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                               </td>
-                              <td className="p-3 font-mono font-black text-indigo-700">{srr.srr_number}</td>
-                              <td className="p-3 font-mono font-bold text-gray-900">{srr.order_number}</td>
-                              <td className="p-3">
-                                <span className="bg-slate-100 text-slate-800 font-bold px-2 py-0.5 rounded text-[9px] uppercase mr-1">{srr.order_type}</span>
-                                <div className="text-[10px] text-emerald-700 font-semibold mt-0.5">{srr.payment_mode}</div>
+                              <td className="p-3.5 font-mono font-black text-blue-600">{srr.srr_number}</td>
+                              <td className="p-3.5 font-mono font-bold text-slate-900">{srr.order_number}</td>
+                              <td className="p-3.5">
+                                <span className="bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded text-[9px] uppercase mr-1 border border-slate-200">{srr.order_type}</span>
+                                <div className="text-[10px] text-blue-600 font-semibold mt-0.5">{srr.payment_mode}</div>
                               </td>
-                              <td className="p-3 font-medium text-gray-900 max-w-xs">{srr.returned_items_description}</td>
-                              <td className="p-3 text-rose-700 font-semibold">{srr.return_reason}</td>
-                              <td className="p-3 font-bold text-gray-800">{srr.authorized_by}</td>
-                              <td className="p-3 text-right font-mono font-black text-rose-600 text-sm">
+                              <td className="p-3.5 font-medium text-slate-800 max-w-xs">{srr.returned_items_description}</td>
+                              <td className="p-3.5 text-rose-600 font-semibold">{srr.return_reason}</td>
+                              <td className="p-3.5 font-bold text-slate-700">{srr.authorized_by}</td>
+                              <td className="p-3.5 text-right font-mono font-black text-rose-600 text-sm">
                                 {business?.currency_symbol || 'Rs.'} {srr.amount}
                               </td>
                             </tr>
                           ))
                         ) : (
-                          <tr><td colSpan={8} className="text-center py-12 text-gray-400">No sales return passes recorded matching the criteria.</td></tr>
+                          <tr><td colSpan={8} className="text-center py-12 text-slate-400 font-medium">No sales return passes recorded matching the criteria.</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -2052,47 +2065,47 @@ export default function TenantDashboard({ params }: PageProps) {
               {/* SUB-VIEW: CASH LIQUIDITY REPORT */}
               {activeReportView === 'cash_liquidity' && (
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs">
+                  <div className="flex justify-between items-center bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
                     <div>
-                      <h3 className="font-black text-gray-900 uppercase tracking-wide text-xs">Cash Liquidity & Inflow Realization</h3>
-                      <p className="text-[10px] text-gray-500">Tracks actual real cash drops deposited by staff and riders, excluding pending receivables.</p>
+                      <h3 className="font-black text-slate-900 uppercase tracking-wider text-xs">Cash Liquidity & Inflow Realization</h3>
+                      <p className="text-[10px] text-slate-500 mt-0.5">Tracks actual real cash drops deposited by staff and riders, excluding pending receivables.</p>
                     </div>
                     <button
                       onClick={() => { setShowSettlementModal(true); }}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition cursor-pointer shadow-sm"
+                      className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl text-xs transition-all cursor-pointer shadow-md shadow-blue-500/20 border border-blue-400/30"
                     >
                       + Process Staff Cash Drop / Batch Settlement 💵
                     </button>
                   </div>
 
-                  <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-2xs">
+                  <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-gray-100 text-gray-500 uppercase text-[10px] font-bold">
+                      <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b border-slate-200">
                         <tr>
-                          <th className="p-3">Date/Time</th>
-                          <th className="p-3">Staff / Collector</th>
-                          <th className="p-3">Payment Method</th>
-                          <th className="p-3">Billed Amount</th>
-                          <th className="p-3">Discount / Shortage</th>
-                          <th className="p-3 text-right">Net Cash Received</th>
+                          <th className="p-3.5">Date/Time</th>
+                          <th className="p-3.5">Staff / Collector</th>
+                          <th className="p-3.5">Payment Method</th>
+                          <th className="p-3.5">Billed Amount</th>
+                          <th className="p-3.5">Discount / Shortage</th>
+                          <th className="p-3.5 text-right">Net Cash Received</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
+                      <tbody className="divide-y divide-slate-100">
                         {loadingLiquidity ? (
-                          <tr><td colSpan={6} className="text-center py-12 text-gray-400 font-bold">Querying liquidity logs...</td></tr>
+                          <tr><td colSpan={6} className="text-center py-12 text-slate-400 font-bold">Querying liquidity logs...</td></tr>
                         ) : cashLiquidityData.length > 0 ? (
                           cashLiquidityData.map(txn => (
-                            <tr key={txn.id} className="hover:bg-gray-50 transition">
-                              <td className="p-3 font-mono text-[10px] text-gray-500">{new Date(txn.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</td>
-                              <td className="p-3 font-bold text-gray-900">{txn.staff_name || 'Staff Member'}</td>
-                              <td className="p-3"><span className="bg-emerald-50 text-emerald-800 font-bold px-2 py-0.5 rounded text-[9px] uppercase">{txn.payment_method}</span></td>
-                              <td className="p-3 font-mono text-gray-700">{business?.currency_symbol || 'Rs.'} {txn.billed_amount}</td>
-                              <td className="p-3 font-mono text-rose-600">{business?.currency_symbol || 'Rs.'} {txn.discount_amount || '0.00'}</td>
-                              <td className="p-3 text-right font-mono font-black text-emerald-700 text-sm">{business?.currency_symbol || 'Rs.'} {txn.amount_received}</td>
+                            <tr key={txn.id} className="hover:bg-slate-50 transition">
+                              <td className="p-3.5 font-mono text-[10px] text-slate-400">{new Date(txn.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</td>
+                              <td className="p-3.5 font-bold text-slate-900">{txn.staff_name || 'Staff Member'}</td>
+                              <td className="p-3.5"><span className="bg-blue-50 text-blue-700 border border-blue-200 font-bold px-2 py-0.5 rounded text-[9px] uppercase">{txn.payment_method}</span></td>
+                              <td className="p-3.5 font-mono text-slate-700">{business?.currency_symbol || 'Rs.'} {txn.billed_amount}</td>
+                              <td className="p-3.5 font-mono text-rose-600">{business?.currency_symbol || 'Rs.'} {txn.discount_amount || '0.00'}</td>
+                              <td className="p-3.5 text-right font-mono font-black text-blue-600 text-sm">{business?.currency_symbol || 'Rs.'} {txn.amount_received}</td>
                             </tr>
                           ))
                         ) : (
-                          <tr><td colSpan={6} className="text-center py-12 text-gray-400">No cash liquidity transactions recorded yet.</td></tr>
+                          <tr><td colSpan={6} className="text-center py-12 text-slate-400 font-medium">No cash liquidity transactions recorded yet.</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -2103,8 +2116,8 @@ export default function TenantDashboard({ params }: PageProps) {
               {/* SUB-VIEW 2: CUSTOMER DATABASE */}
               {activeReportView === 'customers' && (
                 <div className="space-y-4">
-                  <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs space-y-3">
-                    <div className="font-black text-gray-900 uppercase tracking-wide text-[11px] flex justify-between items-center">
+                  <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+                    <div className="font-black text-slate-900 uppercase tracking-wider text-[11px] flex justify-between items-center">
                       <span>🔍 Customer Database Filters</span>
                       <button 
                         onClick={() => { setFilterCustName(''); setFilterCustPhone(''); setFilterCustOrigin('ALL'); }}
@@ -2114,18 +2127,18 @@ export default function TenantDashboard({ params }: PageProps) {
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Customer Name</label>
-                        <input type="text" placeholder="Search name..." value={filterCustName} onChange={e => setFilterCustName(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-medium" />
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Customer Name</label>
+                        <input type="text" placeholder="Search name..." value={filterCustName} onChange={e => setFilterCustName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-xs" />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Mobile / Phone Number</label>
-                        <input type="text" placeholder="Search phone..." value={filterCustPhone} onChange={e => setFilterCustPhone(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-mono" />
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Mobile / Phone Number</label>
+                        <input type="text" placeholder="Search phone..." value={filterCustPhone} onChange={e => setFilterCustPhone(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs" />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Registered Through</label>
-                        <select value={filterCustOrigin} onChange={e => setFilterCustOrigin(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-bold uppercase">
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Registered Through</label>
+                        <select value={filterCustOrigin} onChange={e => setFilterCustOrigin(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold uppercase text-xs">
                           <option value="ALL">ALL CHANNELS</option>
                           <option value="POS">POS TERMINAL</option>
                           <option value="STOREFRONT">STOREFRONT</option>
@@ -2134,31 +2147,31 @@ export default function TenantDashboard({ params }: PageProps) {
                     </div>
                   </div>
 
-                  <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-2xs">
+                  <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-gray-100 text-gray-500 uppercase text-[10px] font-bold">
+                      <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b border-slate-200">
                         <tr>
-                          <th className="p-3">Customer Name & Phone</th>
-                          <th className="p-3">Email Address</th>
-                          <th className="p-3">Default Address</th>
-                          <th className="p-3">Registered Through</th>
+                          <th className="p-3.5">Customer Name & Phone</th>
+                          <th className="p-3.5">Email Address</th>
+                          <th className="p-3.5">Default Address</th>
+                          <th className="p-3.5">Registered Through</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
+                      <tbody className="divide-y divide-slate-100">
                         {loadingCustomers ? (
-                          <tr><td colSpan={4} className="text-center py-12 text-gray-400 font-bold">Querying customer database...</td></tr>
+                          <tr><td colSpan={4} className="text-center py-12 text-slate-400 font-bold">Querying customer database...</td></tr>
                         ) : filteredCustomers.length > 0 ? (
                           filteredCustomers.map(cust => (
-                            <tr key={cust.id} className="hover:bg-gray-50 transition">
-                              <td className="p-3">
-                                <div className="font-bold text-gray-900">{cust.name}</div>
-                                <div className="text-[10px] text-gray-500 font-mono">{cust.phone}</div>
+                            <tr key={cust.id} className="hover:bg-slate-50 transition">
+                              <td className="p-3.5">
+                                <div className="font-bold text-slate-900">{cust.name}</div>
+                                <div className="text-[10px] text-slate-400 font-mono">{cust.phone}</div>
                               </td>
-                              <td className="p-3 text-gray-600 font-mono">{cust.email || 'N/A'}</td>
-                              <td className="p-3 text-gray-600">{cust.default_address || 'No Default Address'}</td>
-                              <td className="p-3">
-                                <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
-                                  (cust.origin || 'POS') === 'STOREFRONT' ? 'bg-purple-100 text-purple-800' : 'bg-emerald-100 text-emerald-800'
+                              <td className="p-3.5 text-slate-600 font-mono">{cust.email || 'N/A'}</td>
+                              <td className="p-3.5 text-slate-600">{cust.default_address || 'No Default Address'}</td>
+                              <td className="p-3.5">
+                                <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase ${
+                                  (cust.origin || 'POS') === 'STOREFRONT' ? 'bg-purple-50 text-purple-700 border border-purple-200' : 'bg-blue-50 text-blue-700 border border-blue-200'
                                 }`}>
                                   {cust.origin || 'POS'}
                                 </span>
@@ -2166,7 +2179,7 @@ export default function TenantDashboard({ params }: PageProps) {
                             </tr>
                           ))
                         ) : (
-                          <tr><td colSpan={4} className="text-center py-12 text-gray-400">No customers registered in database yet.</td></tr>
+                          <tr><td colSpan={4} className="text-center py-12 text-slate-400 font-medium">No customers registered in database yet.</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -2177,8 +2190,8 @@ export default function TenantDashboard({ params }: PageProps) {
               {/* SUB-VIEW 3: STAFF DATABASE */}
               {activeReportView === 'staff' && (
                 <div className="space-y-4">
-                  <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs space-y-3">
-                    <div className="font-black text-gray-900 uppercase tracking-wide text-[11px] flex justify-between items-center">
+                  <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+                    <div className="font-black text-slate-900 uppercase tracking-wider text-[11px] flex justify-between items-center">
                       <span>🔍 Staff Database Filters</span>
                       <button 
                         onClick={() => { setStaffFilterId(''); setStaffFilterName(''); setStaffFilterRole('ALL'); setStaffFilterDept('ALL'); }}
@@ -2188,25 +2201,25 @@ export default function TenantDashboard({ params }: PageProps) {
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Staff ID / Code</label>
-                        <input type="text" placeholder="STF-..." value={staffFilterId} onChange={e => setStaffFilterId(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-mono uppercase" />
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Staff ID / Code</label>
+                        <input type="text" placeholder="STF-..." value={staffFilterId} onChange={e => setStaffFilterId(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono uppercase text-xs" />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Staff Name</label>
-                        <input type="text" placeholder="Search name..." value={staffFilterName} onChange={e => setStaffFilterName(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-medium" />
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Staff Name</label>
+                        <input type="text" placeholder="Search name..." value={staffFilterName} onChange={e => setStaffFilterName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-xs" />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Role / Title</label>
-                        <select value={staffFilterRole} onChange={e => setStaffFilterRole(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-bold uppercase">
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Role / Title</label>
+                        <select value={staffFilterRole} onChange={e => setStaffFilterRole(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold uppercase text-xs">
                           <option value="ALL">ALL ROLES</option>
                           {roles.map(r => <option key={r} value={r}>{r}</option>)}
                         </select>
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Department</label>
-                        <select value={staffFilterDept} onChange={e => setStaffFilterDept(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-bold uppercase">
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Department</label>
+                        <select value={staffFilterDept} onChange={e => setStaffFilterDept(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold uppercase text-xs">
                           <option value="ALL">ALL DEPARTMENTS</option>
                           {departments.map(d => <option key={d} value={d}>{d}</option>)}
                         </select>
@@ -2214,34 +2227,34 @@ export default function TenantDashboard({ params }: PageProps) {
                     </div>
                   </div>
 
-                  <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-2xs">
+                  <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-gray-100 text-gray-500 uppercase text-[10px] font-bold">
+                      <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b border-slate-200">
                         <tr>
-                          <th className="p-3">Staff ID / Name</th>
-                          <th className="p-3">Role & Title</th>
-                          <th className="p-3">Department</th>
-                          <th className="p-3">Security PIN</th>
-                          <th className="p-3">QR Badge Token</th>
-                          <th className="p-3 text-right">Badge Link</th>
+                          <th className="p-3.5">Staff ID / Name</th>
+                          <th className="p-3.5">Role & Title</th>
+                          <th className="p-3.5">Department</th>
+                          <th className="p-3.5">Security PIN</th>
+                          <th className="p-3.5">QR Badge Token</th>
+                          <th className="p-3.5 text-right">Badge Link</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
+                      <tbody className="divide-y divide-slate-100">
                         {filteredStaffDatabase.length > 0 ? (
                           filteredStaffDatabase.map(st => (
-                            <tr key={st.id} className="hover:bg-gray-50 transition">
-                              <td className="p-3">
-                                <div className="font-bold text-gray-900">{st.full_name}</div>
-                                <div className="text-[10px] text-gray-400 font-mono">{st.staff_code || 'N/A'}</div>
+                            <tr key={st.id} className="hover:bg-slate-50 transition">
+                              <td className="p-3.5">
+                                <div className="font-bold text-slate-900">{st.full_name}</div>
+                                <div className="text-[10px] text-slate-400 font-mono">{st.staff_code || 'N/A'}</div>
                               </td>
-                              <td className="p-3 font-bold text-indigo-700">{st.role}</td>
-                              <td className="p-3 text-gray-600 font-semibold">{st.department || 'General'}</td>
-                              <td className="p-3 font-mono font-bold text-gray-800">{st.pin_code}</td>
-                              <td className="p-3 font-mono text-[10px] text-slate-700 select-all font-bold">{st.qr_token || 'N/A'}</td>
-                              <td className="p-3 text-right">
+                              <td className="p-3.5 font-bold text-blue-600">{st.role}</td>
+                              <td className="p-3.5 text-slate-700 font-semibold">{st.department || 'General'}</td>
+                              <td className="p-3.5 font-mono font-bold text-slate-900">{st.pin_code}</td>
+                              <td className="p-3.5 font-mono text-[10px] text-blue-600 select-all font-bold">{st.qr_token || 'N/A'}</td>
+                              <td className="p-3.5 text-right">
                                 <button 
                                   onClick={() => setBadgePreviewStaff(st)}
-                                  className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-bold shadow-2xs transition cursor-pointer"
+                                  className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] font-bold shadow-2xs transition cursor-pointer"
                                 >
                                   View Badge 🪪
                                 </button>
@@ -2249,7 +2262,7 @@ export default function TenantDashboard({ params }: PageProps) {
                             </tr>
                           ))
                         ) : (
-                          <tr><td colSpan={6} className="text-center py-12 text-gray-400">No staff members match the selected filters.</td></tr>
+                          <tr><td colSpan={6} className="text-center py-12 text-slate-400 font-medium">No staff members match the selected filters.</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -2266,22 +2279,22 @@ export default function TenantDashboard({ params }: PageProps) {
       {/* STAFF & QR SECURITY MANAGEMENT SLIDE-OVER DRAWER */}
       {showStaffDrawer && (
         <div className="fixed inset-0 z-50 overflow-hidden font-sans">
-          <div onClick={() => setShowStaffDrawer(false)} className="absolute inset-0 bg-black/70 backdrop-blur-xs transition-opacity" />
+          <div onClick={() => setShowStaffDrawer(false)} className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity" />
 
           <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
-            <div className="w-screen md:w-[35vw] bg-white border-l border-gray-200 shadow-2xl flex flex-col text-gray-800">
+            <div className="w-screen md:w-[38vw] bg-white border-l border-slate-200 shadow-2xl flex flex-col text-slate-800">
               
-              <div className="px-6 py-5 border-b border-gray-200 bg-gray-50 flex justify-between items-center shrink-0">
-                <div className="flex items-center space-x-2">
+              <div className="px-6 py-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center shrink-0">
+                <div className="flex items-center space-x-3">
                   <span className="text-xl">🔑</span>
                   <div>
-                    <h2 className="text-sm font-extrabold uppercase tracking-wider text-gray-900">Staff & QR Security Manager</h2>
-                    <p className="text-[11px] text-gray-500">Manage staff profiles, PINs & module access</p>
+                    <h2 className="text-sm font-black uppercase tracking-wider text-slate-900">Staff & QR Security Manager</h2>
+                    <p className="text-[11px] text-slate-500">Manage staff profiles, PINs & module access</p>
                   </div>
                 </div>
                 <button 
                   onClick={() => setShowStaffDrawer(false)}
-                  className="w-8 h-8 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 flex items-center justify-center font-bold transition cursor-pointer"
+                  className="w-8 h-8 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 flex items-center justify-center font-bold transition cursor-pointer"
                 >
                   ✕
                 </button>
@@ -2289,50 +2302,50 @@ export default function TenantDashboard({ params }: PageProps) {
 
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 
-                <form onSubmit={handleSaveStaff} className="bg-gray-50 p-4 rounded-2xl border border-gray-200 space-y-4 text-xs">
+                <form onSubmit={handleSaveStaff} className="bg-slate-50 p-5 rounded-3xl border border-slate-200 space-y-4 text-xs shadow-2xs">
                   <div className="flex justify-between items-center">
-                    <h3 className="font-black text-gray-900 uppercase tracking-wide text-emerald-700">
+                    <h3 className="font-black uppercase tracking-wide text-blue-600">
                       {editingStaffId ? '✏️ Edit Staff Profile' : '+ Register New Staff Member'}
                     </h3>
                     {editingStaffId && (
                       <button 
                         type="button" 
                         onClick={resetStaffForm}
-                        className="text-[11px] text-gray-500 hover:text-black font-bold underline cursor-pointer"
+                        className="text-[11px] text-slate-500 hover:text-slate-900 font-bold underline cursor-pointer"
                       >
                         Cancel Editing
                       </button>
                     )}
                   </div>
                   
-                  <div className="space-y-3">
+                  <div className="space-y-3.5">
                     <div>
-                      <label className="block text-gray-700 font-bold mb-1">Staff Full Name</label>
+                      <label className="block text-slate-700 font-bold mb-1.5">Staff Full Name</label>
                       <input 
                         type="text" 
                         placeholder="e.g. John Doe"
                         value={newStaffName}
                         onChange={e => setNewStaffName(e.target.value)}
-                        className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-emerald-500 font-medium"
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-slate-900 focus:outline-none focus:border-blue-600 font-medium"
                         required 
                       />
                     </div>
                     
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-gray-700 font-bold mb-1">Staff ID / Code</label>
-                        <div className="flex space-x-1">
+                        <label className="block text-slate-700 font-bold mb-1.5">Staff ID / Code</label>
+                        <div className="flex space-x-1.5">
                           <input 
                             type="text" 
                             placeholder="STF-001"
                             value={newStaffCode}
                             onChange={e => setNewStaffCode(e.target.value)}
-                            className="w-full bg-white border border-gray-300 rounded-xl px-2.5 py-2 text-gray-900 font-mono text-xs uppercase"
+                            className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-slate-900 font-mono text-xs uppercase"
                           />
                           <button 
                             type="button" 
                             onClick={() => setNewStaffCode(generateDefaultStaffCode())}
-                            className="px-2.5 bg-gray-200 hover:bg-gray-300 rounded-xl text-[10px] font-bold text-gray-700 shrink-0 cursor-pointer"
+                            className="px-3 bg-slate-200 hover:bg-slate-300 rounded-xl text-[10px] font-bold text-slate-700 shrink-0 cursor-pointer border border-slate-300"
                             title="Auto-generate ID"
                           >
                             Auto
@@ -2341,13 +2354,13 @@ export default function TenantDashboard({ params }: PageProps) {
                       </div>
 
                       <div>
-                        <label className="block text-gray-700 font-bold mb-1">Department / Section</label>
-                        <div className="space-y-1.5">
-                          <div className="flex space-x-1">
+                        <label className="block text-slate-700 font-bold mb-1.5">Department / Section</label>
+                        <div className="space-y-2">
+                          <div className="flex space-x-1.5">
                             <select
                               value={newStaffDept}
                               onChange={e => setNewStaffDept(e.target.value)}
-                              className="w-full bg-white border border-gray-300 rounded-xl px-2.5 py-2 text-gray-900 font-medium text-xs"
+                              className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-slate-900 font-medium text-xs"
                             >
                               {departments.map(dept => (
                                 <option key={dept} value={dept}>{dept}</option>
@@ -2357,25 +2370,25 @@ export default function TenantDashboard({ params }: PageProps) {
                               <button
                                 type="button"
                                 onClick={() => handleRemoveDepartment(newStaffDept)}
-                                className="px-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl text-[10px] font-bold cursor-pointer"
+                                className="px-2.5 bg-red-100 hover:bg-red-200 text-red-700 border border-red-200 rounded-xl text-[10px] font-bold cursor-pointer"
                                 title="Remove selected department"
                               >
                                 ✕
                               </button>
                             )}
                           </div>
-                          <div className="flex space-x-1">
+                          <div className="flex space-x-1.5">
                             <input
                               type="text"
                               placeholder="New department..."
                               value={newDeptInput}
                               onChange={e => setNewDeptInput(e.target.value)}
-                              className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1 text-[11px]"
+                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900"
                             />
                             <button
                               type="button"
                               onClick={handleAddDepartment}
-                              className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-bold shrink-0 cursor-pointer"
+                              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] font-bold shrink-0 cursor-pointer shadow-2xs"
                             >
                               + Add
                             </button>
@@ -2385,13 +2398,13 @@ export default function TenantDashboard({ params }: PageProps) {
                     </div>
 
                     <div>
-                      <label className="block text-gray-700 font-bold mb-1">Role / Title</label>
-                      <div className="space-y-1.5">
-                        <div className="flex space-x-1">
+                      <label className="block text-slate-700 font-bold mb-1.5">Role / Title</label>
+                      <div className="space-y-2">
+                        <div className="flex space-x-1.5">
                           <select
                             value={newStaffRole}
                             onChange={e => setNewStaffRole(e.target.value)}
-                            className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-gray-900 font-medium"
+                            className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-slate-900 font-medium"
                           >
                             {roles.map(role => (
                               <option key={role} value={role}>{role}</option>
@@ -2401,25 +2414,25 @@ export default function TenantDashboard({ params }: PageProps) {
                             <button
                               type="button"
                               onClick={() => handleRemoveRole(newStaffRole)}
-                              className="px-2.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl text-[10px] font-bold cursor-pointer"
+                              className="px-3 bg-red-100 hover:bg-red-200 text-red-700 border border-red-200 rounded-xl text-[10px] font-bold cursor-pointer"
                               title="Remove selected role"
                             >
                               ✕
                             </button>
                           )}
                         </div>
-                        <div className="flex space-x-1">
+                        <div className="flex space-x-1.5">
                           <input
                             type="text"
                             placeholder="New role / title..."
                             value={newRoleInput}
                             onChange={e => setNewRoleInput(e.target.value)}
-                            className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1 text-[11px]"
+                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900"
                           />
                           <button
                             type="button"
                             onClick={handleAddRole}
-                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-bold shrink-0 cursor-pointer"
+                            className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] font-bold shrink-0 cursor-pointer shadow-2xs"
                           >
                             + Add Role
                           </button>
@@ -2429,49 +2442,49 @@ export default function TenantDashboard({ params }: PageProps) {
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-gray-700 font-bold mb-1">Security PIN (4-6 Digits)</label>
+                        <label className="block text-slate-700 font-bold mb-1.5">Security PIN (4-6 Digits)</label>
                         <input 
                           type="text" 
                           maxLength={6}
                           placeholder="1234"
                           value={newStaffPin}
                           onChange={e => setNewStaffPin(e.target.value)}
-                          className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-gray-900 font-mono tracking-widest focus:outline-none focus:border-emerald-500 font-bold"
+                          className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-slate-900 font-mono tracking-widest focus:outline-none focus:border-blue-600 font-bold"
                           required 
                         />
                       </div>
                       <div>
-                        <label className="block text-gray-700 font-bold mb-1">Custom QR Token (Optional)</label>
+                        <label className="block text-slate-700 font-bold mb-1.5">Custom QR Token (Optional)</label>
                         <input 
                           type="text" 
                           placeholder="STAFF-..."
                           value={newStaffCustomToken}
                           onChange={e => setNewStaffCustomToken(e.target.value)}
-                          className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-gray-900 font-mono text-[10px]"
+                          className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-slate-900 font-mono text-[10px]"
                         />
                       </div>
                     </div>
                   </div>
 
-                  <div className="space-y-1.5 pt-1">
-                    <span className="font-bold text-gray-700 block">Granular Module Permissions:</span>
-                    <div className="grid grid-cols-3 gap-2 pt-1">
+                  <div className="space-y-2 pt-2">
+                    <span className="font-bold text-slate-700 block">Granular Module Permissions:</span>
+                    <div className="grid grid-cols-3 gap-2.5">
                       {effectiveModules.hasPOS && (
-                        <label className="flex items-center space-x-2 bg-white p-2.5 rounded-xl border border-gray-200 cursor-pointer">
-                          <input type="checkbox" checked={staffPos} onChange={e => setStaffPos(e.target.checked)} className="rounded text-emerald-600 focus:ring-0" />
-                          <span className="font-semibold text-gray-800">POS Terminal</span>
+                        <label className="flex items-center space-x-2 bg-white p-3 rounded-xl border border-slate-200 cursor-pointer hover:border-slate-300">
+                          <input type="checkbox" checked={staffPos} onChange={e => setStaffPos(e.target.checked)} className="rounded bg-slate-50 border-slate-300 text-blue-600 focus:ring-0 w-4 h-4" />
+                          <span className="font-semibold text-slate-800">POS Terminal</span>
                         </label>
                       )}
                       {effectiveModules.hasKDS && (
-                        <label className="flex items-center space-x-2 bg-white p-2.5 rounded-xl border border-gray-200 cursor-pointer">
-                          <input type="checkbox" checked={staffKds} onChange={e => setStaffKds(e.target.checked)} className="rounded text-emerald-600 focus:ring-0" />
-                          <span className="font-semibold text-gray-800">Kitchen KDS</span>
+                        <label className="flex items-center space-x-2 bg-white p-3 rounded-xl border border-slate-200 cursor-pointer hover:border-slate-300">
+                          <input type="checkbox" checked={staffKds} onChange={e => setStaffKds(e.target.checked)} className="rounded bg-slate-50 border-slate-300 text-blue-600 focus:ring-0 w-4 h-4" />
+                          <span className="font-semibold text-slate-800">Kitchen KDS</span>
                         </label>
                       )}
                       {effectiveModules.hasERP && (
-                        <label className="flex items-center space-x-2 bg-white p-2.5 rounded-xl border border-gray-200 cursor-pointer">
-                          <input type="checkbox" checked={staffErp} onChange={e => setStaffErp(e.target.checked)} className="rounded text-emerald-600 focus:ring-0" />
-                          <span className="font-semibold text-gray-800">ERP & Finance</span>
+                        <label className="flex items-center space-x-2 bg-white p-3 rounded-xl border border-slate-200 cursor-pointer hover:border-slate-300">
+                          <input type="checkbox" checked={staffErp} onChange={e => setStaffErp(e.target.checked)} className="rounded bg-slate-50 border-slate-300 text-blue-600 focus:ring-0 w-4 h-4" />
+                          <span className="font-semibold text-slate-800">ERP & Finance</span>
                         </label>
                       )}
                     </div>
@@ -2480,51 +2493,51 @@ export default function TenantDashboard({ params }: PageProps) {
                   <button 
                     type="submit" 
                     disabled={savingStaff}
-                    className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition shadow-sm text-xs uppercase tracking-wider cursor-pointer"
+                    className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl transition shadow-md shadow-blue-500/20 text-xs uppercase tracking-wider cursor-pointer border border-blue-400/30"
                   >
                     {savingStaff ? 'Saving Staff Profile...' : editingStaffId ? 'Update Staff Profile 💾' : 'Save Staff & Issue QR ID Badge 🆔'}
                   </button>
                 </form>
 
                 <div className="space-y-3">
-                  <h3 className="font-black text-gray-900 uppercase tracking-wider text-xs">Registered Staff Directory ({staffList.length})</h3>
+                  <h3 className="font-black text-slate-900 uppercase tracking-wider text-xs">Registered Staff Directory ({staffList.length})</h3>
                     
-                  <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-2xs">
+                  <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-gray-100 text-gray-500 uppercase text-[10px] font-bold">
+                      <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b border-slate-200">
                         <tr>
-                          <th className="p-3">Staff ID / Name / Dept</th>
-                          <th className="p-3">PIN</th>
-                          <th className="p-3">QR Badge Token</th>
-                          <th className="p-3">Permissions</th>
-                          <th className="p-3 text-right">Actions</th>
+                          <th className="p-3.5">Staff ID / Name / Dept</th>
+                          <th className="p-3.5">PIN</th>
+                          <th className="p-3.5">QR Badge Token</th>
+                          <th className="p-3.5">Permissions</th>
+                          <th className="p-3.5 text-right">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
+                      <tbody className="divide-y divide-slate-100">
                         {staffList.length > 0 ? staffList.map(st => (
-                          <tr key={st.id} className="hover:bg-gray-50/80 transition">
-                            <td className="p-3">
-                              <div className="font-bold text-gray-900">{st.full_name}</div>
-                              <div className="text-[10px] text-gray-500 font-mono">{st.staff_code || 'N/A'} • {st.department || 'General'}</div>
-                              <div className="text-[9px] text-gray-400 uppercase font-semibold">{st.role}</div>
+                          <tr key={st.id} className="hover:bg-slate-50 transition">
+                            <td className="p-3.5">
+                              <div className="font-bold text-slate-900">{st.full_name}</div>
+                              <div className="text-[10px] text-slate-400 font-mono">{st.staff_code || 'N/A'} • {st.department || 'General'}</div>
+                              <div className="text-[9px] text-slate-500 uppercase font-semibold">{st.role}</div>
                             </td>
-                            <td className="p-3 font-mono font-bold text-gray-700">
+                            <td className="p-3.5 font-mono font-bold text-slate-700">
                               {st.pin_code}
                             </td>
-                            <td className="p-3 font-mono text-[10px] text-indigo-700 select-all font-bold">
+                            <td className="p-3.5 font-mono text-[10px] text-blue-600 select-all font-bold">
                               {st.qr_token || 'N/A'}
                             </td>
-                            <td className="p-3">
+                            <td className="p-3.5">
                               <div className="flex flex-wrap gap-1">
-                                {st.access_pos && <span className="bg-yellow-100 text-yellow-800 px-1 py-0.5 rounded text-[9px] font-bold">POS</span>}
-                                {st.access_kds && <span className="bg-red-100 text-red-800 px-1 py-0.5 rounded text-[9px] font-bold">KDS</span>}
-                                {st.access_erp && <span className="bg-blue-100 text-blue-800 px-1 py-0.5 rounded text-[9px] font-bold">ERP</span>}
+                                {st.access_pos && <span className="bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded text-[9px] font-bold">POS</span>}
+                                {st.access_kds && <span className="bg-red-50 text-red-700 border border-red-200 px-1.5 py-0.5 rounded text-[9px] font-bold">KDS</span>}
+                                {st.access_erp && <span className="bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded text-[9px] font-bold">ERP</span>}
                               </div>
                             </td>
-                            <td className="p-3 text-right space-x-1">
+                            <td className="p-3.5 text-right space-x-1">
                               <button 
                                 onClick={() => setBadgePreviewStaff(st)}
-                                className="text-emerald-600 hover:text-emerald-800 font-bold text-xs px-2 py-1 rounded hover:bg-emerald-50 transition cursor-pointer"
+                                className="text-blue-600 hover:text-blue-800 font-bold text-xs px-2 py-1 rounded hover:bg-blue-50 transition cursor-pointer"
                               >
                                 Badge
                               </button>
@@ -2536,7 +2549,7 @@ export default function TenantDashboard({ params }: PageProps) {
                               </button>
                               <button 
                                 onClick={() => handleDeleteStaff(st.id)}
-                                className="text-red-500 hover:text-red-700 font-bold text-xs px-2 py-1 rounded hover:bg-red-50 transition cursor-pointer"
+                                className="text-rose-600 hover:text-rose-800 font-bold text-xs px-2 py-1 rounded hover:bg-rose-50 transition cursor-pointer"
                               >
                                 Delete
                               </button>
@@ -2544,7 +2557,7 @@ export default function TenantDashboard({ params }: PageProps) {
                           </tr>
                         )) : (
                           <tr>
-                            <td colSpan={5} className="text-center py-8 text-gray-400">No staff members registered yet.</td>
+                            <td colSpan={5} className="text-center py-8 text-slate-400">No staff members registered yet.</td>
                           </tr>
                         )}
                       </tbody>
@@ -2560,39 +2573,39 @@ export default function TenantDashboard({ params }: PageProps) {
 
       {/* QR BADGE PREVIEW MODAL */}
       {badgePreviewStaff && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs font-sans">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl border border-gray-200 text-gray-800">
-            <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl mx-auto flex items-center justify-center text-xl font-bold">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs font-sans">
+          <div className="bg-white border border-slate-200 rounded-3xl p-7 max-w-sm w-full text-center space-y-5 shadow-2xl text-slate-800">
+            <div className="w-14 h-14 bg-blue-50 text-blue-600 border border-blue-200 rounded-2xl mx-auto flex items-center justify-center text-2xl font-bold shadow-2xs">
               🪪
             </div>
             <div>
-              <h3 className="font-extrabold text-sm uppercase text-gray-900">{badgePreviewStaff.full_name}</h3>
-              <p className="text-xs text-gray-500 font-medium">
-                {badgePreviewStaff.role} • Dept: {badgePreviewStaff.department || 'General'} • PIN: {badgePreviewStaff.pin_code}
+              <h3 className="font-black text-base uppercase text-slate-900 tracking-wide">{badgePreviewStaff.full_name}</h3>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                {badgePreviewStaff.role} • Dept: {badgePreviewStaff.department || 'General'} • PIN: <span className="font-mono font-bold text-slate-900">{badgePreviewStaff.pin_code}</span>
               </p>
             </div>
             
-            <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 flex flex-col items-center justify-center">
-              <div id="staff-qr-badge-svg">
+            <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200 flex flex-col items-center justify-center shadow-inner">
+              <div id="staff-qr-badge-svg" className="bg-white p-3 rounded-2xl shadow-md border border-slate-200">
                 <QRCodeSVG value={badgePreviewStaff.qr_token || 'N/A'} size={144} level="H" includeMargin={true} />
               </div>
-              <span className="mt-3 font-mono text-[11px] text-indigo-700 font-bold bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100 select-all">
+              <span className="mt-4 font-mono text-[11px] text-blue-700 font-bold bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-200 select-all">
                 {badgePreviewStaff.qr_token || 'N/A'}
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2.5">
               <button 
                 type="button"
                 onClick={downloadQrBadgePng}
-                className="w-full py-2.5 bg-indigo-600 text-white font-bold rounded-xl text-xs hover:bg-indigo-500 transition cursor-pointer"
+                className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl text-xs hover:bg-blue-500 transition cursor-pointer shadow-md shadow-blue-500/20 border border-blue-400/30"
               >
                 ⬇️ Download PNG Badge
               </button>
               <button 
                 type="button"
                 onClick={() => setBadgePreviewStaff(null)}
-                className="w-full py-2.5 bg-gray-900 text-white font-bold rounded-xl text-xs hover:bg-black transition cursor-pointer"
+                className="w-full py-3 bg-slate-100 text-slate-700 font-bold rounded-xl text-xs hover:bg-slate-200 transition cursor-pointer border border-slate-200"
               >
                 Close View
               </button>
@@ -2604,33 +2617,33 @@ export default function TenantDashboard({ params }: PageProps) {
       {/* STAFF CASH DROP & BATCH SETTLEMENT SLIDE-OVER DRAWER */}
       {showSettlementModal && (
         <div className="fixed inset-0 z-50 overflow-hidden font-sans">
-          <div onClick={() => setShowSettlementModal(false)} className="absolute inset-0 bg-black/70 backdrop-blur-xs transition-opacity" />
+          <div onClick={() => setShowSettlementModal(false)} className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity" />
 
           <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
-            <div className="w-screen md:w-[55vw] bg-white border-l border-gray-200 shadow-2xl flex flex-col text-gray-800">
+            <div className="w-screen md:w-[55vw] bg-white border-l border-slate-200 shadow-2xl flex flex-col text-slate-800">
               
-              <div className="px-6 py-5 border-b border-gray-200 bg-gray-50 flex justify-between items-center shrink-0">
+              <div className="px-6 py-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center shrink-0">
                 <div>
-                  <h3 className="font-black text-sm uppercase text-gray-900">Staff Cash Drop & Batch Settlement</h3>
-                  <p className="text-[10px] text-gray-500">Select staff member, review pending bills, and settle cash with adjustments.</p>
+                  <h3 className="font-black text-sm uppercase text-slate-900 tracking-wide">Staff Cash Drop & Batch Settlement</h3>
+                  <p className="text-[10px] text-slate-500">Select staff member, review pending bills, and settle cash with adjustments.</p>
                 </div>
-                <button onClick={() => setShowSettlementModal(false)} className="w-8 h-8 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 flex items-center justify-center font-bold transition cursor-pointer">✕</button>
+                <button onClick={() => setShowSettlementModal(false)} className="w-8 h-8 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 flex items-center justify-center font-bold transition cursor-pointer">✕</button>
               </div>
 
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                <form onSubmit={handleProcessBatchSettlement} className="space-y-4 text-xs">
+                <form onSubmit={handleProcessBatchSettlement} className="space-y-5 text-xs">
                   
                   {/* TWO SEPARATE FIELDS WITH SEARCH FOR WAITER & RIDER SIDE-BY-SIDE */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="bg-gray-50 p-3 rounded-2xl border border-gray-200 space-y-2">
-                      <label className="block font-bold text-gray-900 uppercase">1. Select Waiter for Cash Settlement</label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-slate-50 p-4 rounded-3xl border border-slate-200 space-y-2.5">
+                      <label className="block font-bold text-slate-900 uppercase tracking-wider text-[11px]">1. Select Waiter for Cash Settlement</label>
                       <input
                         type="text"
                         placeholder="Search waiter by name..."
                         value={waiterSearch}
                         onChange={e => setWaiterSearch(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Escape') setWaiterSearch('') }}
-                        className="w-full bg-white border border-gray-300 rounded-xl px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-blue-600"
+                        className="w-full bg-white border border-slate-300 text-slate-900 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:border-blue-600"
                       />
                       <select
                         value={waitersList.some(st => st.full_name === selectedStaffForSettlement || st.id === selectedStaffForSettlement) ? selectedStaffForSettlement : ''}
@@ -2640,7 +2653,7 @@ export default function TenantDashboard({ params }: PageProps) {
                           if (val) fetchPendingOrdersForStaff(val)
                         }}
                         size={waiterSearch.trim() ? Math.min(Math.max(waitersList.length + 1, 2), 5) : 1}
-                        className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 font-bold cursor-pointer"
+                        className="w-full bg-white border border-slate-300 text-slate-900 rounded-xl px-3 py-2.5 font-bold cursor-pointer"
                       >
                         <option value="">-- Choose Waiter --</option>
                         {waitersList.map(st => (
@@ -2649,15 +2662,15 @@ export default function TenantDashboard({ params }: PageProps) {
                       </select>
                     </div>
 
-                    <div className="bg-gray-50 p-3 rounded-2xl border border-gray-200 space-y-2">
-                      <label className="block font-bold text-gray-900 uppercase">2. Select Rider for Cash Settlement</label>
+                    <div className="bg-slate-50 p-4 rounded-3xl border border-slate-200 space-y-2.5">
+                      <label className="block font-bold text-slate-900 uppercase tracking-wider text-[11px]">2. Select Rider for Cash Settlement</label>
                       <input
                         type="text"
                         placeholder="Search rider by name..."
                         value={riderSearch}
                         onChange={e => setRiderSearch(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Escape') setRiderSearch('') }}
-                        className="w-full bg-white border border-gray-300 rounded-xl px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-blue-600"
+                        className="w-full bg-white border border-slate-300 text-slate-900 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:border-blue-600"
                       />
                       <select
                         value={ridersList.some(st => st.full_name === selectedStaffForSettlement || st.id === selectedStaffForSettlement) ? selectedStaffForSettlement : ''}
@@ -2667,7 +2680,7 @@ export default function TenantDashboard({ params }: PageProps) {
                           if (val) fetchPendingOrdersForStaff(val)
                         }}
                         size={riderSearch.trim() ? Math.min(Math.max(ridersList.length + 1, 2), 5) : 1}
-                        className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 font-bold cursor-pointer"
+                        className="w-full bg-white border border-slate-300 text-slate-900 rounded-xl px-3 py-2.5 font-bold cursor-pointer"
                       >
                         <option value="">-- Choose Rider --</option>
                         {ridersList.map(st => (
@@ -2678,21 +2691,21 @@ export default function TenantDashboard({ params }: PageProps) {
                   </div>
 
                   {selectedStaffForSettlement && (
-                    <div className="space-y-2">
-                      <h4 className="font-bold uppercase text-gray-700 text-[11px]">Pending Cash Invoices ({pendingOrdersForStaff.length})</h4>
+                    <div className="space-y-3">
+                      <h4 className="font-bold uppercase text-slate-700 text-[11px]">Pending Cash Invoices ({pendingOrdersForStaff.length})</h4>
                       {pendingOrdersForStaff.length > 0 ? (
-                        <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                        <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
                           {pendingOrdersForStaff.map(ord => {
                             const input = settlementInputs[ord.id] || { received: ord.total_amount, discount: '0', notes: '' }
                             return (
-                              <div key={ord.id} className="bg-gray-50 p-3 rounded-xl border border-gray-200 space-y-2">
+                              <div key={ord.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2.5">
                                 <div className="flex justify-between items-center">
-                                  <span className="font-mono font-black text-gray-900">KB-{String(ord.order_number).padStart(6, '0')}</span>
-                                  <span className="font-mono font-bold text-emerald-700">Total Billed: {ord.total_amount}</span>
+                                  <span className="font-mono font-black text-slate-900">KB-{String(ord.order_number).padStart(6, '0')}</span>
+                                  <span className="font-mono font-bold text-blue-600">Total Billed: {ord.total_amount}</span>
                                 </div>
-                                <div className="grid grid-cols-3 gap-2">
+                                <div className="grid grid-cols-3 gap-2.5">
                                   <div>
-                                    <label className="block text-[9px] font-bold text-gray-500">Cash Received</label>
+                                    <label className="block text-[9px] font-bold text-slate-500 mb-1">Cash Received</label>
                                     <input
                                       type="number"
                                       value={input.received}
@@ -2706,12 +2719,12 @@ export default function TenantDashboard({ params }: PageProps) {
                                           [ord.id]: { ...input, received: val, discount: String(diff) }
                                         })
                                       }}
-                                      className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1 font-mono font-bold"
+                                      className="w-full bg-white border border-slate-300 text-slate-900 rounded-xl px-3 py-2 font-mono font-bold"
                                       required
                                     />
                                   </div>
                                   <div>
-                                    <label className="block text-[9px] font-bold text-gray-500">Discount / Shortage</label>
+                                    <label className="block text-[9px] font-bold text-slate-500 mb-1">Discount / Shortage</label>
                                     <input
                                       type="number"
                                       value={input.discount}
@@ -2719,11 +2732,11 @@ export default function TenantDashboard({ params }: PageProps) {
                                         ...settlementInputs,
                                         [ord.id]: { ...input, discount: e.target.value }
                                       })}
-                                      className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1 font-mono text-rose-600 font-bold"
+                                      className="w-full bg-white border border-slate-300 text-slate-900 rounded-xl px-3 py-2 font-mono text-rose-600 font-bold"
                                     />
                                   </div>
                                   <div>
-                                    <label className="block text-[9px] font-bold text-gray-500">Remarks</label>
+                                    <label className="block text-[9px] font-bold text-slate-500 mb-1">Remarks</label>
                                     <input
                                       type="text"
                                       placeholder="Reason..."
@@ -2732,7 +2745,7 @@ export default function TenantDashboard({ params }: PageProps) {
                                         ...settlementInputs,
                                         [ord.id]: { ...input, notes: e.target.value }
                                       })}
-                                      className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1"
+                                      className="w-full bg-white border border-slate-300 text-slate-900 rounded-xl px-3 py-2"
                                     />
                                   </div>
                                 </div>
@@ -2741,21 +2754,21 @@ export default function TenantDashboard({ params }: PageProps) {
                           })}
                         </div>
                       ) : (
-                        <p className="text-gray-400 py-4 text-center">No pending cash orders assigned to this staff member.</p>
+                        <p className="text-slate-400 py-6 text-center bg-slate-50 rounded-2xl border border-slate-200">No pending cash orders assigned to this staff member.</p>
                       )}
                     </div>
                   )}
 
-                  <div className="flex justify-between items-center pt-4 border-t">
-                    <div className="font-mono font-black text-xs text-gray-900">
-                      TOTAL: <span className="text-emerald-700">{business?.currency_symbol || 'Rs.'} {pendingOrdersForStaff.reduce((sum, ord) => sum + (parseFloat(ord.total_amount) || 0), 0).toFixed(2)}</span>
+                  <div className="flex justify-between items-center pt-4 border-t border-slate-200">
+                    <div className="font-mono font-black text-xs text-slate-900">
+                      TOTAL: <span className="text-blue-600">{business?.currency_symbol || 'Rs.'} {pendingOrdersForStaff.reduce((sum, ord) => sum + (parseFloat(ord.total_amount) || 0), 0).toFixed(2)}</span>
                     </div>
-                    <div className="flex space-x-2">
-                      <button type="button" onClick={() => setShowSettlementModal(false)} className="px-4 py-2 bg-gray-200 rounded-xl font-bold cursor-pointer">Cancel/Close</button>
+                    <div className="flex space-x-2.5">
+                      <button type="button" onClick={() => setShowSettlementModal(false)} className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold cursor-pointer border border-slate-200">Cancel/Close</button>
                       <button
                         type="submit"
                         disabled={processingSettlement || pendingOrdersForStaff.length === 0}
-                        className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow transition cursor-pointer"
+                        className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold rounded-xl shadow-md shadow-blue-500/20 transition cursor-pointer border border-blue-400/30"
                       >
                         {processingSettlement ? 'Processing...' : 'Settle Selected Invoices & Record Liquidity 💵'}
                       </button>
@@ -2772,19 +2785,19 @@ export default function TenantDashboard({ params }: PageProps) {
       {/* BUSINESS SETTINGS DRAWER */}
       {showSettingsDrawer && (
         <div className="fixed inset-0 z-50 overflow-hidden font-sans">
-          <div onClick={() => setShowSettingsDrawer(false)} className="absolute inset-0 bg-black/70 backdrop-blur-xs transition-opacity" />
+          <div onClick={() => setShowSettingsDrawer(false)} className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity" />
 
           <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
-            <div className="w-screen max-w-md bg-white border-l border-gray-200 shadow-2xl flex flex-col text-gray-800">
+            <div className="w-screen max-w-md bg-white border-l border-slate-200 shadow-2xl flex flex-col text-slate-800">
               
-              <div className="px-6 py-5 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-                <div className="flex items-center space-x-2">
+              <div className="px-6 py-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                <div className="flex items-center space-x-2.5">
                   <span className="text-lg">⚙️</span>
-                  <h2 className="text-sm font-extrabold uppercase tracking-wider text-gray-900">Business Settings</h2>
+                  <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-900">Business Settings</h2>
                 </div>
                 <button 
                   onClick={() => setShowSettingsDrawer(false)}
-                  className="w-8 h-8 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 flex items-center justify-center font-bold transition cursor-pointer"
+                  className="w-8 h-8 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 flex items-center justify-center font-bold transition cursor-pointer"
                 >
                   ✕
                 </button>
@@ -2795,103 +2808,103 @@ export default function TenantDashboard({ params }: PageProps) {
                   
                   {/* Sequence Starting Points & Prefixes Configuration */}
                   <div className="space-y-3 pt-1">
-                    <label className="block text-gray-700 font-bold uppercase tracking-wider text-[11px]">Sequence Starting Points & Prefixes</label>
-                    <p className="text-[10px] text-gray-500">Configure starting number and custom 1–5 letter prefix for each sequence.</p>
-                    
+                    <label className="block text-slate-700 font-bold uppercase tracking-wider text-[11px]">Sequence Starting Points & Prefixes</label>
+                    <p className="text-[10px] text-slate-500">Configure starting number and custom 1–5 letter prefix for each sequence.</p>
+                     
                     <div className="space-y-2.5">
                       {/* Order No */}
-                      <div className="grid grid-cols-2 gap-2 bg-gray-50 p-2.5 rounded-xl border border-gray-200">
+                      <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
                         <div>
-                          <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Order No. Start</label>
-                          <input type="number" value={editNextOrderSeq} onChange={e => setEditNextOrderSeq(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-xs font-bold" />
+                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Order No. Start</label>
+                          <input type="number" value={editNextOrderSeq} onChange={e => setEditNextOrderSeq(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs font-bold" />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Prefix (1-5 chars)</label>
-                          <input type="text" maxLength={5} placeholder="ORD" value={editOrderPrefix} onChange={e => setEditOrderPrefix(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-xs uppercase font-bold" />
+                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Prefix (1-5 chars)</label>
+                          <input type="text" maxLength={5} placeholder="ORD" value={editOrderPrefix} onChange={e => setEditOrderPrefix(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs uppercase font-bold" />
                         </div>
                       </div>
 
                       {/* Serial No */}
-                      <div className="grid grid-cols-2 gap-2 bg-gray-50 p-2.5 rounded-xl border border-gray-200">
+                      <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
                         <div>
-                          <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Serial No. Start</label>
-                          <input type="number" value={editNextSerialSeq} onChange={e => setEditNextSerialSeq(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-xs font-bold" />
+                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Serial No. Start</label>
+                          <input type="number" value={editNextSerialSeq} onChange={e => setEditNextSerialSeq(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs font-bold" />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Prefix (1-5 chars)</label>
-                          <input type="text" maxLength={5} placeholder="SRL" value={editSerialPrefix} onChange={e => setEditSerialPrefix(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-xs uppercase font-bold" />
+                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Prefix (1-5 chars)</label>
+                          <input type="text" maxLength={5} placeholder="SRL" value={editSerialPrefix} onChange={e => setEditSerialPrefix(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs uppercase font-bold" />
                         </div>
                       </div>
 
                       {/* KOT No */}
-                      <div className="grid grid-cols-2 gap-2 bg-gray-50 p-2.5 rounded-xl border border-gray-200">
+                      <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
                         <div>
-                          <label className="block text-[10px] font-bold text-gray-600 mb-0.5">KOT No. Start</label>
-                          <input type="number" value={editNextKotSeq} onChange={e => setEditNextKotSeq(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-xs font-bold" />
+                          <label className="block text-[10px] font-bold text-slate-600 mb-1">KOT No. Start</label>
+                          <input type="number" value={editNextKotSeq} onChange={e => setEditNextKotSeq(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs font-bold" />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Prefix (1-5 chars)</label>
-                          <input type="text" maxLength={5} placeholder="KOT" value={editKotPrefix} onChange={e => setEditKotPrefix(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-xs uppercase font-bold" />
+                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Prefix (1-5 chars)</label>
+                          <input type="text" maxLength={5} placeholder="KOT" value={editKotPrefix} onChange={e => setEditKotPrefix(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs uppercase font-bold" />
                         </div>
                       </div>
 
                       {/* SRR No */}
-                      <div className="grid grid-cols-2 gap-2 bg-gray-50 p-2.5 rounded-xl border border-gray-200">
+                      <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
                         <div>
-                          <label className="block text-[10px] font-bold text-gray-600 mb-0.5">SRR No. Start</label>
-                          <input type="number" value={editNextSrrSeq} onChange={e => setEditNextSrrSeq(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-xs font-bold" />
+                          <label className="block text-[10px] font-bold text-slate-600 mb-1">SRR No. Start</label>
+                          <input type="number" value={editNextSrrSeq} onChange={e => setEditNextSrrSeq(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs font-bold" />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Prefix (1-5 chars)</label>
-                          <input type="text" maxLength={5} placeholder="SRR" value={editSrrPrefix} onChange={e => setEditSrrPrefix(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-xs uppercase font-bold" />
+                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Prefix (1-5 chars)</label>
+                          <input type="text" maxLength={5} placeholder="SRR" value={editSrrPrefix} onChange={e => setEditSrrPrefix(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs uppercase font-bold" />
                         </div>
                       </div>
 
                       {/* Quotation No */}
-                      <div className="grid grid-cols-2 gap-2 bg-gray-50 p-2.5 rounded-xl border border-gray-200">
+                      <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
                         <div>
-                          <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Quotation No. Start</label>
-                          <input type="number" value={editNextQuotationSeq} onChange={e => setEditNextQuotationSeq(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-xs font-bold" />
+                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Quotation No. Start</label>
+                          <input type="number" value={editNextQuotationSeq} onChange={e => setEditNextQuotationSeq(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs font-bold" />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Prefix (1-5 chars)</label>
-                          <input type="text" maxLength={5} placeholder="QUOT" value={editQuotationPrefix} onChange={e => setEditQuotationPrefix(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-xs uppercase font-bold" />
+                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Prefix (1-5 chars)</label>
+                          <input type="text" maxLength={5} placeholder="QUOT" value={editQuotationPrefix} onChange={e => setEditQuotationPrefix(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs uppercase font-bold" />
                         </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Tenant Granular Module Access */}
-                  <div className="space-y-2 pt-2 border-t border-gray-200">
-                    <label className="block text-gray-700 font-bold">Tenant Granular Module Access</label>
-                    <div className="grid grid-cols-2 gap-2 bg-gray-50 p-3 rounded-xl border border-gray-200">
+                  <div className="space-y-2.5 pt-2 border-t border-slate-200">
+                    <label className="block text-slate-700 font-bold">Tenant Granular Module Access</label>
+                    <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
                       <label className="flex items-center space-x-2 cursor-pointer">
-                        <input type="checkbox" checked={editHasPos} onChange={e => setEditHasPos(e.target.checked)} className="rounded text-emerald-600 focus:ring-0" />
-                        <span className="font-semibold text-gray-800">POS Terminal</span>
+                        <input type="checkbox" checked={editHasPos} onChange={e => setEditHasPos(e.target.checked)} className="rounded bg-white border-slate-300 text-blue-600 focus:ring-0 w-4 h-4" />
+                        <span className="font-semibold text-slate-800">POS Terminal</span>
                       </label>
                       <label className="flex items-center space-x-2 cursor-pointer">
-                        <input type="checkbox" checked={editHasKds} onChange={e => setEditHasKds(e.target.checked)} className="rounded text-emerald-600 focus:ring-0" />
-                        <span className="font-semibold text-gray-800">Kitchen KDS</span>
+                        <input type="checkbox" checked={editHasKds} onChange={e => setEditHasKds(e.target.checked)} className="rounded bg-white border-slate-300 text-blue-600 focus:ring-0 w-4 h-4" />
+                        <span className="font-semibold text-slate-800">Kitchen KDS</span>
                       </label>
                       <label className="flex items-center space-x-2 cursor-pointer">
-                        <input type="checkbox" checked={editHasDispatchQueue} onChange={e => setEditHasDispatchQueue(e.target.checked)} className="rounded text-emerald-600 focus:ring-0" />
-                        <span className="font-semibold text-gray-800">Dispatch Queue</span>
+                        <input type="checkbox" checked={editHasDispatchQueue} onChange={e => setEditHasDispatchQueue(e.target.checked)} className="rounded bg-white border-slate-300 text-blue-600 focus:ring-0 w-4 h-4" />
+                        <span className="font-semibold text-slate-800">Dispatch Queue</span>
                       </label>
                       <label className="flex items-center space-x-2 cursor-pointer">
-                        <input type="checkbox" checked={editHasErp} onChange={e => setEditHasErp(e.target.checked)} className="rounded text-emerald-600 focus:ring-0" />
-                        <span className="font-semibold text-gray-800">ERP & Finance</span>
+                        <input type="checkbox" checked={editHasErp} onChange={e => setEditHasErp(e.target.checked)} className="rounded bg-white border-slate-300 text-blue-600 focus:ring-0 w-4 h-4" />
+                        <span className="font-semibold text-slate-800">ERP & Finance</span>
                       </label>
                       <label className="flex items-center space-x-2 cursor-pointer">
-                        <input type="checkbox" checked={editHasTables} onChange={e => setEditHasTables(e.target.checked)} className="rounded text-emerald-600 focus:ring-0" />
-                        <span className="font-semibold text-gray-800">Dine-In Tables</span>
+                        <input type="checkbox" checked={editHasTables} onChange={e => setEditHasTables(e.target.checked)} className="rounded bg-white border-slate-300 text-blue-600 focus:ring-0 w-4 h-4" />
+                        <span className="font-semibold text-slate-800">Dine-In Tables</span>
                       </label>
                     </div>
                   </div>
 
-                  <div className="space-y-2 pt-2 border-t border-gray-200">
-                    <label className="block text-gray-700 font-bold">Business Logo</label>
-                    <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-xl border border-gray-200">
-                      <div className="w-12 h-12 bg-white rounded-xl border border-gray-200 flex items-center justify-center overflow-hidden shrink-0 p-1">
+                  <div className="space-y-2 pt-2 border-t border-slate-200">
+                    <label className="block text-slate-700 font-bold">Business Logo</label>
+                    <div className="flex items-center space-x-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                      <div className="w-12 h-12 bg-white rounded-xl border border-slate-200 flex items-center justify-center overflow-hidden shrink-0 p-1">
                         {editLogoUrl ? (
                           <img src={editLogoUrl} alt="" className="w-full h-full object-contain" />
                         ) : (
@@ -2903,7 +2916,7 @@ export default function TenantDashboard({ params }: PageProps) {
                           type="file" 
                           accept="image/*" 
                           onChange={handleLogoUpload}
-                          className="w-full text-[10px] text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-[10px] file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500 cursor-pointer"
+                          className="w-full text-[10px] text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-[10px] file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer"
                         />
                         {uploadingLogo && <span className="text-[10px] text-amber-600 animate-pulse mt-1 block font-bold">Uploading logo...</span>}
                       </div>
@@ -2914,15 +2927,15 @@ export default function TenantDashboard({ params }: PageProps) {
                         value={editLogoUrl} 
                         onChange={e => setEditLogoUrl(e.target.value)} 
                         placeholder="Or enter public image URL path..."
-                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 font-mono text-[11px]" 
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 font-mono text-[11px]" 
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-2 pt-2 border-t border-gray-200">
-                    <label className="block text-gray-700 font-bold">Custom Welcome Banner</label>
-                    <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-xl border border-gray-200">
-                      <div className="w-16 h-10 bg-white rounded-lg border border-gray-200 flex items-center justify-center overflow-hidden shrink-0">
+                  <div className="space-y-2 pt-2 border-t border-slate-200">
+                    <label className="block text-slate-700 font-bold">Custom Welcome Banner</label>
+                    <div className="flex items-center space-x-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                      <div className="w-16 h-10 bg-white rounded-xl border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
                         {editBannerUrl ? (
                           <img src={editBannerUrl} alt="" className="w-full h-full object-cover" />
                         ) : (
@@ -2934,7 +2947,7 @@ export default function TenantDashboard({ params }: PageProps) {
                           type="file" 
                           accept="image/*" 
                           onChange={handleBannerUpload}
-                          className="w-full text-[10px] text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500 cursor-pointer"
+                          className="w-full text-[10px] text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-[10px] file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer"
                         />
                         {uploadingBanner && <span className="text-[10px] text-amber-600 animate-pulse mt-1 block font-bold">Uploading banner...</span>}
                       </div>
@@ -2945,63 +2958,63 @@ export default function TenantDashboard({ params }: PageProps) {
                         value={editBannerUrl} 
                         onChange={e => setEditBannerUrl(e.target.value)} 
                         placeholder="Or enter banner image URL..."
-                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 font-mono text-[11px]" 
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 font-mono text-[11px]" 
                       />
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-gray-200">
-                    <label className="block text-gray-700 font-bold mb-1">Contact / WhatsApp Number</label>
+                  <div className="pt-2 border-t border-slate-200">
+                    <label className="block text-slate-700 font-bold mb-1">Contact / WhatsApp Number</label>
                     <input 
                       type="text" 
                       value={editPhone} 
                       onChange={e => setEditPhone(e.target.value)} 
                       placeholder="+92 300 0000000"
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-gray-900 focus:outline-none focus:border-emerald-500 font-mono"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:outline-none focus:border-blue-600 font-mono"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-gray-700 font-bold mb-1">Business E-Mail</label>
+                    <label className="block text-slate-700 font-bold mb-1">Business E-Mail</label>
                     <input 
                       type="email" 
                       value={editEmail} 
                       onChange={e => setEditEmail(e.target.value)} 
                       placeholder="store@domain.com"
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-gray-900 focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:outline-none focus:border-blue-600"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-gray-700 font-bold mb-1">Business Website URL</label>
+                    <label className="block text-slate-700 font-bold mb-1">Business Website URL</label>
                     <input 
                       type="text" 
                       value={editWebUrl} 
                       onChange={e => setEditWebUrl(e.target.value)} 
                       placeholder="https://yourdomain.com"
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-gray-900 focus:outline-none focus:border-emerald-500 font-mono"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:outline-none focus:border-blue-600 font-mono"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-gray-700 font-bold mb-1">Business Address</label>
+                    <label className="block text-slate-700 font-bold mb-1">Business Address</label>
                     <textarea 
                       rows={2}
                       value={editAddress} 
                       onChange={e => setEditAddress(e.target.value)} 
                       placeholder="Street, Area, City"
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-gray-900 focus:outline-none focus:border-emerald-500 resize-none"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:outline-none focus:border-blue-600 resize-none"
                     />
                   </div>
                 </form>
               </div>
 
-              <div className="p-6 border-t border-gray-200 bg-gray-50 space-y-3">
+              <div className="p-6 border-t border-slate-200 bg-slate-50 space-y-3">
                 <button 
                   type="submit" 
                   form="business-settings-form"
                   disabled={savingSettings || uploadingLogo || uploadingBanner}
-                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold rounded-xl transition shadow-sm text-xs cursor-pointer"
+                  className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-bold rounded-xl transition shadow-md shadow-blue-500/20 text-xs cursor-pointer border border-blue-400/30"
                 >
                   {savingSettings ? 'Saving Changes...' : 'Save Credentials 💾'}
                 </button>
@@ -3009,7 +3022,7 @@ export default function TenantDashboard({ params }: PageProps) {
                 <button 
                   type="button"
                   onClick={handleSignOut}
-                  className="w-full py-2.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl font-bold transition text-xs flex items-center justify-center space-x-2 shadow-2xs cursor-pointer"
+                  className="w-full py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-xl font-bold transition text-xs flex items-center justify-center space-x-2 shadow-2xs cursor-pointer"
                 >
                   <span>🚪</span>
                   <span>Sign Out of Store</span>
