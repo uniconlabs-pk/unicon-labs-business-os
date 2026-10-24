@@ -82,8 +82,41 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     return {}
   })
 
+  // Hydrate tableMetadata from localStorage for per-table customer/waiter isolation
+  const [tableMetadata, setTableMetadata] = useState<{ [key: string]: { customerName: string, customerPhone: string, selectedWaiter: any, waiterSearchInput: string } }>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`pos_table_metadata_${slug}`)
+      if (saved) {
+        try { return JSON.parse(saved) } catch (e) { return {} }
+      }
+    }
+    return {}
+  })
+
+  // Persist table metadata to localStorage on change
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`pos_table_metadata_${slug}`, JSON.stringify(tableMetadata))
+    }
+  }, [tableMetadata, slug])
+
   const [tableOrderNumbers, setTableOrderNumbers] = useState<{ [key: string]: { code: string, intVal: number } }>({})
   const [reservations, setReservations] = useState<any[]>([])
+
+  // Auto-update tableMetadata when customer or waiter changes on an active dine-in table
+  useEffect(() => {
+    if (profile?.modules?.hasTables && serviceType === 'DINE-IN' && selectedTable) {
+      setTableMetadata(prev => ({
+        ...prev,
+        [selectedTable.id]: {
+          customerName,
+          customerPhone,
+          selectedWaiter,
+          waiterSearchInput
+        }
+      }))
+    }
+  }, [customerName, customerPhone, selectedWaiter, waiterSearchInput, selectedTable, profile?.modules?.hasTables, serviceType])
 
   // Hydrate generalCart from localStorage for browser refresh persistence
   const [generalCart, setGeneralCart] = useState<any[]>(() => {
@@ -678,6 +711,23 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
   const handleTableSelect = async (t: any) => {
     setSelectedTable(t)
+
+    // Load isolated table metadata if it exists, otherwise initialize clean defaults
+    if (profile?.modules?.hasTables && serviceType === 'DINE-IN') {
+      const meta = tableMetadata[t.id]
+      if (meta) {
+        setCustomerName(meta.customerName || 'Walk-In Customer')
+        setCustomerPhone(meta.customerPhone || '')
+        setSelectedWaiter(meta.selectedWaiter || null)
+        setWaiterSearchInput(meta.waiterSearchInput || '')
+      } else {
+        setCustomerName('Walk-In Customer')
+        setCustomerPhone('')
+        setSelectedWaiter(null)
+        setWaiterSearchInput('')
+      }
+    }
+
     if (business?.id) {
       const { data: latestBiz } = await supabase
         .from('businesses')
@@ -1075,6 +1125,11 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
         delete updatedCarts[selectedTable.id]
         setTableCarts(updatedCarts)
         localStorage.setItem(`pos_table_carts_${slug}`, JSON.stringify(updatedCarts))
+
+        const updatedMeta = { ...tableMetadata }
+        delete updatedMeta[selectedTable.id]
+        setTableMetadata(updatedMeta)
+        localStorage.setItem(`pos_table_metadata_${slug}`, JSON.stringify(updatedMeta))
       } else {
         localStorage.removeItem(`pos_general_cart_${slug}`)
       }
@@ -1661,8 +1716,15 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
       const updatedCarts = { ...tableCarts }
       delete updatedCarts[selectedTable.id]
       setTableCarts(updatedCarts)
+
+      // Clear table metadata record on settlement
+      const updatedMeta = { ...tableMetadata }
+      delete updatedMeta[selectedTable.id]
+      setTableMetadata(updatedMeta)
+
       if (typeof window !== 'undefined') {
         localStorage.setItem(`pos_table_carts_${slug}`, JSON.stringify(updatedCarts))
+        localStorage.setItem(`pos_table_metadata_${slug}`, JSON.stringify(updatedMeta))
       }
 
       setTableOrderNumbers(prev => {
@@ -3222,7 +3284,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
                         type="button"
                         onClick={() => { setSingleReceivedCash(-1) }}
                         className={`py-2 rounded-lg font-bold text-xs border cursor-pointer ${
-                          singleReceivedCash === -1 
+                          singleMethod === 'CASH' && singleReceivedCash === -1 
                             ? 'bg-emerald-700 text-white border-emerald-700' 
                             : isDarkMode ? 'bg-slate-800 text-slate-200 border-slate-700' : 'bg-white text-gray-800 border-gray-300'
                         }`}

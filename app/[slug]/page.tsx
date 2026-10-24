@@ -1241,7 +1241,7 @@ export default function TenantDashboard({ params }: PageProps) {
               }`}
             >
               <svg className="w-5 h-5 shrink-0 stroke-current fill-none stroke-[2]" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
-              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 tracking-wide">HOME CONTROL</span>
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 tracking-wide">HOME</span>
             </a>
 
             {effectiveModules.hasPOS && (
@@ -1298,7 +1298,7 @@ export default function TenantDashboard({ params }: PageProps) {
             {business?.has_catering_quotation === true && (
               <a 
                 href={`/${slug}/quotation`} 
-                className="flex items-center space-x-3.5 px-3 py-3 rounded-2xl text-amber-700 hover:bg-amber-50 font-semibold text-xs transition-all duration-200 whitespace-nowrap border border-amber-200"
+                className="flex items-center space-x-3.5 px-3 py-3 rounded-2xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-semibold text-xs transition-all duration-200 whitespace-nowrap"
               >
                 <svg className="w-5 h-5 shrink-0 stroke-current fill-none stroke-[2]" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" x2="8" y1="13" y2="13" /><line x1="16" x2="8" y1="17" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>
                 <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 tracking-wide">Catering Quotations</span>
@@ -1383,7 +1383,7 @@ export default function TenantDashboard({ params }: PageProps) {
         <div className="p-4 border-t border-slate-100 bg-slate-50 whitespace-nowrap">
           <button 
             onClick={handleSignOut}
-            className="w-full py-2.5 bg-white hover:bg-red-50 text-slate-700 hover:text-red-600 rounded-xl font-bold text-xs transition-all duration-200 flex items-center justify-center space-x-2 border border-slate-200 hover:border-red-200 shadow-2xs"
+            className="w-full py-2.5 px-3 bg-white hover:bg-red-50 text-slate-700 hover:text-red-600 rounded-xl font-bold text-xs transition-all duration-200 flex items-center justify-start group-hover:space-x-2 border border-slate-200 hover:border-red-200 shadow-2xs cursor-pointer"
           >
             <svg className="w-4 h-4 shrink-0 stroke-current fill-none stroke-[2]" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" x2="9" y1="12" y2="12" /></svg>
             <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">Sign Out</span>
@@ -1396,7 +1396,7 @@ export default function TenantDashboard({ params }: PageProps) {
         
         {/* STREAMLINED HERO COMMAND HEADER WITH INTEGRATED WELCOME BANNER BACKGROUND */}
         <header 
-          className="sticky top-0 px-8 py-10 flex justify-between items-center shrink-0 z-30 shadow-md bg-cover bg-center border-b border-blue-200 text-white relative overflow-hidden"
+          className="sticky top-0 px-8 py-8 flex justify-between items-center shrink-0 z-30 shadow-md bg-cover bg-center border-b border-blue-200 text-white relative overflow-hidden"
           style={{
             backgroundImage: `linear-gradient(to right, rgba(15, 23, 42, 0.95) 40%, rgba(30, 41, 59, 0.85) 80%, rgba(30, 41, 59, 0.5) 100%), url('${activeBannerImg}')`
           }}
@@ -1404,18 +1404,15 @@ export default function TenantDashboard({ params }: PageProps) {
           <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 via-transparent to-indigo-600/30 pointer-events-none"></div>
           
           <div className="relative z-10 max-w-xl space-y-1.5">
-            <span className="bg-blue-600/30 border border-blue-400/40 text-blue-200 text-[9px] font-black uppercase px-2.5 py-0.5 rounded-lg tracking-widest backdrop-blur-md shadow-inner">
-              Active {profile.displayName} Portal
-            </span>
-            <h2 className="text-sm font-black uppercase text-white tracking-wider">
-              {activeReportView === null && `Welcome back, ${business?.name || 'Dashboard'}`}
+            <h2 className="text-xl font-black text-white tracking-wider">
+              {activeReportView === null && <><span className="normal-case font-extrabold">Welcome !...</span> {(business?.name || 'Dashboard').toUpperCase()}</>}
               {activeReportView === 'sales' && 'Advanced Sales Report & Audit Hub'}
               {activeReportView === 'sales_returns' && 'Sales Return Passes & Audit Hub'}
               {activeReportView === 'cash_liquidity' && 'Cash Liquidity & Inflow Realization Hub'}
               {activeReportView === 'customers' && 'Customer Database & CRM Directory'}
               {activeReportView === 'staff' && 'Staff Directory & Security Badge Hub'}
             </h2>
-            <p className="text-[10px] text-slate-300 leading-relaxed font-medium">Manage your catalog, POS terminals, staff access, and live business operations with high-performance real-time telemetry.</p>
+            <p className="text-[14px] text-slate-300 leading-relaxed font-medium">Manage your catalog, POS terminals, staff access, and live business operations with high-performance real-time telemetry.</p>
           </div>
 
           <div className="relative z-10 flex items-center space-x-3">
@@ -1427,7 +1424,7 @@ export default function TenantDashboard({ params }: PageProps) {
                 ← Back to Home Dashboard
               </button>
             )}
-            <div className="hidden md:flex flex-col items-end space-y-1">
+            <div className="hidden md:flex flex-col items-end space-y-2">
               <div className="px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 backdrop-blur-xl shadow-md text-right">
                 <span className="text-[9px] text-slate-300 block uppercase font-bold">System Status</span>
                 <span className="text-[10px] font-mono font-black text-emerald-400 flex items-center space-x-1.5">
@@ -1435,6 +1432,9 @@ export default function TenantDashboard({ params }: PageProps) {
                   <span>Operational 100%</span>
                 </span>
               </div>
+              <span className="bg-blue-600/30 border border-blue-400/40 text-blue-200 text-[9px] font-black uppercase px-2.5 py-1 rounded-lg tracking-widest backdrop-blur-md shadow-inner text-right">
+                Active {profile.displayName} Portal
+              </span>
             </div>
           </div>
         </header>
@@ -1490,27 +1490,24 @@ export default function TenantDashboard({ params }: PageProps) {
                   </div>
 
                   <div className="h-48 flex items-end justify-between gap-1.5 pt-3 pb-2 px-3 border-b border-slate-100 bg-slate-50/70 rounded-2xl overflow-hidden shadow-inner">
-                    {salesTrendData.map((item, idx) => {
-                      const maxSale = Math.max(...salesTrendData.map(d => d.totalSale), 1)
-                      const heightPercent = Math.max(10, Math.round((item.totalSale / maxSale) * 100))
-                      return (
-                        <div 
-                          key={idx} 
-                          className="flex-1 flex flex-col items-center h-full justify-end cursor-pointer group/bar"
-                          onMouseEnter={() => setHoveredSalesDay(item)}
-                          onMouseLeave={() => setHoveredSalesDay(null)}
-                        >
-                          <div 
-                            className="w-full bg-gradient-to-t from-blue-600 to-indigo-500 group-hover/bar:from-blue-500 group-hover/bar:to-indigo-400 rounded-t-md transition-all duration-300 shadow-sm"
-                            style={{ height: `${heightPercent}%` }}
-                          />
-                          <span className="text-[8px] font-mono text-slate-400 mt-2 truncate w-full text-center group-hover/bar:text-slate-900 transition-colors font-medium">
-                            {salesDaysFilter === 30 && idx % 3 !== 0 ? '' : item.formattedDate}
-                          </span>
-                        </div>
-                      )
-                    })}
-                  </div>
+    {salesTrendData.map((item, idx) => {
+      const maxSale = Math.max(...salesTrendData.map(d => d.totalSale), 1)
+      const heightPercent = Math.max(10, Math.round((item.totalSale / maxSale) * 100))
+      return (
+        <div 
+          key={idx} 
+          className="flex-1 flex flex-col items-center h-full justify-end cursor-pointer group/bar"
+          onMouseEnter={() => setHoveredSalesDay(item)}
+          onMouseLeave={() => setHoveredSalesDay(null)}
+        >
+          <div 
+            className="w-full bg-gradient-to-t from-blue-600 to-indigo-500 group-hover/bar:from-blue-500 group-hover/bar:to-indigo-400 rounded-t-md transition-all duration-300 shadow-sm"
+            style={{ height: `${heightPercent}%` }}
+          />
+        </div>
+      )
+    })}
+  </div>
 
                   <div className="flex justify-between items-center pt-2 text-[11px]">
                     <span className="text-slate-500 font-medium">Total Period Sales:</span>
@@ -2807,101 +2804,73 @@ export default function TenantDashboard({ params }: PageProps) {
                 <form onSubmit={handleSaveSettings} id="business-settings-form" className="space-y-4 text-xs">
                   
                   {/* Sequence Starting Points & Prefixes Configuration */}
-                  <div className="space-y-3 pt-1">
-                    <label className="block text-slate-700 font-bold uppercase tracking-wider text-[11px]">Sequence Starting Points & Prefixes</label>
-                    <p className="text-[10px] text-slate-500">Configure starting number and custom 1–5 letter prefix for each sequence.</p>
-                     
-                    <div className="space-y-2.5">
-                      {/* Order No */}
-                      <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Order No. Start</label>
-                          <input type="number" value={editNextOrderSeq} onChange={e => setEditNextOrderSeq(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs font-bold" />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Prefix (1-5 chars)</label>
-                          <input type="text" maxLength={5} placeholder="ORD" value={editOrderPrefix} onChange={e => setEditOrderPrefix(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs uppercase font-bold" />
-                        </div>
-                      </div>
-
-                      {/* Serial No */}
-                      <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Serial No. Start</label>
-                          <input type="number" value={editNextSerialSeq} onChange={e => setEditNextSerialSeq(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs font-bold" />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Prefix (1-5 chars)</label>
-                          <input type="text" maxLength={5} placeholder="SRL" value={editSerialPrefix} onChange={e => setEditSerialPrefix(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs uppercase font-bold" />
-                        </div>
-                      </div>
-
-                      {/* KOT No */}
-                      <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-600 mb-1">KOT No. Start</label>
-                          <input type="number" value={editNextKotSeq} onChange={e => setEditNextKotSeq(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs font-bold" />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Prefix (1-5 chars)</label>
-                          <input type="text" maxLength={5} placeholder="KOT" value={editKotPrefix} onChange={e => setEditKotPrefix(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs uppercase font-bold" />
-                        </div>
-                      </div>
-
-                      {/* SRR No */}
-                      <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-600 mb-1">SRR No. Start</label>
-                          <input type="number" value={editNextSrrSeq} onChange={e => setEditNextSrrSeq(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs font-bold" />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Prefix (1-5 chars)</label>
-                          <input type="text" maxLength={5} placeholder="SRR" value={editSrrPrefix} onChange={e => setEditSrrPrefix(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs uppercase font-bold" />
-                        </div>
-                      </div>
-
-                      {/* Quotation No */}
-                      <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Quotation No. Start</label>
-                          <input type="number" value={editNextQuotationSeq} onChange={e => setEditNextQuotationSeq(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs font-bold" />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Prefix (1-5 chars)</label>
-                          <input type="text" maxLength={5} placeholder="QUOT" value={editQuotationPrefix} onChange={e => setEditQuotationPrefix(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs uppercase font-bold" />
-                        </div>
-                      </div>
+              <div className="space-y-3 pt-1">
+                <label className="block text-slate-700 font-bold uppercase tracking-wider text-[11px]">Sequence Starting Points & Prefixes</label>
+                <p className="text-[10px] text-slate-500">Configure starting number and custom 1–5 letter prefix for each sequence.</p>
+                  
+                <div className="space-y-2.5">
+                  {/* Order No */}
+                  <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Prefix (1-5 chars)</label>
+                      <input type="text" maxLength={5} placeholder="ORD" value={editOrderPrefix} onChange={e => setEditOrderPrefix(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs uppercase font-bold" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Order No. Start</label>
+                      <input type="number" value={editNextOrderSeq} onChange={e => setEditNextOrderSeq(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs font-bold" />
                     </div>
                   </div>
 
-                  {/* Tenant Granular Module Access */}
-                  <div className="space-y-2.5 pt-2 border-t border-slate-200">
-                    <label className="block text-slate-700 font-bold">Tenant Granular Module Access</label>
-                    <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
-                      <label className="flex items-center space-x-2 cursor-pointer">
-                        <input type="checkbox" checked={editHasPos} onChange={e => setEditHasPos(e.target.checked)} className="rounded bg-white border-slate-300 text-blue-600 focus:ring-0 w-4 h-4" />
-                        <span className="font-semibold text-slate-800">POS Terminal</span>
-                      </label>
-                      <label className="flex items-center space-x-2 cursor-pointer">
-                        <input type="checkbox" checked={editHasKds} onChange={e => setEditHasKds(e.target.checked)} className="rounded bg-white border-slate-300 text-blue-600 focus:ring-0 w-4 h-4" />
-                        <span className="font-semibold text-slate-800">Kitchen KDS</span>
-                      </label>
-                      <label className="flex items-center space-x-2 cursor-pointer">
-                        <input type="checkbox" checked={editHasDispatchQueue} onChange={e => setEditHasDispatchQueue(e.target.checked)} className="rounded bg-white border-slate-300 text-blue-600 focus:ring-0 w-4 h-4" />
-                        <span className="font-semibold text-slate-800">Dispatch Queue</span>
-                      </label>
-                      <label className="flex items-center space-x-2 cursor-pointer">
-                        <input type="checkbox" checked={editHasErp} onChange={e => setEditHasErp(e.target.checked)} className="rounded bg-white border-slate-300 text-blue-600 focus:ring-0 w-4 h-4" />
-                        <span className="font-semibold text-slate-800">ERP & Finance</span>
-                      </label>
-                      <label className="flex items-center space-x-2 cursor-pointer">
-                        <input type="checkbox" checked={editHasTables} onChange={e => setEditHasTables(e.target.checked)} className="rounded bg-white border-slate-300 text-blue-600 focus:ring-0 w-4 h-4" />
-                        <span className="font-semibold text-slate-800">Dine-In Tables</span>
-                      </label>
+                  {/* Serial No */}
+                  <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Prefix (1-5 chars)</label>
+                      <input type="text" maxLength={5} placeholder="SRL" value={editSerialPrefix} onChange={e => setEditSerialPrefix(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs uppercase font-bold" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Serial No. Start</label>
+                      <input type="number" value={editNextSerialSeq} onChange={e => setEditNextSerialSeq(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs font-bold" />
                     </div>
                   </div>
 
-                  <div className="space-y-2 pt-2 border-t border-slate-200">
+                  {/* KOT No */}
+                  <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Prefix (1-5 chars)</label>
+                      <input type="text" maxLength={5} placeholder="KOT" value={editKotPrefix} onChange={e => setEditKotPrefix(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs uppercase font-bold" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-1">KOT No. Start</label>
+                      <input type="number" value={editNextKotSeq} onChange={e => setEditNextKotSeq(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs font-bold" />
+                    </div>
+                  </div>
+
+                  {/* SRR No */}
+                  <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Prefix (1-5 chars)</label>
+                      <input type="text" maxLength={5} placeholder="SRR" value={editSrrPrefix} onChange={e => setEditSrrPrefix(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs uppercase font-bold" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-1">SRR No. Start</label>
+                      <input type="number" value={editNextSrrSeq} onChange={e => setEditNextSrrSeq(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs font-bold" />
+                    </div>
+                  </div>
+
+                  {/* Quotation No */}
+                  <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Prefix (1-5 chars)</label>
+                      <input type="text" maxLength={5} placeholder="QUOT" value={editQuotationPrefix} onChange={e => setEditQuotationPrefix(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs uppercase font-bold" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Quotation No. Start</label>
+                      <input type="number" value={editNextQuotationSeq} onChange={e => setEditNextQuotationSeq(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs font-bold" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+                    <div className="space-y-2 pt-2 border-t border-slate-200">
                     <label className="block text-slate-700 font-bold">Business Logo</label>
                     <div className="flex items-center space-x-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
                       <div className="w-12 h-12 bg-white rounded-xl border border-slate-200 flex items-center justify-center overflow-hidden shrink-0 p-1">
