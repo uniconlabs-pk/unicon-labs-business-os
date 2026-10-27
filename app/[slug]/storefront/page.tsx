@@ -107,7 +107,6 @@ export default function RestaurantStorefrontReplica({ params }: PageProps) {
           } else if (payload.eventType === 'UPDATE') {
             const updatedProd = payload.new
             setProducts(prev => {
-              // If show_on_storefront was toggled off, remove it from storefront list
               if (updatedProd.show_on_storefront === false) {
                 return prev.filter(p => p.id !== updatedProd.id)
               }
@@ -355,19 +354,6 @@ export default function RestaurantStorefrontReplica({ params }: PageProps) {
     return globalCust
   }
 
-    // 2. Associate Customer with Current Tenant in Junction Table
-    await supabase
-      .from('tenant_customers')
-      .upsert({
-        business_id: business.id,
-        customer_id: globalCust.id
-      }, {
-        onConflict: 'business_id,customer_id'
-      })
-
-    return globalCust
-  }
-
   const handlePlaceOrder = async () => {
     if (cart.length === 0) return
     if (!customerName.trim() || !customerPhone.trim()) {
@@ -381,7 +367,6 @@ export default function RestaurantStorefrontReplica({ params }: PageProps) {
 
     setIsCheckingOut(true)
     try {
-      // Sync to global master and link to tenant
       await syncStorefrontCustomer()
 
       const { data: bizData } = await supabase.from('businesses').select('next_order_seq').eq('id', business.id).single()
