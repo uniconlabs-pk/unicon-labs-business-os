@@ -10,7 +10,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-interface PageProps {
+interface PageProps {	
   params: Promise<{ slug: string }>
 }
 
@@ -48,6 +48,13 @@ export default function TenantDashboard({ params }: PageProps) {
   const [pendingOrdersForStaff, setPendingOrdersForStaff] = useState<any[]>([])
   const [settlementInputs, setSettlementInputs] = useState<{ [orderId: string]: { received: string; discount: string; notes: string } }>({})
   const [processingSettlement, setProcessingSettlement] = useState(false)
+
+  // Cash Liquidity Report Filters & Pagination States
+  const [filterLiquidityDateFrom, setFilterLiquidityDateFrom] = useState('')
+  const [filterLiquidityDateTo, setFilterLiquidityDateTo] = useState('')
+  const [filterLiquidityStaff, setFilterLiquidityStaff] = useState('ALL')
+  const [liquidityRowsPerPage, setLiquidityRowsPerPage] = useState<number>(25)
+  const [liquidityCurrentPage, setLiquidityCurrentPage] = useState<number>(1)
 
   // ESC key listener to close settlement drawer instantly (unless focused on search inputs)
   useEffect(() => {
@@ -392,21 +399,30 @@ export default function TenantDashboard({ params }: PageProps) {
     setLoadingSalesReturns(false)
   }
 
-  // Fetch Cash Liquidity Transactions
-  const fetchCashLiquidityReport = async () => {
-    if (!business?.id) return
-    setLoadingLiquidity(true)
-    const { data, error } = await supabase
-      .from('cash_liquidity_transactions')
-      .select('*')
-      .eq('business_id', business.id)
-      .order('created_at', { ascending: false })
+  // Fetch Cash Liquidity Transactions with Order Number join
+const fetchCashLiquidityReport = async () => {
+  if (!business?.id) return
+  setLoadingLiquidity(true)
+  const { data, error } = await supabase
+    .from('cash_liquidity_transactions')
+    .select(`
+      *,
+      orders (
+        order_number
+      )
+    `)
+    .eq('business_id', business.id)
+    .order('created_at', { ascending: false })
 
-    if (!error && data) {
-      setCashLiquidityData(data)
-    }
-    setLoadingLiquidity(false)
+  if (!error && data) {
+    const mapped = data.map((txn: any) => ({
+      ...txn,
+      orders: Array.isArray(txn.orders) ? txn.orders[0] || null : txn.orders || null
+    }))
+    setCashLiquidityData(mapped)
   }
+  setLoadingLiquidity(false)
+}
 
   // Fetch Pending Orders for a Specific Staff Member or 3rd Party Rider
   const fetchPendingOrdersForStaff = async (staffIdentifier: string) => {
@@ -491,8 +507,9 @@ export default function TenantDashboard({ params }: PageProps) {
         if (ord.settlement_status === 'SETTLED') continue
 
         const billed = parseFloat(ord.total_amount) || 0
-        const received = parseFloat(input.received) || 0
         const discount = parseFloat(input.discount) || 0
+        // Correctly calculate net cash received as billed amount minus discount/shortage
+        const netReceived = Math.max(0, billed - discount)
 
         await supabase.from('cash_liquidity_transactions').insert([{
           business_id: business.id,
@@ -500,7 +517,7 @@ export default function TenantDashboard({ params }: PageProps) {
           staff_id: staffIdToSave,
           staff_name: staffNameVal,
           billed_amount: billed,
-          amount_received: received,
+          amount_received: netReceived,
           discount_amount: discount,
           payment_method: 'CASH',
           notes: input.notes || 'Batch cash drop settlement'
@@ -514,6 +531,11 @@ export default function TenantDashboard({ params }: PageProps) {
       }
 
       alert('Batch cash drop settled successfully! Ledgers updated.')
+      setPendingOrdersForStaff([])
+      setSettlementInputs({})
+      setSelectedStaffForSettlement('')
+      setWaiterSearch('')
+      setRiderSearch('')
       setShowSettlementModal(false)
       fetchSalesReport()
       if (activeReportView === 'cash_liquidity') fetchCashLiquidityReport()
@@ -703,6 +725,66 @@ export default function TenantDashboard({ params }: PageProps) {
       return true
     })
   }, [staffList, staffFilterId, staffFilterName, staffFilterRole, staffFilterDept])
+
+  // Filtered Cash Liquidity Data Computation
+  const filteredCashLiquidityData = useMemo(() => {
+    return cashLiquidityData.map(txn => {
+      const billed = parseFloat(txn.billed_amount) || 0
+      const discount = parseFloat(txn.discount_amount) || 0
+      const netReceived = Math.max(0, billed - discount)
+      return { ...txn, computed_net_received: netReceived }
+    }).filter(txn => {
+      if (filterLiquidityDateFrom) {
+        const txnDate = new Date(txn.created_at).toISOString().split('T')[0]
+        if (txnDate < filterLiquidityDateFrom) return false
+      }
+      if (filterLiquidityDateTo) {
+        const txnDate = new Date(txn.created_at).toISOString().split('T')[0]
+        if (txnDate > filterLiquidityDateTo) return false
+      }
+      if (filterLiquidityStaff !== 'ALL') {
+        if ((txn.staff_name || '').trim().toLowerCase() !== filterLiquidityStaff.trim().toLowerCase()) return false
+      }
+      return true
+    })
+  }, [cashLiquidityData, filterLiquidityDateFrom, filterLiquidityDateTo, filterLiquidityStaff])
+
+  // Grand Totals across all filtered records
+  const liquidityGrandTotals = useMemo(() => {
+    return filteredCashLiquidityData.reduce((acc, txn) => {
+      acc.billed += parseFloat(txn.billed_amount) || 0
+      acc.discount += parseFloat(txn.discount_amount) || 0
+      acc.received += parseFloat(txn.computed_net_received) || 0
+      return acc
+    }, { billed: 0, discount: 0, received: 0 })
+  }, [filteredCashLiquidityData])
+
+  // Pagination Slice
+  const paginatedLiquidityData = useMemo(() => {
+    const start = (liquidityCurrentPage - 1) * liquidityRowsPerPage
+    return filteredCashLiquidityData.slice(start, start + liquidityRowsPerPage)
+  }, [filteredCashLiquidityData, liquidityCurrentPage, liquidityRowsPerPage])
+
+  const liquidityTotalPages = Math.ceil(filteredCashLiquidityData.length / liquidityRowsPerPage) || 1
+
+  // Page Subtotals for active page
+  const liquidityPageSubtotals = useMemo(() => {
+    return paginatedLiquidityData.reduce((acc, txn) => {
+      acc.billed += parseFloat(txn.billed_amount) || 0
+      acc.discount += parseFloat(txn.discount_amount) || 0
+      acc.received += parseFloat(txn.computed_net_received) || 0
+      return acc
+    }, { billed: 0, discount: 0, received: 0 })
+  }, [paginatedLiquidityData])
+
+  // Unique staff names for filter dropdown
+  const uniqueLiquidityStaffNames = useMemo(() => {
+    const names = new Set<string>()
+    cashLiquidityData.forEach(t => {
+      if (t.staff_name) names.add(t.staff_name.trim())
+    })
+    return Array.from(names)
+  }, [cashLiquidityData])
 
   // REAL-TIME WEBSOCKET SUBSCRIPTION FOR TENANT DASHBOARD & ACTIVE SESSIONS SYNC
   useEffect(() => {
@@ -2077,24 +2159,63 @@ export default function TenantDashboard({ params }: PageProps) {
               {/* SUB-VIEW: CASH LIQUIDITY REPORT */}
               {activeReportView === 'cash_liquidity' && (
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
-                    <div>
-                      <h3 className="font-black text-slate-900 uppercase tracking-wider text-xs">Cash Liquidity & Inflow Realization</h3>
-                      <p className="text-[10px] text-slate-500 mt-0.5">Tracks actual real cash drops deposited by staff and riders, excluding pending receivables.</p>
+                  <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h3 className="font-black text-slate-900 uppercase tracking-wider text-xs">Cash Liquidity & Inflow Realization</h3>
+                        <p className="text-[10px] text-slate-500 mt-0.5">Tracks actual real cash drops deposited by staff and riders, excluding pending receivables.</p>
+                      </div>
+                      <button
+                        onClick={() => { setShowSettlementModal(true); }}
+                        className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl text-xs transition-all cursor-pointer shadow-md shadow-blue-500/20 border border-blue-400/30"
+                      >
+                        + Process Staff Cash Drop / Batch Settlement 💵
+                      </button>
                     </div>
-                    <button
-                      onClick={() => { setShowSettlementModal(true); }}
-                      className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl text-xs transition-all cursor-pointer shadow-md shadow-blue-500/20 border border-blue-400/30"
-                    >
-                      + Process Staff Cash Drop / Batch Settlement 💵
-                    </button>
+
+                    <div className="pt-3 border-t border-slate-100 grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Date From</label>
+                        <input type="date" value={filterLiquidityDateFrom} onChange={e => { setFilterLiquidityDateFrom(e.target.value); setLiquidityCurrentPage(1); }} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 font-mono text-xs" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Date To</label>
+                        <input type="date" value={filterLiquidityDateTo} onChange={e => { setFilterLiquidityDateTo(e.target.value); setLiquidityCurrentPage(1); }} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 font-mono text-xs" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Staff / Collector</label>
+                        <select value={filterLiquidityStaff} onChange={e => { setFilterLiquidityStaff(e.target.value); setLiquidityCurrentPage(1); }} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 font-bold text-xs">
+                          <option value="ALL">ALL STAFF MEMBERS</option>
+                          {uniqueLiquidityStaffNames.map(name => (
+                            <option key={name} value={name}>{name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Rows Per Page</label>
+                        <select value={liquidityRowsPerPage} onChange={e => { setLiquidityRowsPerPage(Number(e.target.value)); setLiquidityCurrentPage(1); }} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 font-bold text-xs">
+                          <option value={25}>25 per page</option>
+                          <option value={50}>50 per page</option>
+                          <option value={100}>100 per page</option>
+                        </select>
+                      </div>
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => { setFilterLiquidityDateFrom(''); setFilterLiquidityDateTo(''); setFilterLiquidityStaff('ALL'); setLiquidityCurrentPage(1); }}
+                          className="w-full py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs transition cursor-pointer"
+                        >
+                          Clear Filters 🔄
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
                     <table className="w-full text-left text-xs">
                       <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b border-slate-200">
                         <tr>
-                          <th className="p-3.5">Date/Time</th>
+                          <th className="p-3.5">Order # / Date</th>
                           <th className="p-3.5">Staff / Collector</th>
                           <th className="p-3.5">Payment Method</th>
                           <th className="p-3.5">Billed Amount</th>
@@ -2105,23 +2226,74 @@ export default function TenantDashboard({ params }: PageProps) {
                       <tbody className="divide-y divide-slate-100">
                         {loadingLiquidity ? (
                           <tr><td colSpan={6} className="text-center py-12 text-slate-400 font-bold">Querying liquidity logs...</td></tr>
-                        ) : cashLiquidityData.length > 0 ? (
-                          cashLiquidityData.map(txn => (
-                            <tr key={txn.id} className="hover:bg-slate-50 transition">
-                              <td className="p-3.5 font-mono text-[10px] text-slate-400">{new Date(txn.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</td>
-                              <td className="p-3.5 font-bold text-slate-900">{txn.staff_name || 'Staff Member'}</td>
-                              <td className="p-3.5"><span className="bg-blue-50 text-blue-700 border border-blue-200 font-bold px-2 py-0.5 rounded text-[9px] uppercase">{txn.payment_method}</span></td>
-                              <td className="p-3.5 font-mono text-slate-700">{business?.currency_symbol || 'Rs.'} {txn.billed_amount}</td>
-                              <td className="p-3.5 font-mono text-rose-600">{business?.currency_symbol || 'Rs.'} {txn.discount_amount || '0.00'}</td>
-                              <td className="p-3.5 text-right font-mono font-black text-blue-600 text-sm">{business?.currency_symbol || 'Rs.'} {txn.amount_received}</td>
-                            </tr>
-                          ))
+                        ) : paginatedLiquidityData.length > 0 ? (
+                          paginatedLiquidityData.map(txn => {
+                            const netReceivedVal = parseFloat(txn.amount_received) || 0
+                            const orderNumStr = txn.orders?.order_number ? `KB-${String(txn.orders.order_number).padStart(6, '0')}` : 'N/A'
+
+                            return (
+                              <tr key={txn.id} className="hover:bg-slate-50 transition">
+                                <td className="p-3.5">
+                                  <div className="font-mono font-black text-slate-900">{orderNumStr}</div>
+                                  <div className="text-[10px] text-slate-400 font-mono">{new Date(txn.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</div>
+                                </td>
+                                <td className="p-3.5 font-bold text-slate-900">{txn.staff_name || 'Staff Member'}</td>
+                                <td className="p-3.5"><span className="bg-blue-50 text-blue-700 border border-blue-200 font-bold px-2 py-0.5 rounded text-[9px] uppercase">{txn.payment_method}</span></td>
+                                <td className="p-3.5 font-mono text-slate-700">{business?.currency_symbol || 'Rs.'} {txn.billed_amount}</td>
+                                <td className="p-3.5 font-mono text-rose-600">{business?.currency_symbol || 'Rs.'} {txn.discount_amount || '0.00'}</td>
+                                <td className="p-3.5 text-right font-mono font-black text-blue-600 text-sm">{business?.currency_symbol || 'Rs.'} {netReceivedVal.toFixed(2)}</td>
+                              </tr>
+                            )
+                          })
                         ) : (
                           <tr><td colSpan={6} className="text-center py-12 text-slate-400 font-medium">No cash liquidity transactions recorded yet.</td></tr>
                         )}
                       </tbody>
+
+                      {paginatedLiquidityData.length > 0 && (
+                        <tfoot className="bg-slate-50 border-t-2 border-slate-200 font-mono font-bold text-xs">
+                          <tr>
+                            <td colSpan={3} className="p-3.5 uppercase text-[10px] text-slate-500">Page Subtotal (Showing {paginatedLiquidityData.length} of {filteredCashLiquidityData.length})</td>
+                            <td className="p-3.5 text-slate-800">{business?.currency_symbol || 'Rs.'} {liquidityPageSubtotals.billed.toFixed(2)}</td>
+                            <td className="p-3.5 text-rose-600">{business?.currency_symbol || 'Rs.'} {liquidityPageSubtotals.discount.toFixed(2)}</td>
+                            <td className="p-3.5 text-right text-blue-600 font-black">{business?.currency_symbol || 'Rs.'} {liquidityPageSubtotals.received.toFixed(2)}</td>
+                          </tr>
+                          <tr className="bg-slate-100 border-t border-slate-200 text-slate-900">
+                            <td colSpan={3} className="p-3.5 uppercase text-[11px] font-black">Grand Total (All Filtered Records)</td>
+                            <td className="p-3.5 font-black">{business?.currency_symbol || 'Rs.'} {liquidityGrandTotals.billed.toFixed(2)}</td>
+                            <td className="p-3.5 font-black text-rose-600">{business?.currency_symbol || 'Rs.'} {liquidityGrandTotals.discount.toFixed(2)}</td>
+                            <td className="p-3.5 text-right font-black text-blue-600 text-sm">{business?.currency_symbol || 'Rs.'} {liquidityGrandTotals.received.toFixed(2)}</td>
+                          </tr>
+                        </tfoot>
+                      )}
                     </table>
                   </div>
+
+                  {liquidityTotalPages > 1 && (
+                    <div className="flex justify-between items-center bg-white p-4 rounded-3xl border border-slate-200 shadow-sm">
+                      <span className="text-[11px] text-slate-500 font-medium">
+                        Page <span className="font-bold text-slate-800">{liquidityCurrentPage}</span> of <span className="font-bold text-slate-800">{liquidityTotalPages}</span>
+                      </span>
+                      <div className="flex space-x-2">
+                        <button
+                          type="button"
+                          disabled={liquidityCurrentPage === 1}
+                          onClick={() => setLiquidityCurrentPage(prev => Math.max(1, prev - 1))}
+                          className="px-3.5 py-1.5 bg-slate-200 hover:bg-slate-300 disabled:opacity-40 rounded-xl font-bold text-xs transition cursor-pointer"
+                        >
+                          ← Previous
+                        </button>
+                        <button
+                          type="button"
+                          disabled={liquidityCurrentPage === liquidityTotalPages}
+                          onClick={() => setLiquidityCurrentPage(prev => Math.min(liquidityTotalPages, prev + 1))}
+                          className="px-3.5 py-1.5 bg-slate-200 hover:bg-slate-300 disabled:opacity-40 rounded-xl font-bold text-xs transition cursor-pointer"
+                        >
+                          Next →
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -2596,7 +2768,7 @@ export default function TenantDashboard({ params }: PageProps) {
                 {badgePreviewStaff.role} • Dept: {badgePreviewStaff.department || 'General'} • PIN: <span className="font-mono font-bold text-slate-900">{badgePreviewStaff.pin_code}</span>
               </p>
             </div>
-            
+              
             <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200 flex flex-col items-center justify-center shadow-inner">
               <div id="staff-qr-badge-svg" className="bg-white p-3 rounded-2xl shadow-md border border-slate-200">
                 <QRCodeSVG value={badgePreviewStaff.qr_token || 'N/A'} size={144} level="H" includeMargin={true} />
@@ -2819,73 +2991,74 @@ export default function TenantDashboard({ params }: PageProps) {
                 <form onSubmit={handleSaveSettings} id="business-settings-form" className="space-y-4 text-xs">
                   
                   {/* Sequence Starting Points & Prefixes Configuration */}
-              <div className="space-y-3 pt-1">
-                <label className="block text-slate-700 font-bold uppercase tracking-wider text-[11px]">Sequence Starting Points & Prefixes</label>
-                <p className="text-[10px] text-slate-500">Configure starting number and custom 1–5 letter prefix for each sequence.</p>
-                  
-                <div className="space-y-2.5">
-                  {/* Order No */}
-                  <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Prefix (1-5 chars)</label>
-                      <input type="text" maxLength={5} placeholder="ORD" value={editOrderPrefix} onChange={e => setEditOrderPrefix(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs uppercase font-bold" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Order No. Start</label>
-                      <input type="number" value={editNextOrderSeq} onChange={e => setEditNextOrderSeq(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs font-bold" />
+                  <div className="space-y-3 pt-1">
+                    <label className="block text-slate-700 font-bold uppercase tracking-wider text-[11px]">Sequence Starting Points & Prefixes</label>
+                    <p className="text-[10px] text-slate-500">Configure starting number and custom 1–5 letter prefix for each sequence.</p>
+                      
+                    <div className="space-y-2.5">
+                      {/* Order No */}
+                      <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Prefix (1-5 chars)</label>
+                          <input type="text" maxLength={5} placeholder="ORD" value={editOrderPrefix} onChange={e => setEditOrderPrefix(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs uppercase font-bold" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Order No. Start</label>
+                          <input type="number" value={editNextOrderSeq} onChange={e => setEditNextOrderSeq(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs font-bold" />
+                        </div>
+                      </div>
+
+                      {/* Serial No */}
+                      <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Prefix (1-5 chars)</label>
+                          <input type="text" maxLength={5} placeholder="SRL" value={editSerialPrefix} onChange={e => setEditSerialPrefix(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs uppercase font-bold" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Serial No. Start</label>
+                          <input type="number" value={editNextSerialSeq} onChange={e => setEditNextSerialSeq(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs font-bold" />
+                        </div>
+                      </div>
+
+                      {/* KOT No */}
+                      <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Prefix (1-5 chars)</label>
+                          <input type="text" maxLength={5} placeholder="KOT" value={editKotPrefix} onChange={e => setEditKotPrefix(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs uppercase font-bold" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 mb-1">KOT No. Start</label>
+                          <input type="number" value={editNextKotSeq} onChange={e => setEditNextKotSeq(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs font-bold" />
+                        </div>
+                      </div>
+
+                      {/* SRR No */}
+                      <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Prefix (1-5 chars)</label>
+                          <input type="text" maxLength={5} placeholder="SRR" value={editSrrPrefix} onChange={e => setEditSrrPrefix(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs uppercase font-bold" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 mb-1">SRR No. Start</label>
+                          <input type="number" value={editNextSrrSeq} onChange={e => setEditNextSrrSeq(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs font-bold" />
+                        </div>
+                      </div>
+
+                      {/* Quotation No */}
+                      <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Prefix (1-5 chars)</label>
+                          <input type="text" maxLength={5} placeholder="QUOT" value={editQuotationPrefix} onChange={e => setEditQuotationPrefix(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs uppercase font-bold" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Quotation No. Start</label>
+                          <input type="number" value={editNextQuotationSeq} onChange={e => setEditNextQuotationSeq(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs font-bold" />
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Serial No */}
-                  <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Prefix (1-5 chars)</label>
-                      <input type="text" maxLength={5} placeholder="SRL" value={editSerialPrefix} onChange={e => setEditSerialPrefix(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs uppercase font-bold" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Serial No. Start</label>
-                      <input type="number" value={editNextSerialSeq} onChange={e => setEditNextSerialSeq(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs font-bold" />
-                    </div>
-                  </div>
-
-                  {/* KOT No */}
-                  <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Prefix (1-5 chars)</label>
-                      <input type="text" maxLength={5} placeholder="KOT" value={editKotPrefix} onChange={e => setEditKotPrefix(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs uppercase font-bold" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-600 mb-1">KOT No. Start</label>
-                      <input type="number" value={editNextKotSeq} onChange={e => setEditNextKotSeq(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs font-bold" />
-                    </div>
-                  </div>
-
-                  {/* SRR No */}
-                  <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Prefix (1-5 chars)</label>
-                      <input type="text" maxLength={5} placeholder="SRR" value={editSrrPrefix} onChange={e => setEditSrrPrefix(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs uppercase font-bold" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-600 mb-1">SRR No. Start</label>
-                      <input type="number" value={editNextSrrSeq} onChange={e => setEditNextSrrSeq(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs font-bold" />
-                    </div>
-                  </div>
-
-                  {/* Quotation No */}
-                  <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Prefix (1-5 chars)</label>
-                      <input type="text" maxLength={5} placeholder="QUOT" value={editQuotationPrefix} onChange={e => setEditQuotationPrefix(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs uppercase font-bold" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-600 mb-1">Quotation No. Start</label>
-                      <input type="number" value={editNextQuotationSeq} onChange={e => setEditNextQuotationSeq(e.target.value)} className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-mono text-xs font-bold" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-                    <div className="space-y-2 pt-2 border-t border-slate-200">
+                  <div className="space-y-2 pt-2 border-t border-slate-200">
                     <label className="block text-slate-700 font-bold">Business Logo</label>
                     <div className="flex items-center space-x-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
                       <div className="w-12 h-12 bg-white rounded-xl border border-slate-200 flex items-center justify-center overflow-hidden shrink-0 p-1">

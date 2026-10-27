@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect, use, useMemo } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
 
@@ -21,6 +21,13 @@ export default function CashLiquidityReportPage({ params }: PageProps) {
   const [cashLiquidityData, setCashLiquidityData] = useState<any[]>([])
   const [loadingLiquidity, setLoadingLiquidity] = useState(false)
   const [staffList, setStaffList] = useState<any[]>([])
+
+  // Filtration & Pagination States
+  const [filterDateFrom, setFilterDateFrom] = useState('')
+  const [filterDateTo, setFilterDateTo] = useState('')
+  const [filterStaffName, setFilterStaffName] = useState('ALL')
+  const [rowsPerPage, setRowsPerPage] = useState<number>(25)
+  const [currentPage, setCurrentPage] = useState<number>(1)
 
   // Settlement Drawer States & Search filters
   const [showSettlementModal, setShowSettlementModal] = useState(false)
@@ -96,6 +103,7 @@ export default function CashLiquidityReportPage({ params }: PageProps) {
       .from('orders')
       .select('*')
       .eq('business_id', business.id)
+      .neq('settlement_status', 'SETTLED')
       .order('created_at', { ascending: false })
 
     if (!error && data) {
@@ -146,8 +154,8 @@ export default function CashLiquidityReportPage({ params }: PageProps) {
         if (!input) continue
 
         const billed = parseFloat(ord.total_amount) || 0
-        const received = parseFloat(input.received) || 0
         const discount = parseFloat(input.discount) || 0
+        const netReceived = Math.max(0, billed - discount)
 
         await supabase.from('cash_liquidity_transactions').insert([{
           business_id: business.id,
@@ -155,7 +163,7 @@ export default function CashLiquidityReportPage({ params }: PageProps) {
           staff_id: selectedStaffIdForSettlement,
           staff_name: staffFullName,
           billed_amount: billed,
-          amount_received: received,
+          amount_received: netReceived,
           discount_amount: discount,
           payment_method: 'CASH',
           notes: input.notes || 'Batch cash drop settlement'
@@ -169,6 +177,11 @@ export default function CashLiquidityReportPage({ params }: PageProps) {
       }
 
       alert('Batch cash drop settled successfully! Ledgers updated.')
+      setSelectedStaffIdForSettlement('')
+      setWaiterSearch('')
+      setRiderSearch('')
+      setPendingOrdersForStaff([])
+      setSettlementInputs({})
       setShowSettlementModal(false)
       fetchCashLiquidityReport(business.id)
     } catch (err: any) {
@@ -176,6 +189,61 @@ export default function CashLiquidityReportPage({ params }: PageProps) {
     }
     setProcessingSettlement(false)
   }
+
+  // Filtered Liquidity Data Computation
+  const filteredLiquidityData = useMemo(() => {
+    return cashLiquidityData.filter(txn => {
+      if (filterDateFrom) {
+        const txnDate = new Date(txn.created_at).toISOString().split('T')[0]
+        if (txnDate < filterDateFrom) return false
+      }
+      if (filterDateTo) {
+        const txnDate = new Date(txn.created_at).toISOString().split('T')[0]
+        if (txnDate > filterDateTo) return false
+      }
+      if (filterStaffName !== 'ALL') {
+        if ((txn.staff_name || '').trim().toLowerCase() !== filterStaffName.trim().toLowerCase()) return false
+      }
+      return true
+    })
+  }, [cashLiquidityData, filterDateFrom, filterDateTo, filterStaffName])
+
+  // Grand Totals across all filtered records
+  const grandTotals = useMemo(() => {
+    return filteredLiquidityData.reduce((acc, txn) => {
+      acc.billed += parseFloat(txn.billed_amount) || 0
+      acc.discount += parseFloat(txn.discount_amount) || 0
+      acc.received += parseFloat(txn.amount_received) || 0
+      return acc
+    }, { billed: 0, discount: 0, received: 0 })
+  }, [filteredLiquidityData])
+
+  // Pagination Slice
+  const paginatedLiquidityData = useMemo(() => {
+    const start = (currentPage - 1) * rowsPerPage
+    return filteredLiquidityData.slice(start, start + rowsPerPage)
+  }, [filteredLiquidityData, currentPage, rowsPerPage])
+
+  const totalPages = Math.ceil(filteredLiquidityData.length / rowsPerPage) || 1
+
+  // Page Subtotals for active page
+  const pageSubtotals = useMemo(() => {
+    return paginatedLiquidityData.reduce((acc, txn) => {
+      acc.billed += parseFloat(txn.billed_amount) || 0
+      acc.discount += parseFloat(txn.discount_amount) || 0
+      acc.received += parseFloat(txn.amount_received) || 0
+      return acc
+    }, { billed: 0, discount: 0, received: 0 })
+  }, [paginatedLiquidityData])
+
+  // Unique Staff list for filter dropdown
+  const uniqueStaffNames = useMemo(() => {
+    const names = new Set<string>()
+    cashLiquidityData.forEach(t => {
+      if (t.staff_name) names.add(t.staff_name.trim())
+    })
+    return Array.from(names)
+  }, [cashLiquidityData])
 
   // Filter staff lists strictly for Waiters and Riders with manual search capability
   const waitersList = staffList.filter(st => {
@@ -214,19 +282,61 @@ export default function CashLiquidityReportPage({ params }: PageProps) {
       </header>
 
       <main className="flex-1 px-8 pt-4 pb-8 max-w-7xl mx-auto w-full space-y-4 overflow-y-auto">
-        <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs">
-          <div>
-            <h3 className="font-black text-gray-900 uppercase tracking-wide text-xs">Cash Liquidity & Inflow Realization</h3>
-            <p className="text-[10px] text-gray-500">Tracks actual real cash drops deposited by staff and riders, excluding pending receivables.</p>
+        
+        {/* HEADER ACTION & FILTRATION HUB */}
+        <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs space-y-3">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="font-black text-gray-900 uppercase tracking-wide text-xs">Cash Liquidity & Inflow Realization</h3>
+              <p className="text-[10px] text-gray-500">Tracks actual real cash drops deposited by staff and riders, excluding pending receivables.</p>
+            </div>
+            <button
+              onClick={() => setShowSettlementModal(true)}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition cursor-pointer shadow-sm"
+            >
+              + Process Staff Cash Drop / Batch Settlement 💵
+            </button>
           </div>
-          <button
-            onClick={() => setShowSettlementModal(true)}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition cursor-pointer shadow-sm"
-          >
-            + Process Staff Cash Drop / Batch Settlement 💵
-          </button>
+
+          <div className="pt-3 border-t border-gray-100 grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+            <div>
+              <label className="block text-[10px] font-bold text-gray-500 mb-1">Date From</label>
+              <input type="date" value={filterDateFrom} onChange={e => { setFilterDateFrom(e.target.value); setCurrentPage(1); }} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 font-mono text-xs" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-gray-500 mb-1">Date To</label>
+              <input type="date" value={filterDateTo} onChange={e => { setFilterDateTo(e.target.value); setCurrentPage(1); }} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 font-mono text-xs" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-gray-500 mb-1">Staff / Collector</label>
+              <select value={filterStaffName} onChange={e => { setFilterStaffName(e.target.value); setCurrentPage(1); }} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 font-bold text-xs">
+                <option value="ALL">ALL STAFF MEMBERS</option>
+                {uniqueStaffNames.map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-gray-500 mb-1">Rows Per Page</label>
+              <select value={rowsPerPage} onChange={e => { setRowsPerPage(Number(e.target.value)); setCurrentPage(1); }} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 font-bold text-xs">
+                <option value={25}>25 per page</option>
+                <option value={50}>50 per page</option>
+                <option value={100}>100 per page</option>
+              </select>
+            </div>
+            <div>
+              <button
+                type="button"
+                onClick={() => { setFilterDateFrom(''); setFilterDateTo(''); setFilterStaffName('ALL'); setCurrentPage(1); }}
+                className="w-full py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold rounded-xl text-xs transition cursor-pointer"
+              >
+                Clear Filters 🔄
+              </button>
+            </div>
+          </div>
         </div>
 
+        {/* REPORT TABLE */}
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-2xs">
           <table className="w-full text-left text-xs">
             <thead className="bg-gray-100 text-gray-500 uppercase text-[10px] font-bold">
@@ -242,23 +352,74 @@ export default function CashLiquidityReportPage({ params }: PageProps) {
             <tbody className="divide-y divide-gray-100">
               {loadingLiquidity ? (
                 <tr><td colSpan={6} className="text-center py-12 text-gray-400 font-bold">Querying liquidity logs...</td></tr>
-              ) : cashLiquidityData.length > 0 ? (
-                cashLiquidityData.map(txn => (
-                  <tr key={txn.id} className="hover:bg-gray-50 transition">
-                    <td className="p-3 font-mono text-[10px] text-gray-500">{new Date(txn.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</td>
-                    <td className="p-3 font-bold text-gray-900">{txn.staff_name || 'Staff Member'}</td>
-                    <td className="p-3"><span className="bg-emerald-50 text-emerald-800 font-bold px-2 py-0.5 rounded text-[9px] uppercase">{txn.payment_method}</span></td>
-                    <td className="p-3 font-mono text-gray-700">{business?.currency_symbol || 'Rs.'} {txn.billed_amount}</td>
-                    <td className="p-3 font-mono text-rose-600">{business?.currency_symbol || 'Rs.'} {txn.discount_amount || '0.00'}</td>
-                    <td className="p-3 text-right font-mono font-black text-emerald-700 text-sm">{business?.currency_symbol || 'Rs.'} {txn.amount_received}</td>
-                  </tr>
-                ))
+              ) : paginatedLiquidityData.length > 0 ? (
+                paginatedLiquidityData.map(txn => {
+                  const netReceivedVal = parseFloat(txn.amount_received) || 0
+
+                  return (
+                    <tr key={txn.id} className="hover:bg-gray-50 transition">
+                      <td className="p-3 font-mono text-[10px] text-gray-500">{new Date(txn.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</td>
+                      <td className="p-3 font-bold text-gray-900">{txn.staff_name || 'Staff Member'}</td>
+                      <td className="p-3"><span className="bg-emerald-50 text-emerald-800 font-bold px-2 py-0.5 rounded text-[9px] uppercase">{txn.payment_method}</span></td>
+                      <td className="p-3 font-mono text-gray-700">{business?.currency_symbol || 'Rs.'} {txn.billed_amount}</td>
+                      <td className="p-3 font-mono text-rose-600">{business?.currency_symbol || 'Rs.'} {txn.discount_amount || '0.00'}</td>
+                      <td className="p-3 text-right font-mono font-black text-emerald-700 text-sm">
+                        {business?.currency_symbol || 'Rs.'} {netReceivedVal.toFixed(2)}
+                      </td>
+                    </tr>
+                  )
+                })
               ) : (
                 <tr><td colSpan={6} className="text-center py-12 text-gray-400">No cash liquidity transactions recorded yet.</td></tr>
               )}
             </tbody>
+            
+            {/* SUBTOTAL & GRAND TOTAL FOOTER ROWS */}
+            {paginatedLiquidityData.length > 0 && (
+              <tfoot className="bg-gray-50 border-t-2 border-gray-200 font-mono font-bold text-xs">
+                <tr>
+                  <td colSpan={3} className="p-3 uppercase text-[10px] text-gray-500">Page Subtotal (Showing {paginatedLiquidityData.length} of {filteredLiquidityData.length})</td>
+                  <td className="p-3 text-gray-800">{business?.currency_symbol || 'Rs.'} {pageSubtotals.billed.toFixed(2)}</td>
+                  <td className="p-3 text-rose-600">{business?.currency_symbol || 'Rs.'} {pageSubtotals.discount.toFixed(2)}</td>
+                  <td className="p-3 text-right text-emerald-700 font-black">{business?.currency_symbol || 'Rs.'} {pageSubtotals.received.toFixed(2)}</td>
+                </tr>
+                <tr className="bg-gray-100 border-t border-gray-200 text-gray-900">
+                  <td colSpan={3} className="p-3 uppercase text-[11px] font-black">Grand Total (All Filtered Records)</td>
+                  <td className="p-3 font-black">{business?.currency_symbol || 'Rs.'} {grandTotals.billed.toFixed(2)}</td>
+                  <td className="p-3 font-black text-rose-600">{business?.currency_symbol || 'Rs.'} {grandTotals.discount.toFixed(2)}</td>
+                  <td className="p-3 text-right font-black text-emerald-700 text-sm">{business?.currency_symbol || 'Rs.'} {grandTotals.received.toFixed(2)}</td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
+
+        {/* PAGINATION CONTROLS */}
+        {totalPages > 1 && (
+          <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs">
+            <span className="text-[11px] text-gray-500 font-medium">
+              Page <span className="font-bold text-gray-800">{currentPage}</span> of <span className="font-bold text-gray-800">{totalPages}</span>
+            </span>
+            <div className="flex space-x-2">
+              <button
+                type="button"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 disabled:opacity-40 rounded-xl font-bold text-xs transition cursor-pointer"
+              >
+                ← Previous
+              </button>
+              <button
+                type="button"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 disabled:opacity-40 rounded-xl font-bold text-xs transition cursor-pointer"
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* BATCH SETTLEMENT DRAWER */}
@@ -358,12 +519,9 @@ export default function CashLiquidityReportPage({ params }: PageProps) {
                                       value={input.received}
                                       onChange={e => {
                                         const val = e.target.value
-                                        const billed = parseFloat(ord.total_amount) || 0
-                                        const rec = parseFloat(val) || 0
-                                        const diff = Math.max(0, billed - rec)
                                         setSettlementInputs({
                                           ...settlementInputs,
-                                          [ord.id]: { ...input, received: val, discount: String(diff) }
+                                          [ord.id]: { ...input, received: val }
                                         })
                                       }}
                                       className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1 font-mono font-bold"
@@ -375,10 +533,16 @@ export default function CashLiquidityReportPage({ params }: PageProps) {
                                     <input
                                       type="number"
                                       value={input.discount}
-                                      onChange={e => setSettlementInputs({
-                                        ...settlementInputs,
-                                        [ord.id]: { ...input, discount: e.target.value }
-                                      })}
+                                      onChange={e => {
+                                        const discVal = e.target.value
+                                        const billed = parseFloat(ord.total_amount) || 0
+                                        const disc = parseFloat(discVal) || 0
+                                        const autoReceived = Math.max(0, billed - disc)
+                                        setSettlementInputs({
+                                          ...settlementInputs,
+                                          [ord.id]: { ...input, discount: discVal, received: String(autoReceived) }
+                                        })
+                                      }}
                                       className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1 font-mono text-rose-600 font-bold"
                                     />
                                   </div>
