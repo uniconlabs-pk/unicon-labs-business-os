@@ -523,18 +523,33 @@ export default function TenantDashboard({ params }: PageProps) {
     setProcessingSettlement(false)
   }
 
-  // Fetch Customer Database Data
+  // Fetch Customer Database Data via Tenant Association
   const fetchCustomerDatabase = async () => {
     if (!business?.id) return
     setLoadingCustomers(true)
+    
     const { data, error } = await supabase
-      .from('customers')
-      .select('*')
+      .from('tenant_customers')
+      .select(`
+        customer_id,
+        customers (
+          id,
+          name,
+          phone,
+          email,
+          loyalty_points,
+          default_address,
+          created_at,
+          updated_at
+        )
+      `)
       .eq('business_id', business.id)
-      .order('updated_at', { ascending: false })
 
     if (!error && data) {
-      setCustomerList(data)
+      const mappedCustomers = data.map((item: any) => item.customers).filter(Boolean)
+      setCustomerList(mappedCustomers)
+    } else {
+      console.error('Error fetching tenant customers:', error?.message)
     }
     setLoadingCustomers(false)
   }

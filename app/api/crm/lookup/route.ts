@@ -32,10 +32,10 @@ export async function GET(req: Request) {
 
     const suffix = rawClean.slice(-10)
 
+    // Search globally in the master customers table
     const { data: customers, error: custErr } = await supabase
       .from('customers')
-      .select('id, name, phone, email, default_address, business_id')
-      .eq('business_id', biz.id)
+      .select('id, name, phone, email, default_address')
       .or(`phone.ilike.%${rawClean}%,phone.ilike.%${suffix}%`)
       .limit(1)
 
@@ -46,7 +46,23 @@ export async function GET(req: Request) {
       })
     }
 
-    return NextResponse.json({ found: true, customer: customers[0] })
+    const matchedCustomer = customers[0]
+
+    // Fetch all saved delivery addresses for this customer globally
+    const { data: addresses } = await supabase
+      .from('customer_addresses')
+      .select('id, address_text, label, is_default')
+      .eq('customer_id', matchedCustomer.id)
+      .order('is_default', { ascending: false })
+
+    // Return matched global customer with their complete address book
+    return NextResponse.json({ 
+      found: true, 
+      customer: {
+        ...matchedCustomer,
+        addresses: addresses || []
+      } 
+    })
   } catch (err: any) {
     return NextResponse.json({ found: false, error: err.message }, { status: 500 })
   }

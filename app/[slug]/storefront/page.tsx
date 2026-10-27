@@ -318,6 +318,56 @@ export default function RestaurantStorefrontReplica({ params }: PageProps) {
   const deliveryFee = serviceType === 'DELIVERY' ? 150 : 0
   const grandTotal = subtotal + deliveryFee
 
+  const syncStorefrontCustomer = async () => {
+    if (!business?.id || !customerPhone.trim()) return null
+    const cleanName = customerName.trim() || 'Walk-In Customer'
+    const cleanPhone = customerPhone.trim()
+
+    // 1. Upsert into Global Master Customers Table (Unique globally by phone)
+    const { data: globalCust, error: custErr } = await supabase
+      .from('customers')
+      .upsert({
+        name: cleanName,
+        phone: cleanPhone,
+        default_address: deliveryAddress.trim() || null,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'phone'
+      })
+      .select()
+      .single()
+
+    if (custErr || !globalCust) {
+      console.error('Storefront global customer sync error:', custErr?.message)
+      return null
+    }
+
+    // 2. Associate Customer with Current Tenant in Junction Table
+    await supabase
+      .from('tenant_customers')
+      .upsert({
+        business_id: business.id,
+        customer_id: globalCust.id
+      }, {
+        onConflict: 'business_id,customer_id'
+      })
+
+    return globalCust
+  }
+
+    // 2. Associate Customer with Current Tenant in Junction Table
+    await supabase
+      .from('tenant_customers')
+      .upsert({
+        business_id: business.id,
+        customer_id: globalCust.id
+      }, {
+        onConflict: 'business_id,customer_id'
+      })
+
+    return globalCust
+  }
+
   const handlePlaceOrder = async () => {
     if (cart.length === 0) return
     if (!customerName.trim() || !customerPhone.trim()) {
@@ -331,6 +381,9 @@ export default function RestaurantStorefrontReplica({ params }: PageProps) {
 
     setIsCheckingOut(true)
     try {
+      // Sync to global master and link to tenant
+      await syncStorefrontCustomer()
+
       const { data: bizData } = await supabase.from('businesses').select('next_order_seq').eq('id', business.id).single()
       const nextSeq = Number(bizData?.next_order_seq ?? 100000)
       const orderCode = `KB-${String(nextSeq).padStart(6, '0')}`

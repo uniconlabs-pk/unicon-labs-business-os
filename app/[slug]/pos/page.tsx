@@ -36,6 +36,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
   const [serviceType, setServiceType] = useState<'DINE-IN' | 'TAKEAWAY' | 'DELIVERY' | 'COUNTER'>('TAKEAWAY')
   
   const [isDarkMode, setIsDarkMode] = useState(false)
+  const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState(false)
   
   const [waiters, setWaiters] = useState<any[]>([])
   const [selectedWaiter, setSelectedWaiter] = useState<any>(null)
@@ -44,6 +45,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
   const [customerPhone, setCustomerPhone] = useState('')
   const [deliveryAddress, setDeliveryAddress] = useState('')
   const [deliveryNote, setDeliveryNote] = useState('')
+  const [customerAddresses, setCustomerAddresses] = useState<any[]>([])
   const [crmStatus, setCrmStatus] = useState<'idle' | 'searching' | 'found' | 'new'>('idle')
 
   const [waiterSearchInput, setWaiterSearchInput] = useState('')
@@ -689,11 +691,22 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
           if (match.name) {
             setCustomerName(match.name)
           }
-          if (match.default_address) {
-            setDeliveryAddress(match.default_address)
+          
+          if (match.addresses && match.addresses.length > 0) {
+            setCustomerAddresses(match.addresses)
+            if (!deliveryAddress) {
+              setDeliveryAddress(match.addresses[0].address_text)
+            }
+          } else {
+            setCustomerAddresses([])
+            if (match.default_address) {
+              setDeliveryAddress(match.default_address)
+            }
           }
+
           setCrmStatus('found')
         } else {
+          setCustomerAddresses([])
           if (cleanPhone.length >= 9) {
             setCrmStatus('new')
           } else {
@@ -1116,6 +1129,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     setCustomerPhone('')
     setDeliveryAddress('')
     setDeliveryNote('')
+    setCustomerAddresses([])
     setCrmStatus('idle')
     setSelectedWaiter(null)
     setWaiterSearchInput('')
@@ -1140,22 +1154,56 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
     if (!business?.id || !customerPhone.trim()) return null
     const cleanName = customerName.trim() || 'Walk-In Customer'
     const cleanPhone = customerPhone.trim()
+    const currentAddress = deliveryAddress.trim()
 
-    const { data } = await supabase
+    // 1. Upsert into Global Master Customers Table (Unique globally by phone)
+    const { data: globalCust, error: custErr } = await supabase
       .from('customers')
       .upsert({
-        business_id: business.id,
         name: cleanName,
         phone: cleanPhone,
-        default_address: deliveryAddress.trim() || null,
+        default_address: currentAddress || null,
         updated_at: new Date().toISOString()
       }, {
-        onConflict: 'business_id,phone'
+        onConflict: 'phone'
       })
       .select()
       .single()
 
-    return data
+    if (custErr || !globalCust) {
+      console.error('Global customer sync error:', custErr?.message)
+      return null
+    }
+
+    // 2. Cleanly Associate Customer with Current Tenant (Zero Duplicates in tenant_customers)
+    await supabase
+      .from('tenant_customers')
+      .upsert({
+        business_id: business.id,
+        customer_id: globalCust.id
+      }, {
+        onConflict: 'business_id,customer_id'
+      })
+
+    // 3. Automatically add new delivery address if provided and not already saved
+    if (currentAddress) {
+      const { data: existingAddr } = await supabase
+        .from('customer_addresses')
+        .select('id')
+        .eq('customer_id', globalCust.id)
+        .eq('address_text', currentAddress)
+        .maybeSingle()
+
+      if (!existingAddr) {
+        await supabase.from('customer_addresses').insert({
+          customer_id: globalCust.id,
+          address_text: currentAddress,
+          label: 'POS Delivery Location'
+        })
+      }
+    }
+
+    return globalCust
   }
 
   const handleSaveNewCustomer = async (e: React.FormEvent) => {
@@ -1167,10 +1215,10 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
     setSavingNewCustomer(true)
     try {
-      const { data, error } = await supabase
+      // 1. Upsert into Global Master Customers Table (Unique globally by phone)
+      const { data: globalCust, error: custErr } = await supabase
         .from('customers')
         .upsert({
-          business_id: business.id,
           name: newCustNameInput.trim(),
           phone: customerPhone.trim(),
           email: newCustEmailInput.trim() || null,
@@ -1178,17 +1226,53 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
           loyalty_points: 0,
           updated_at: new Date().toISOString()
         }, {
-          onConflict: 'business_id,phone'
+          onConflict: 'phone'
         })
         .select()
         .single()
 
-      if (error) {
-        alert(`Failed to save customer: ${error.message}`)
-      } else if (data) {
-        setCustomerName(data.name)
-        if (data.default_address) {
-          setDeliveryAddress(data.default_address)
+      if (custErr) throw custErr
+
+      if (globalCust) {
+        // 2. Check existing association before inserting
+        const { data: existingAssoc } = await supabase
+          .from('tenant_customers')
+          .select('id')
+          .eq('business_id', business.id)
+          .eq('customer_id', globalCust.id)
+          .maybeSingle()
+
+        if (!existingAssoc) {
+          await supabase
+            .from('tenant_customers')
+            .insert({
+              business_id: business.id,
+              customer_id: globalCust.id
+            })
+        }
+
+        // 3. Save new address to customer_addresses if provided
+        const newAddr = newCustAddressInput.trim()
+        if (newAddr) {
+          const { data: existingAddr } = await supabase
+            .from('customer_addresses')
+            .select('id')
+            .eq('customer_id', globalCust.id)
+            .eq('address_text', newAddr)
+            .maybeSingle()
+
+          if (!existingAddr) {
+            await supabase.from('customer_addresses').insert({
+              customer_id: globalCust.id,
+              address_text: newAddr,
+              label: 'POS Registered'
+            })
+          }
+        }
+
+        setCustomerName(globalCust.name)
+        if (newAddr || globalCust.default_address) {
+          setDeliveryAddress(newAddr || globalCust.default_address)
         }
         setCrmStatus('found')
         setShowNewCustomerModal(false)
@@ -1984,226 +2068,246 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
 
       <div className="flex-1 flex overflow-hidden">
         
-        <aside className={`w-72 lg:w-80 border-r flex flex-col shrink-0 shadow-2xs transition-colors duration-300 ${isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-gray-200 text-gray-800'}`}>
-          <div className={`p-3 border-b space-y-2 transition-colors ${isDarkMode ? 'border-slate-800' : 'border-gray-200'}`}>
-            <div className={`grid grid-cols-3 gap-1 p-1 rounded-xl text-[11px] font-bold ${isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-gray-100 text-gray-600'}`}>
-              {(['DINE-IN', 'TAKEAWAY', 'DELIVERY'] as const).map(type => (
-                <button
-                  key={type}
-                  onClick={() => {
-                    setServiceType(type)
-                    if (type !== 'DINE-IN') {
-                      setSelectedTable(null)
-                    }
-                  }}
-                  className={`py-1.5 rounded-lg transition uppercase cursor-pointer ${serviceType === type ? 'bg-slate-900 text-white shadow-2xs' : 'hover:text-black dark:hover:text-white'}`}
-                >
-                  {type}
-                </button>
-              ))}
-            </div>
+        <aside className={`${isLeftSidebarCollapsed ? 'w-16 lg:w-20' : 'w-72 lg:w-80'} border-r flex flex-col shrink-0 shadow-2xs transition-all duration-300 relative ${isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-gray-200 text-gray-800'}`}>
+          {/* Collapse / Expand Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setIsLeftSidebarCollapsed(prev => !prev)}
+            className={`absolute -right-3 top-4 w-6 h-6 rounded-full border shadow-md flex items-center justify-center text-[10px] font-bold z-20 cursor-pointer transition ${
+              isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-100'
+            }`}
+            title={isLeftSidebarCollapsed ? 'Expand Left Sidebar' : 'Collapse Left Sidebar'}
+          >
+            {isLeftSidebarCollapsed ? '▶' : '◀'}
+          </button>
 
-            {profile.modules.hasTables && serviceType === 'DINE-IN' ? (
-              <>
-                <div className="flex justify-between items-center text-[11px] pt-1">
-                  <span className={`font-extrabold uppercase ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>🪑 DINE-IN TABLES</span>
-                  <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-[10px]">
-                    {freeTablesCount} Available
-                  </span>
-                </div>
-
-                <div className="flex items-center space-x-1 overflow-x-auto pb-1">
-                  <button 
-                    onClick={() => setActiveZone('ALL')}
-                    className={`px-3 py-1.5 rounded-lg transition text-[10px] font-bold uppercase whitespace-nowrap cursor-pointer ${activeZone === 'ALL' ? 'bg-black text-white shadow-2xs' : isDarkMode ? 'bg-slate-800 text-slate-400 hover:text-white' : 'bg-gray-100 text-gray-600 hover:text-black'}`}
-                  >
-                    ALL
-                  </button>
-                  {zones.map(z => (
-                    <button 
-                      key={z}
-                      onClick={() => setActiveZone(z)}
-                      className={`px-3 py-1.5 rounded-lg transition truncate px-2 uppercase text-[10px] font-bold whitespace-nowrap cursor-pointer ${activeZone === z ? 'bg-black text-white shadow-2xs' : isDarkMode ? 'bg-slate-800 text-slate-400 hover:text-white' : 'bg-gray-100 text-gray-600 hover:text-black'}`}
+          {!isLeftSidebarCollapsed ? (
+            <>
+              <div className={`p-3 border-b space-y-2 transition-colors ${isDarkMode ? 'border-slate-800' : 'border-gray-200'}`}>
+                <div className={`grid grid-cols-3 gap-1 p-1 rounded-xl text-[11px] font-bold ${isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-gray-100 text-gray-600'}`}>
+                  {(['DINE-IN', 'TAKEAWAY', 'DELIVERY'] as const).map(type => (
+                    <button
+                      key={type}
+                      onClick={() => {
+                        setServiceType(type)
+                        if (type !== 'DINE-IN') {
+                          setSelectedTable(null)
+                        }
+                      }}
+                      className={`py-1.5 rounded-lg transition uppercase cursor-pointer ${serviceType === type ? 'bg-slate-900 text-white shadow-2xs' : 'hover:text-black dark:hover:text-white'}`}
                     >
-                      📍 {z}
+                      {type}
                     </button>
                   ))}
                 </div>
-              </>
-            ) : (
-              <div className={`flex justify-between items-center pt-1 px-2 py-1.5 rounded-lg border ${isDarkMode ? 'bg-slate-800/60 border-slate-700/60 text-slate-200' : 'bg-gray-50 border-gray-100 text-gray-800'}`}>
-                <div>
-                  <span className="font-extrabold uppercase text-[11px] block">★ FAVORITE / FAST MOVING</span>
-                  <span className="text-[9px] text-gray-400">Drag & drop to rearrange</span>
-                </div>
-                <button
-                  onClick={() => setIsFavoriteManagerOpen(!isFavoriteManagerOpen)}
-                  className="px-2.5 py-1 bg-slate-900 text-white rounded-lg text-[10px] font-bold cursor-pointer"
-                >
-                  {isFavoriteManagerOpen ? 'Done' : 'Manage'}
-                </button>
-              </div>
-            )}
-          </div>
 
-          <div className="p-3 flex-1 overflow-y-auto space-y-4">
-            {profile.modules.hasTables && serviceType === 'DINE-IN' ? (
-              posGroupedZones.map(group => (
-                <div key={group.zoneName} className="space-y-2">
-                  {activeZone !== 'ALL' && (
-                    <div className={`flex justify-between items-center px-2.5 py-1.5 sticky top-0 z-10 border-y ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-gray-50 border-gray-200 text-gray-700'}`}>
-                      <span className="text-[10px] font-black uppercase">📍 Zone: {group.zoneName}</span>
-                      <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded ${isDarkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-200 text-gray-700'}`}>
-                        {group.tables.length}
+                {profile.modules.hasTables && serviceType === 'DINE-IN' ? (
+                  <>
+                    <div className="flex justify-between items-center text-[11px] pt-1">
+                      <span className={`font-extrabold uppercase ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>🪑 DINE-IN TABLES</span>
+                      <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-[10px]">
+                        {freeTablesCount} Available
                       </span>
                     </div>
-                  )}
-                  <div className="grid grid-cols-2 gap-2">
-                    {group.tables.map(t => {
-                      const isSelected = selectedTable?.id === t.id
-                      const isOccupied = t.status === 'occupied'
-                      const isReserved = t.status === 'reserved'
-                      const tableRes = reservations.find(r => r.table_id === t.id && r.status === 'RESERVED')
 
-                      let timeLeftStr = ''
-                      if (isReserved && tableRes) {
-                        const diffMs = new Date(tableRes.end_time).getTime() - currentTime.getTime()
-                        if (diffMs > 0) {
-                          const mins = Math.floor(diffMs / 60000)
-                          const secs = Math.floor((diffMs % 60000) / 1000)
-                          timeLeftStr = `${mins}m ${secs}s`
-                        } else {
-                          timeLeftStr = 'Expiring...'
-                        }
-                      }
-
-                      const statusText = isOccupied ? 'OCCUPIED' : isReserved ? 'RESERVED' : 'AVAILABLE'
-                      const statusColor = isOccupied ? 'text-red-500 font-black' : isReserved ? 'text-amber-500 font-black' : 'text-emerald-500 font-bold'
-                      const dotColor = isOccupied ? 'bg-red-500' : isReserved ? 'bg-amber-400' : 'bg-emerald-500'
-
-                      return (
-                        <div
-                          key={t.id}
-                          onClick={() => handleTableSelect(t)}
-                          className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between h-24 relative cursor-pointer ${
-                            isSelected 
-                              ? isDarkMode ? 'bg-slate-800 border-emerald-500 ring-1 ring-emerald-500 text-white' : 'bg-slate-50 border-slate-900 shadow-xs ring-1 ring-slate-900 text-gray-900' 
-                              : isOccupied 
-                              ? isDarkMode ? 'bg-red-950/30 border-red-900/50 text-slate-200' : 'bg-red-50/40 border-red-200 hover:border-red-300 text-gray-900' 
-                              : isReserved
-                              ? isDarkMode ? 'bg-amber-950/30 border-amber-900/50 text-slate-200' : 'bg-amber-50/40 border-amber-200 hover:border-amber-300 text-gray-900'
-                              : isDarkMode ? 'bg-slate-800/40 border-slate-700 text-slate-200' : 'bg-gray-50 border-gray-200 hover:border-gray-300 text-gray-900'
-                          }`}
-                        >
-                          <div className="flex justify-between items-center w-full">
-                            <span className="font-extrabold uppercase text-[9px] text-gray-400 truncate">{t.zone || t.zone_name || 'Table'}</span>
-                            <span className={`w-2 h-2 rounded-full ${dotColor} ${isOccupied ? 'animate-ping' : ''}`}></span>
-                          </div>
-                          <div className="font-mono font-black text-sm">{t.name || t.table_number}</div>
-
-                          {isReserved && timeLeftStr && (
-                            <div className="text-[9px] font-mono font-bold text-amber-800 bg-amber-100/80 px-1.5 py-0.5 rounded text-center">
-                              ⏱ {timeLeftStr} left
-                            </div>
-                          )}
-
-                          <div className="flex justify-between items-center text-[10px] font-medium pt-0.5">
-                            <span className="text-gray-400">{t.seats || t.capacity || 4} Seats</span>
-                            <span className={`uppercase text-[9px] ${statusColor}`}>
-                              {statusText}
-                            </span>
-                          </div>
-
-                          {isReserved && (
-                            <button
-                              onClick={(e) => handleTileMarkAttended(t.id, e)}
-                              className="w-full mt-1 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[9px] font-black uppercase tracking-wider shadow-2xs cursor-pointer"
-                            >
-                              ✓ Attended
-                            </button>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="space-y-2">
-                {!isFavoriteManagerOpen ? (
-                  <div className="grid grid-cols-2 gap-2">
-                    {favorites.length > 0 ? favorites.map((fav, idx) => (
-                      <div
-                        key={fav.id}
-                        draggable
-                        onDragStart={() => handleDragStart(idx)}
-                        onDragOver={(e) => handleDragOver(e, idx)}
-                        onDragEnd={handleDragEnd}
-                        onClick={() => handleProductClick(fav)}
-                        className={`border rounded-xl p-2.5 flex flex-col justify-between h-36 cursor-grab active:cursor-grabbing transition shadow-2xs relative group ${
-                          isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-100 hover:border-emerald-500' : 'bg-white border-gray-200 text-gray-900 hover:border-slate-900'
-                        }`}
+                    <div className="flex items-center space-x-1 overflow-x-auto pb-1">
+                      <button 
+                        onClick={() => setActiveZone('ALL')}
+                        className={`px-3 py-1.5 rounded-lg transition text-[10px] font-bold uppercase whitespace-nowrap cursor-pointer ${activeZone === 'ALL' ? 'bg-black text-white shadow-2xs' : isDarkMode ? 'bg-slate-800 text-slate-400 hover:text-white' : 'bg-gray-100 text-gray-600 hover:text-black'}`}
                       >
-                        <div className={`w-full h-16 rounded-lg border flex items-center justify-center overflow-hidden p-1 shrink-0 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-gray-50 border-gray-100'}`}>
-                          {fav.image_url ? (
-                            <img src={fav.image_url} alt={fav.name} className="w-full h-full object-contain drop-shadow-sm" />
-                          ) : (
-                            <span className="text-lg">📦</span>
-                          )}
-                        </div>
-                        <span className="font-bold text-[11px] truncate mt-1">{fav.name}</span>
-                        <div className="flex justify-between items-center text-[10px]">
-                          <span className="font-mono text-emerald-400 font-extrabold">{currencySymbol} {fav.price}</span>
-                          <span className="text-gray-400">⋮⋮</span>
-                        </div>
-                      </div>
-                    )) : (
-                      <div className="col-span-2 text-center py-10 text-gray-400 text-xs">
-                        No favorites set. Click "Manage" above to pin items.
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="text-[10px] font-bold text-gray-400 uppercase px-1">Toggle products to add/remove favorites:</div>
-                    <input
-                      type="text"
-                      placeholder="Search product to pin..."
-                      value={favSearchQuery}
-                      onChange={(e) => setFavSearchQuery(e.target.value)}
-                      className={`w-full border rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white focus:border-emerald-500' : 'bg-white border-gray-200 text-gray-900 focus:border-slate-900'}`}
-                    />
-                    <div className="max-h-[50vh] overflow-y-auto space-y-1">
-                      {visiblePosProducts
-                        .filter(p => p.name.toLowerCase().includes(favSearchQuery.toLowerCase()))
-                        .map(p => {
-                          const isFav = favorites.some(f => f.id === p.id)
-                          return (
-                            <div key={p.id} className={`flex justify-between items-center p-2 rounded-lg border ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-gray-50 border-gray-200 text-gray-900'}`}>
-                              <span className="text-xs font-semibold truncate pr-2">{p.name}</span>
-                              <button
-                                onClick={() => toggleProductFavorite(p)}
-                                className={`px-2.5 py-1 rounded-md text-[10px] font-bold cursor-pointer ${isFav ? 'bg-red-950/60 text-red-400' : 'bg-emerald-950/60 text-emerald-400'}`}
-                              >
-                                {isFav ? 'Remove' : '+ Pin'}
-                              </button>
-                            </div>
-                          )
-                        })}
+                        ALL
+                      </button>
+                      {zones.map(z => (
+                        <button 
+                          key={z}
+                          onClick={() => setActiveZone(z)}
+                          className={`px-3 py-1.5 rounded-lg transition truncate px-2 uppercase text-[10px] font-bold whitespace-nowrap cursor-pointer ${activeZone === z ? 'bg-black text-white shadow-2xs' : isDarkMode ? 'bg-slate-800 text-slate-400 hover:text-white' : 'bg-gray-100 text-gray-600 hover:text-black'}`}
+                        >
+                          📍 {z}
+                        </button>
+                      ))}
                     </div>
+                  </>
+                ) : (
+                  <div className={`flex justify-between items-center pt-1 px-2 py-1.5 rounded-lg border ${isDarkMode ? 'bg-slate-800/60 border-slate-700/60 text-slate-200' : 'bg-gray-50 border-gray-100 text-gray-800'}`}>
+                    <div>
+                      <span className="font-extrabold uppercase text-[11px] block">★ FAVORITE / FAST MOVING</span>
+                      <span className="text-[9px] text-gray-400">Drag & drop to rearrange</span>
+                    </div>
+                    <button
+                      onClick={() => setIsFavoriteManagerOpen(!isFavoriteManagerOpen)}
+                      className="px-2.5 py-1 bg-slate-900 text-white rounded-lg text-[10px] font-bold cursor-pointer"
+                    >
+                      {isFavoriteManagerOpen ? 'Done' : 'Manage'}
+                    </button>
                   </div>
                 )}
               </div>
-            )}
-          </div>
 
-          <div className={`p-3 border-t shrink-0 flex justify-center items-center ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
-            <img 
-              src="/unicon_badge.jpg" 
-              alt="UNICON LABS Digital Ecosystem Software & Web Development" 
-              className="w-full h-auto object-contain rounded-lg shadow-2xs"
-            />
-          </div>
+              <div className="p-3 flex-1 overflow-y-auto space-y-4">
+                {profile.modules.hasTables && serviceType === 'DINE-IN' ? (
+                  posGroupedZones.map(group => (
+                    <div key={group.zoneName} className="space-y-2">
+                      {activeZone !== 'ALL' && (
+                        <div className={`flex justify-between items-center px-2.5 py-1.5 sticky top-0 z-10 border-y ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-gray-50 border-gray-200 text-gray-700'}`}>
+                          <span className="text-[10px] font-black uppercase">📍 Zone: {group.zoneName}</span>
+                          <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded ${isDarkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-200 text-gray-700'}`}>
+                            {group.tables.length}
+                          </span>
+                        </div>
+                      )}
+                      <div className="grid grid-cols-2 gap-2">
+                        {group.tables.map(t => {
+                          const isSelected = selectedTable?.id === t.id
+                          const isOccupied = t.status === 'occupied'
+                          const isReserved = t.status === 'reserved'
+                          const tableRes = reservations.find(r => r.table_id === t.id && r.status === 'RESERVED')
+
+                          let timeLeftStr = ''
+                          if (isReserved && tableRes) {
+                            const diffMs = new Date(tableRes.end_time).getTime() - currentTime.getTime()
+                            if (diffMs > 0) {
+                              const mins = Math.floor(diffMs / 60000)
+                              const secs = Math.floor((diffMs % 60000) / 1000)
+                              timeLeftStr = `${mins}m ${secs}s`
+                            } else {
+                              timeLeftStr = 'Expiring...'
+                            }
+                          }
+
+                          const statusText = isOccupied ? 'OCCUPIED' : isReserved ? 'RESERVED' : 'AVAILABLE'
+                          const statusColor = isOccupied ? 'text-red-500 font-black' : isReserved ? 'text-amber-500 font-black' : 'text-emerald-500 font-bold'
+                          const dotColor = isOccupied ? 'bg-red-500' : isReserved ? 'bg-amber-400' : 'bg-emerald-500'
+
+                          return (
+                            <div
+                              key={t.id}
+                              onClick={() => handleTableSelect(t)}
+                              className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between h-24 relative cursor-pointer ${
+                                isSelected 
+                                  ? isDarkMode ? 'bg-slate-800 border-emerald-500 ring-1 ring-emerald-500 text-white' : 'bg-slate-50 border-slate-900 shadow-xs ring-1 ring-slate-900 text-gray-900' 
+                                  : isOccupied 
+                                  ? isDarkMode ? 'bg-red-950/30 border-red-900/50 text-slate-200' : 'bg-red-50/40 border-red-200 hover:border-red-300 text-gray-900' 
+                                  : isReserved
+                                  ? isDarkMode ? 'bg-amber-950/30 border-amber-900/50 text-slate-200' : 'bg-amber-50/40 border-amber-200 hover:border-amber-300 text-gray-900'
+                                  : isDarkMode ? 'bg-slate-800/40 border-slate-700 text-slate-200' : 'bg-gray-50 border-gray-200 hover:border-gray-300 text-gray-900'
+                              }`}
+                            >
+                              <div className="flex justify-between items-center w-full">
+                                <span className="font-extrabold uppercase text-[9px] text-gray-400 truncate">{t.zone || t.zone_name || 'Table'}</span>
+                                <span className={`w-2 h-2 rounded-full ${dotColor} ${isOccupied ? 'animate-ping' : ''}`}></span>
+                              </div>
+                              <div className="font-mono font-black text-sm">{t.name || t.table_number}</div>
+
+                              {isReserved && timeLeftStr && (
+                                <div className="text-[9px] font-mono font-bold text-amber-800 bg-amber-100/80 px-1.5 py-0.5 rounded text-center">
+                                  ⏱ {timeLeftStr} left
+                                </div>
+                              )}
+
+                              <div className="flex justify-between items-center text-[10px] font-medium pt-0.5">
+                                <span className="text-gray-400">{t.seats || t.capacity || 4} Seats</span>
+                                <span className={`uppercase text-[9px] ${statusColor}`}>
+                                  {statusText}
+                                </span>
+                              </div>
+
+                              {isReserved && (
+                                <button
+                                  onClick={(e) => handleTileMarkAttended(t.id, e)}
+                                  className="w-full mt-1 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[9px] font-black uppercase tracking-wider shadow-2xs cursor-pointer"
+                                >
+                                  ✓ Attended
+                                </button>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="space-y-2">
+                    {!isFavoriteManagerOpen ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        {favorites.length > 0 ? favorites.map((fav, idx) => (
+                          <div
+                            key={fav.id}
+                            draggable
+                            onDragStart={() => handleDragStart(idx)}
+                            onDragOver={(e) => handleDragOver(e, idx)}
+                            onDragEnd={handleDragEnd}
+                            onClick={() => handleProductClick(fav)}
+                            className={`border rounded-xl p-2.5 flex flex-col justify-between h-36 cursor-grab active:cursor-grabbing transition shadow-2xs relative group ${
+                              isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-100 hover:border-emerald-500' : 'bg-white border-gray-200 text-gray-900 hover:border-slate-900'
+                            }`}
+                          >
+                            <div className={`w-full h-16 rounded-lg border flex items-center justify-center overflow-hidden p-1 shrink-0 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-gray-50 border-gray-100'}`}>
+                              {fav.image_url ? (
+                                <img src={fav.image_url} alt={fav.name} className="w-full h-full object-contain drop-shadow-sm" />
+                              ) : (
+                                <span className="text-lg">📦</span>
+                              )}
+                            </div>
+                            <span className="font-bold text-[11px] truncate mt-1">{fav.name}</span>
+                            <div className="flex justify-between items-center text-[10px]">
+                              <span className="font-mono text-emerald-400 font-extrabold">{currencySymbol} {fav.price}</span>
+                              <span className="text-gray-400">⋮⋮</span>
+                            </div>
+                          </div>
+                        )) : (
+                          <div className="col-span-2 text-center py-10 text-gray-400 text-xs">
+                            No favorites set. Click "Manage" above to pin items.
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="text-[10px] font-bold text-gray-400 uppercase px-1">Toggle products to add/remove favorites:</div>
+                        <input
+                          type="text"
+                          placeholder="Search product to pin..."
+                          value={favSearchQuery}
+                          onChange={(e) => setFavSearchQuery(e.target.value)}
+                          className={`w-full border rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white focus:border-emerald-500' : 'bg-white border-gray-200 text-gray-900 focus:border-slate-900'}`}
+                        />
+                        <div className="max-h-[50vh] overflow-y-auto space-y-1">
+                          {visiblePosProducts
+                            .filter(p => p.name.toLowerCase().includes(favSearchQuery.toLowerCase()))
+                            .map(p => {
+                              const isFav = favorites.some(f => f.id === p.id)
+                              return (
+                                <div key={p.id} className={`flex justify-between items-center p-2 rounded-lg border ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-gray-50 border-gray-200 text-gray-900'}`}>
+                                  <span className="text-xs font-semibold truncate pr-2">{p.name}</span>
+                                  <button
+                                    onClick={() => toggleProductFavorite(p)}
+                                    className={`px-2.5 py-1 rounded-md text-[10px] font-bold cursor-pointer ${isFav ? 'bg-red-950/60 text-red-400' : 'bg-emerald-950/60 text-emerald-400'}`}
+                                  >
+                                    {isFav ? 'Remove' : '+ Pin'}
+                                  </button>
+                                </div>
+                              )
+                            })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className={`p-3 border-t shrink-0 flex justify-center items-center ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
+                <img 
+                  src="/unicon_badge.jpg" 
+                  alt="UNICON LABS Digital Ecosystem Software & Web Development" 
+                  className="w-full h-auto object-contain rounded-lg shadow-2xs"
+                />
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center p-2 text-center text-gray-400 cursor-pointer" onClick={() => setIsLeftSidebarCollapsed(false)} title="Click to Expand">
+              <span className="text-xs font-bold rotate-90 tracking-wider uppercase whitespace-nowrap">Tables / Favorites</span>
+            </div>
+          )}
         </aside>
 
         <section className={`flex-1 flex flex-col overflow-hidden transition-colors duration-300 ${isDarkMode ? 'bg-slate-950' : 'bg-gray-100'}`}>
@@ -2543,7 +2647,7 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
               </div>
               <button 
                 type="button" 
-                onClick={() => { setCustomerName('Walk-In Customer'); setCustomerPhone(''); setDeliveryAddress(''); setDeliveryNote(''); setCrmStatus('idle'); }}
+                onClick={() => { setCustomerName('Walk-In Customer'); setCustomerPhone(''); setDeliveryAddress(''); setDeliveryNote(''); setCustomerAddresses([]); setCrmStatus('idle'); }}
                 className="text-[9px] text-gray-400 hover:text-gray-200 font-bold cursor-pointer"
               >
                 Reset
@@ -2687,15 +2791,47 @@ export default function AdaptiveSmartPOSTerminal({ params }: PageProps) {
             )}
 
             {serviceType === 'DELIVERY' && (
-              <div className="space-y-1.5">
-                <input
-                  type="text"
-                  placeholder="Delivery Address * (Mandatory for Delivery)"
-                  value={deliveryAddress}
-                  onChange={e => setDeliveryAddress(e.target.value)}
-                  className={`w-full border rounded-lg px-2.5 py-1.5 font-medium focus:outline-none ${isDarkMode ? 'bg-slate-800 border-rose-900 text-white placeholder-slate-400' : 'bg-white border-rose-300 text-gray-900'}`}
-                  required
-                />
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-[10px]">
+                  <label className="font-bold text-gray-400 uppercase">Delivery Address *</label>
+                  {customerAddresses.length > 0 && (
+                    <span className="text-emerald-500 font-bold">{customerAddresses.length} Saved Location(s)</span>
+                  )}
+                </div>
+
+                {customerAddresses.length > 0 ? (
+                  <select
+                    value={deliveryAddress}
+                    onChange={e => {
+                      if (e.target.value === 'CUSTOM_NEW') {
+                        setDeliveryAddress('')
+                      } else {
+                        setDeliveryAddress(e.target.value)
+                      }
+                    }}
+                    className={`w-full border rounded-lg px-2.5 py-1.5 font-medium focus:outline-none cursor-pointer text-xs ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                  >
+                    <option value="" disabled>-- Select Saved Delivery Address --</option>
+                    {customerAddresses.map((addr) => (
+                      <option key={addr.id} value={addr.address_text}>
+                        📍 {addr.address_text}
+                      </option>
+                    ))}
+                    <option value="CUSTOM_NEW">➕ Type New / Different Address...</option>
+                  </select>
+                ) : null}
+
+                {(customerAddresses.length === 0 || !customerAddresses.some(a => a.address_text === deliveryAddress)) && (
+                  <input
+                    type="text"
+                    placeholder="Type delivery street, area, city..."
+                    value={deliveryAddress}
+                    onChange={e => setDeliveryAddress(e.target.value)}
+                    className={`w-full border rounded-lg px-2.5 py-1.5 font-medium focus:outline-none ${isDarkMode ? 'bg-slate-800 border-rose-900 text-white placeholder-slate-400' : 'bg-white border-rose-300 text-gray-900'}`}
+                    required
+                  />
+                )}
+
                 <input
                   type="text"
                   placeholder="Special Instruction Note (e.g. Ring bell twice)"
