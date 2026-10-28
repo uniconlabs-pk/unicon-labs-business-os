@@ -73,7 +73,7 @@ export default function TenantDashboard({ params }: PageProps) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [showSettlementModal])
 
-  // Reports Filter States
+  // Reports Filter States & Pagination
   const [salesReportData, setSalesReportData] = useState<any[]>([])
   const [loadingSales, setLoadingSales] = useState(false)
   const [filterDateFrom, setFilterDateFrom] = useState('')
@@ -84,6 +84,8 @@ export default function TenantDashboard({ params }: PageProps) {
   const [filterPaymentMode, setFilterPaymentMode] = useState('ALL')
   const [filterWaiterName, setFilterWaiterName] = useState('')
   const [filterRiderName, setFilterRiderName] = useState('')
+  const [salesRowsPerPage, setSalesRowsPerPage] = useState<number>(25)
+  const [salesCurrentPage, setSalesCurrentPage] = useState<number>(1)
 
   // Sales Return Report View & Filter States
   const [salesReturnData, setSalesReturnData] = useState<any[]>([])
@@ -96,12 +98,22 @@ export default function TenantDashboard({ params }: PageProps) {
   const [filterSrrItem, setFilterSrrItem] = useState('')
   const [filterSrrAuthorizedBy, setFilterSrrAuthorizedBy] = useState('')
 
-  // Customer Database States
+  // Customer Database States & CRUD Management States
   const [customerList, setCustomerList] = useState<any[]>([])
   const [loadingCustomers, setLoadingCustomers] = useState(false)
   const [filterCustName, setFilterCustName] = useState('')
   const [filterCustPhone, setFilterCustPhone] = useState('')
   const [filterCustOrigin, setFilterCustOrigin] = useState('ALL')
+
+  const [showCustomerModal, setShowCustomerModal] = useState(false)
+  const [editingCustomer, setEditingCustomer] = useState<any | null>(null)
+  const [custNameInput, setCustNameInput] = useState('')
+  const [custPhoneInput, setCustPhoneInput] = useState('')
+  const [custEmailInput, setCustEmailInput] = useState('')
+  const [custAddresses, setCustAddresses] = useState<string[]>([])
+  const [newAddressInput, setNewAddressInput] = useState('')
+  const [custDefaultAddressIndex, setCustDefaultAddressIndex] = useState<number>(0)
+  const [savingCustomer, setSavingCustomer] = useState(false)
 
   // Staff Database States
   const [staffFilterId, setStaffFilterId] = useState('')
@@ -400,29 +412,29 @@ export default function TenantDashboard({ params }: PageProps) {
   }
 
   // Fetch Cash Liquidity Transactions with Order Number join
-const fetchCashLiquidityReport = async () => {
-  if (!business?.id) return
-  setLoadingLiquidity(true)
-  const { data, error } = await supabase
-    .from('cash_liquidity_transactions')
-    .select(`
-      *,
-      orders (
-        order_number
-      )
-    `)
-    .eq('business_id', business.id)
-    .order('created_at', { ascending: false })
+  const fetchCashLiquidityReport = async () => {
+    if (!business?.id) return
+    setLoadingLiquidity(true)
+    const { data, error } = await supabase
+      .from('cash_liquidity_transactions')
+      .select(`
+        *,
+        orders (
+          order_number
+        )
+      `)
+      .eq('business_id', business.id)
+      .order('created_at', { ascending: false })
 
-  if (!error && data) {
-    const mapped = data.map((txn: any) => ({
-      ...txn,
-      orders: Array.isArray(txn.orders) ? txn.orders[0] || null : txn.orders || null
-    }))
-    setCashLiquidityData(mapped)
+    if (!error && data) {
+      const mapped = data.map((txn: any) => ({
+        ...txn,
+        orders: Array.isArray(txn.orders) ? txn.orders[0] || null : txn.orders || null
+      }))
+      setCashLiquidityData(mapped)
+    }
+    setLoadingLiquidity(false)
   }
-  setLoadingLiquidity(false)
-}
 
   // Fetch Pending Orders for a Specific Staff Member or 3rd Party Rider
   const fetchPendingOrdersForStaff = async (staffIdentifier: string) => {
@@ -508,7 +520,6 @@ const fetchCashLiquidityReport = async () => {
 
         const billed = parseFloat(ord.total_amount) || 0
         const discount = parseFloat(input.discount) || 0
-        // Correctly calculate net cash received as billed amount minus discount/shortage
         const netReceived = Math.max(0, billed - discount)
 
         await supabase.from('cash_liquidity_transactions').insert([{
@@ -546,6 +557,7 @@ const fetchCashLiquidityReport = async () => {
   }
 
   // Fetch Customer Database Data via Tenant Association
+  // --- Replace fetchCustomerDatabase with this precise section ---
   const fetchCustomerDatabase = async () => {
     if (!business?.id) return
     setLoadingCustomers(true)
@@ -560,9 +572,15 @@ const fetchCashLiquidityReport = async () => {
           phone,
           email,
           loyalty_points,
-          default_address,
           created_at,
-          updated_at
+          updated_at,
+          customer_addresses (
+            id,
+            address_text,
+            label,
+            is_default,
+            created_at
+          )
         )
       `)
       .eq('business_id', business.id)
@@ -574,6 +592,254 @@ const fetchCashLiquidityReport = async () => {
       console.error('Error fetching tenant customers:', error?.message)
     }
     setLoadingCustomers(false)
+  }
+
+  // Helper to Export Customer Database as CSV
+  const handleExportCustomersCSV = () => {
+    if (!filteredCustomers.length) {
+      alert('No customer records available to export.')
+      return
+    }
+
+    const headers = ['Customer Name', 'Phone', 'Email', 'Default Address', 'Origin']
+    const rows = filteredCustomers.map(cust => {
+      const addrsList = Array.isArray(cust.customer_addresses) ? cust.customer_addresses : []
+      const defaultAddrObj = addrsList.find((a: any) => a.is_default) || addrsList[0]
+      const defaultAddress = (defaultAddrObj?.address_text || cust.default_address || '').replace(/,/g, ' ')
+      
+      return [
+        `"${(cust.name || '').replace(/"/g, '--')}"`,
+        `"${(cust.phone || '').replace(/"/g, '')}"`,
+        `"${(cust.email || '').replace(/"/g, '')}"`,
+        `"${defaultAddress}"`,
+        `"${(cust.origin || 'POS')}"`
+      ].join(',')
+    })
+
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join('\n')
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement('a')
+    link.setAttribute('href', encodedUri)
+    link.setAttribute('download', `customer_database_${slug}_${new Date().toISOString().split('T')[0]}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  // Helper to Import Customer Database from CSV / XLS
+  const handleImportCustomersCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !business?.id) return
+
+    const reader = new FileReader()
+    reader.onload = async (event) => {
+      try {
+        const text = event.target?.result as string
+        const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
+        
+        if (lines.length < 2) {
+          alert('The uploaded file is empty or missing data rows.')
+          return
+        }
+
+        let importedCount = 0
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, '').trim())
+          const name = cols[0]
+          const phone = cols[1]
+          const email = cols[2]
+          const address = cols[3]
+
+          if (!name || !phone) continue
+
+          const { data: existingCust } = await supabase
+            .from('customers')
+            .select('id')
+            .eq('phone', phone)
+            .single()
+
+          let customerId = existingCust?.id
+
+          if (!customerId) {
+            const { data: newCust, error: custErr } = await supabase
+              .from('customers')
+              .insert([{ name, phone, email: email || null }])
+              .select()
+              .single()
+
+            if (!custErr && newCust) {
+              customerId = newCust.id
+              await supabase.from('tenant_customers').insert([{ business_id: business.id, customer_id: customerId }])
+            }
+          }
+
+          if (customerId && address) {
+            await supabase.from('customer_addresses').insert([{
+              customer_id: customerId,
+              address_text: address,
+              label: 'Imported Location',
+              is_default: true
+            }])
+          }
+
+          importedCount++
+        }
+
+        alert(`Successfully imported ${importedCount} customer record(s)!`)
+        fetchCustomerDatabase()
+      } catch (err: any) {
+        alert(`Import failed: ${err.message}`)
+      }
+      e.target.value = ''
+    }
+    reader.readAsText(file)
+  } 
+
+  // Customer Management Handlers (Add, Edit, Delete, Address management, Default Assignment)
+  const handleOpenAddCustomerModal = () => {
+    setEditingCustomer(null)
+    setCustNameInput('')
+    setCustPhoneInput('')
+    setCustEmailInput('')
+    setCustAddresses([])
+    setNewAddressInput('')
+    setCustDefaultAddressIndex(0)
+    setShowCustomerModal(true)
+  }
+
+  const handleOpenEditCustomerModal = (cust: any) => {
+    setEditingCustomer(cust)
+    setCustNameInput(cust.name || '')
+    setCustPhoneInput(cust.phone || '')
+    setCustEmailInput(cust.email || '')
+    
+    const addrsList = cust.customer_addresses || []
+    setCustAddresses(addrsList.map((a: any) => a.address_text))
+    
+    const defaultIdx = addrsList.findIndex((a: any) => a.is_default)
+    setCustDefaultAddressIndex(defaultIdx >= 0 ? defaultIdx : 0)
+    setNewAddressInput('')
+    setShowCustomerModal(true)
+  }
+
+  const handleAddCustomerAddress = () => {
+    const trimmed = newAddressInput.trim()
+    if (!trimmed) return
+    const updated = [...custAddresses, trimmed]
+    setCustAddresses(updated)
+    if (updated.length === 1) {
+      setCustDefaultAddressIndex(0)
+    }
+    setNewAddressInput('')
+  }
+
+  const handleRemoveCustomerAddress = (indexToRemove: number) => {
+    const updated = custAddresses.filter((_, idx) => idx !== indexToRemove)
+    setCustAddresses(updated)
+    if (custDefaultAddressIndex >= updated.length) {
+      setCustDefaultAddressIndex(Math.max(0, updated.length - 1))
+    }
+  }
+
+  const handleSaveCustomer = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!business?.id || !custNameInput.trim() || !custPhoneInput.trim()) {
+      alert('Please provide customer name and phone number.')
+      return
+    }
+
+    setSavingCustomer(true)
+
+    if (editingCustomer) {
+      // 1. Update basic customer info
+      const { error: custErr } = await supabase
+        .from('customers')
+        .update({
+          name: custNameInput.trim(),
+          phone: custPhoneInput.trim(),
+          email: custEmailInput.trim() || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingCustomer.id)
+
+      if (custErr) {
+        alert(`Failed to update customer: ${custErr.message}`)
+        setSavingCustomer(false)
+        return
+      }
+
+      // 2. Sync addresses in customer_addresses table
+      await supabase.from('customer_addresses').delete().eq('customer_id', editingCustomer.id)
+
+      if (custAddresses.length > 0) {
+        const addressRows = custAddresses.map((addr, idx) => ({
+          customer_id: editingCustomer.id,
+          address_text: addr,
+          label: idx === 0 ? 'Primary Delivery Location' : 'Additional Location',
+          is_default: idx === custDefaultAddressIndex
+        }))
+        await supabase.from('customer_addresses').insert(addressRows)
+      }
+
+      alert('Customer and delivery addresses updated successfully!')
+      setShowCustomerModal(false)
+      fetchCustomerDatabase()
+    } else {
+      // 1. Insert new customer record
+      const { data: newCust, error: custErr } = await supabase
+        .from('customers')
+        .insert([{
+          name: custNameInput.trim(),
+          phone: custPhoneInput.trim(),
+          email: custEmailInput.trim() || null
+        }])
+        .select()
+        .single()
+
+      if (custErr || !newCust) {
+        alert(`Failed to add customer: ${custErr?.message}`)
+        setSavingCustomer(false)
+        return
+      }
+
+      // 2. Link tenant association
+      await supabase
+        .from('tenant_customers')
+        .insert([{
+          business_id: business.id,
+          customer_id: newCust.id
+        }])
+
+      // 3. Insert addresses into customer_addresses table
+      if (custAddresses.length > 0) {
+        const addressRows = custAddresses.map((addr, idx) => ({
+          customer_id: newCust.id,
+          address_text: addr,
+          label: idx === 0 ? 'Primary Delivery Location' : 'Additional Location',
+          is_default: idx === custDefaultAddressIndex
+        }))
+        await supabase.from('customer_addresses').insert(addressRows)
+      }
+
+      alert('New customer added successfully with delivery addresses!')
+      setShowCustomerModal(false)
+      fetchCustomerDatabase()
+    }
+    setSavingCustomer(false)
+  }
+
+  const handleDeleteCustomer = async (custId: string, custName: string) => {
+    if (!confirm(`Are you sure you want to delete customer "${custName}"? This will remove their record across the ecosystem.`)) return
+
+    await supabase.from('tenant_customers').delete().eq('customer_id', custId).eq('business_id', business.id)
+    
+    const { error } = await supabase.from('customers').delete().eq('id', custId)
+    if (error) {
+      alert(`Failed to delete customer: ${error.message}`)
+    } else {
+      alert('Customer deleted successfully.')
+      fetchCustomerDatabase()
+    }
   }
 
   // Handle Opening Reports Full-Screen Views
@@ -660,6 +926,28 @@ const fetchCashLiquidityReport = async () => {
       return true
     })
   }, [salesReportData, filterDateFrom, filterDateTo, filterCustQuery, filterOrderNo, filterOrderType, filterPaymentMode, filterWaiterName, filterRiderName])
+
+  // Sales Grand Totals, Pagination Slicing, and Subtotals
+  const salesGrandTotals = useMemo(() => {
+    return filteredSalesReports.reduce((acc, ord) => {
+      acc.amount += parseFloat(ord.total_amount) || 0
+      return acc
+    }, { amount: 0 })
+  }, [filteredSalesReports])
+
+  const paginatedSalesReports = useMemo(() => {
+    const start = (salesCurrentPage - 1) * salesRowsPerPage
+    return filteredSalesReports.slice(start, start + salesRowsPerPage)
+  }, [filteredSalesReports, salesCurrentPage, salesRowsPerPage])
+
+  const salesTotalPages = Math.ceil(filteredSalesReports.length / salesRowsPerPage) || 1
+
+  const salesPageSubtotals = useMemo(() => {
+    return paginatedSalesReports.reduce((acc, ord) => {
+      acc.amount += parseFloat(ord.total_amount) || 0
+      return acc
+    }, { amount: 0 })
+  }, [paginatedSalesReports])
 
   // Filtered Sales Return Computed Data
   const filteredSalesReturnsReports = useMemo(() => {
@@ -857,6 +1145,29 @@ const fetchCashLiquidityReport = async () => {
         },
         (payload) => {
           setSalesReturnData(prev => [payload.new, ...prev])
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'customers',
+        },
+        () => {
+          fetchCustomerDatabase()
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tenant_customers',
+          filter: `business_id=eq.${business.id}`,
+        },
+        () => {
+          fetchCustomerDatabase()
         }
       )
       .subscribe()
@@ -1932,34 +2243,44 @@ const fetchCashLiquidityReport = async () => {
                   <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-3">
                     <div className="font-black text-slate-900 uppercase tracking-wider text-[11px] flex justify-between items-center">
                       <span>🔍 Sales Report Filters</span>
-                      <button 
-                        onClick={() => { setFilterDateFrom(''); setFilterDateTo(''); setFilterCustQuery(''); setFilterOrderNo(''); setFilterOrderType('ALL'); setFilterPaymentMode('ALL'); setFilterWaiterName(''); setFilterRiderName(''); }}
-                        className="text-rose-600 hover:underline font-bold text-[10px] cursor-pointer"
-                      >
-                        Clear Filters
-                      </button>
+                      <div className="flex items-center space-x-3">
+                        <div className="flex items-center space-x-1.5">
+                          <span className="text-[10px] font-bold text-slate-500">Rows per page:</span>
+                          <select value={salesRowsPerPage} onChange={e => { setSalesRowsPerPage(Number(e.target.value)); setSalesCurrentPage(1); }} className="bg-slate-50 border border-slate-200 rounded-xl px-2 py-1 font-bold text-xs">
+                            <option value={25}>25</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                          </select>
+                        </div>
+                        <button 
+                          onClick={() => { setFilterDateFrom(''); setFilterDateTo(''); setFilterCustQuery(''); setFilterOrderNo(''); setFilterOrderType('ALL'); setFilterPaymentMode('ALL'); setFilterWaiterName(''); setFilterRiderName(''); setSalesCurrentPage(1); }}
+                          className="text-rose-600 hover:underline font-bold text-[10px] cursor-pointer"
+                        >
+                          Clear Filters
+                        </button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 mb-1">Date From</label>
-                        <input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs" />
+                        <input type="date" value={filterDateFrom} onChange={e => { setFilterDateFrom(e.target.value); setSalesCurrentPage(1); }} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs" />
                       </div>
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 mb-1">Date To</label>
-                        <input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs" />
+                        <input type="date" value={filterDateTo} onChange={e => { setFilterDateTo(e.target.value); setSalesCurrentPage(1); }} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs" />
                       </div>
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 mb-1">Customer Name / Phone</label>
-                        <input type="text" placeholder="Search customer..." value={filterCustQuery} onChange={e => setFilterCustQuery(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-xs" />
+                        <input type="text" placeholder="Search customer..." value={filterCustQuery} onChange={e => { setFilterCustQuery(e.target.value); setSalesCurrentPage(1); }} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-xs" />
                       </div>
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 mb-1">Order Number / ID</label>
-                        <input type="text" placeholder="KB-..." value={filterOrderNo} onChange={e => setFilterOrderNo(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs" />
+                        <input type="text" placeholder="KB-..." value={filterOrderNo} onChange={e => { setFilterOrderNo(e.target.value); setSalesCurrentPage(1); }} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs" />
                       </div>
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 mb-1">Order Type</label>
-                        <select value={filterOrderType} onChange={e => setFilterOrderType(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold uppercase text-xs">
+                        <select value={filterOrderType} onChange={e => { setFilterOrderType(e.target.value); setSalesCurrentPage(1); }} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold uppercase text-xs">
                           <option value="ALL">ALL TYPES</option>
                           <option value="DINE-IN">DINE-IN</option>
                           <option value="TAKEAWAY">TAKEAWAY</option>
@@ -1969,7 +2290,7 @@ const fetchCashLiquidityReport = async () => {
                       </div>
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 mb-1">Payment Mode</label>
-                        <select value={filterPaymentMode} onChange={e => setFilterPaymentMode(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold uppercase text-xs">
+                        <select value={filterPaymentMode} onChange={e => { setFilterPaymentMode(e.target.value); setSalesCurrentPage(1); }} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold uppercase text-xs">
                           <option value="ALL">ALL MODES</option>
                           <option value="CASH">CASH</option>
                           <option value="CARD">CARD</option>
@@ -1979,11 +2300,11 @@ const fetchCashLiquidityReport = async () => {
                       </div>
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 mb-1">Waiter Name</label>
-                        <input type="text" placeholder="Search waiter..." value={filterWaiterName} onChange={e => setFilterWaiterName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-xs" />
+                        <input type="text" placeholder="Search waiter..." value={filterWaiterName} onChange={e => { setFilterWaiterName(e.target.value); setSalesCurrentPage(1); }} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-xs" />
                       </div>
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 mb-1">Delivery Rider Name</label>
-                        <input type="text" placeholder="Search rider..." value={filterRiderName} onChange={e => setFilterRiderName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-xs" />
+                        <input type="text" placeholder="Search rider..." value={filterRiderName} onChange={e => { setFilterRiderName(e.target.value); setSalesCurrentPage(1); }} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-xs" />
                       </div>
                     </div>
                   </div>
@@ -2002,8 +2323,8 @@ const fetchCashLiquidityReport = async () => {
                       <tbody className="divide-y divide-slate-100">
                         {loadingSales ? (
                           <tr><td colSpan={5} className="text-center py-12 text-slate-400 font-bold">Querying sales archive...</td></tr>
-                        ) : filteredSalesReports.length > 0 ? (
-                          filteredSalesReports.map(ord => {
+                        ) : paginatedSalesReports.length > 0 ? (
+                          paginatedSalesReports.map(ord => {
                             const isPendingCash = (ord.settlement_status || '').toUpperCase() === 'PENDING_CASH' || 
                               (!ord.settlement_status && (
                                 ((ord.service_type || '').toUpperCase() === 'DINE-IN' && ord.waiter_name) ||
@@ -2053,8 +2374,47 @@ const fetchCashLiquidityReport = async () => {
                           <tr><td colSpan={5} className="text-center py-12 text-slate-400 font-medium">No matching sales records found.</td></tr>
                         )}
                       </tbody>
+
+                      {paginatedSalesReports.length > 0 && (
+                        <tfoot className="bg-slate-50 border-t-2 border-slate-200 font-mono font-bold text-xs">
+                          <tr>
+                            <td colSpan={4} className="p-3.5 uppercase text-[10px] text-slate-500">Page Subtotal (Showing {paginatedSalesReports.length} of {filteredSalesReports.length})</td>
+                            <td className="p-3.5 text-right text-blue-600 font-black">{business?.currency_symbol || 'Rs.'} {salesPageSubtotals.amount.toFixed(2)}</td>
+                          </tr>
+                          <tr className="bg-slate-100 border-t border-slate-200 text-slate-900">
+                            <td colSpan={4} className="p-3.5 uppercase text-[11px] font-black">Grand Total (All Filtered Records)</td>
+                            <td className="p-3.5 text-right font-black text-blue-600 text-sm">{business?.currency_symbol || 'Rs.'} {salesGrandTotals.amount.toFixed(2)}</td>
+                          </tr>
+                        </tfoot>
+                      )}
                     </table>
                   </div>
+
+                  {salesTotalPages > 1 && (
+                    <div className="flex justify-between items-center bg-white p-4 rounded-3xl border border-slate-200 shadow-sm">
+                      <span className="text-[11px] text-slate-500 font-medium">
+                        Page <span className="font-bold text-slate-800">{salesCurrentPage}</span> of <span className="font-bold text-slate-800">{salesTotalPages}</span>
+                      </span>
+                      <div className="flex space-x-2">
+                        <button
+                          type="button"
+                          disabled={salesCurrentPage === 1}
+                          onClick={() => setSalesCurrentPage(prev => Math.max(1, prev - 1))}
+                          className="px-3.5 py-1.5 bg-slate-200 hover:bg-slate-300 disabled:opacity-40 rounded-xl font-bold text-xs transition cursor-pointer"
+                        >
+                          ← Previous
+                        </button>
+                        <button
+                          type="button"
+                          disabled={salesCurrentPage === salesTotalPages}
+                          onClick={() => setSalesCurrentPage(prev => Math.min(salesTotalPages, prev + 1))}
+                          className="px-3.5 py-1.5 bg-slate-200 hover:bg-slate-300 disabled:opacity-40 rounded-xl font-bold text-xs transition cursor-pointer"
+                        >
+                          Next →
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -2302,13 +2662,31 @@ const fetchCashLiquidityReport = async () => {
                 <div className="space-y-4">
                   <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-3">
                     <div className="font-black text-slate-900 uppercase tracking-wider text-[11px] flex justify-between items-center">
-                      <span>🔍 Customer Database Filters</span>
-                      <button 
-                        onClick={() => { setFilterCustName(''); setFilterCustPhone(''); setFilterCustOrigin('ALL'); }}
-                        className="text-rose-600 hover:underline font-bold text-[10px] cursor-pointer"
-                      >
-                        Clear Filters
-                      </button>
+                      <span>🔍 Customer Database Filters & Management</span>
+                      <div className="flex items-center space-x-2">
+                        <button 
+                          onClick={handleExportCustomersCSV}
+                          className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-sm cursor-pointer"
+                        >
+                          Export CSV 📥
+                        </button>
+                        <label className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition shadow-sm cursor-pointer inline-flex items-center">
+                          Import CSV/XLS 📤
+                          <input type="file" accept=".csv,.txt,.xls,.xlsx" onChange={handleImportCustomersCSV} className="hidden" />
+                        </label>
+                        <button 
+                          onClick={handleOpenAddCustomerModal}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition shadow-md shadow-blue-500/20 cursor-pointer"
+                        >
+                          + Add New Customer 👤
+                        </button>
+                        <button 
+                          onClick={() => { setFilterCustName(''); setFilterCustPhone(''); setFilterCustOrigin('ALL'); }}
+                          className="text-rose-600 hover:underline font-bold text-[10px] cursor-pointer ml-2"
+                        >
+                          Clear Filters
+                        </button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -2326,6 +2704,7 @@ const fetchCashLiquidityReport = async () => {
                           <option value="ALL">ALL CHANNELS</option>
                           <option value="POS">POS TERMINAL</option>
                           <option value="STOREFRONT">STOREFRONT</option>
+                          <option value="DASHBOARD">TENANT DASHBOARD</option>
                         </select>
                       </div>
                     </div>
@@ -2337,33 +2716,70 @@ const fetchCashLiquidityReport = async () => {
                         <tr>
                           <th className="p-3.5">Customer Name & Phone</th>
                           <th className="p-3.5">Email Address</th>
-                          <th className="p-3.5">Default Address</th>
+                          <th className="p-3.5">Delivery Addresses & Default</th>
                           <th className="p-3.5">Registered Through</th>
+                          <th className="p-3.5 text-right">Actions</th>
                         </tr>
                       </thead>
+
                       <tbody className="divide-y divide-slate-100">
                         {loadingCustomers ? (
-                          <tr><td colSpan={4} className="text-center py-12 text-slate-400 font-bold">Querying customer database...</td></tr>
+                          <tr><td colSpan={5} className="text-center py-12 text-slate-400 font-bold">Querying customer database...</td></tr>
                         ) : filteredCustomers.length > 0 ? (
-                          filteredCustomers.map(cust => (
-                            <tr key={cust.id} className="hover:bg-slate-50 transition">
-                              <td className="p-3.5">
-                                <div className="font-bold text-slate-900">{cust.name}</div>
-                                <div className="text-[10px] text-slate-400 font-mono">{cust.phone}</div>
-                              </td>
-                              <td className="p-3.5 text-slate-600 font-mono">{cust.email || 'N/A'}</td>
-                              <td className="p-3.5 text-slate-600">{cust.default_address || 'No Default Address'}</td>
-                              <td className="p-3.5">
-                                <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase ${
-                                  (cust.origin || 'POS') === 'STOREFRONT' ? 'bg-purple-50 text-purple-700 border border-purple-200' : 'bg-blue-50 text-blue-700 border border-blue-200'
-                                }`}>
-                                  {cust.origin || 'POS'}
-                                </span>
-                              </td>
-                            </tr>
-                          ))
+                          filteredCustomers.map(cust => {
+                            return (
+                              <tr key={cust.id} className="hover:bg-slate-50 transition">
+                                <td className="p-3.5">
+                                  <div className="font-bold text-slate-900">{cust.name}</div>
+                                  <div className="text-[10px] text-slate-400 font-mono">{cust.phone}</div>
+                                </td>
+                                <td className="p-3.5 text-slate-600 font-mono">{cust.email || 'N/A'}</td>
+                                <td className="p-3.5">
+                                  <div className="space-y-1">
+                                    {(() => {
+                                      const addrsList = Array.isArray(cust.customer_addresses) ? cust.customer_addresses : []
+                                      const defaultAddrObj = addrsList.find((a: any) => a.is_default) || addrsList[0]
+                                      const displayAddress = defaultAddrObj?.address_text || cust.default_address
+
+                                      return displayAddress ? (
+                                        <div className="flex items-center space-x-1.5">
+                                          <span className="bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded text-[8px] uppercase">Default</span>
+                                          <span className="text-slate-700 truncate max-w-xs">{displayAddress}</span>
+                                        </div>
+                                      ) : (
+                                        <span className="text-slate-400 italic">No default address recorded</span>
+                                      )
+                                    })()}
+                                  </div>
+                                </td>
+                                <td className="p-3.5">
+                                  <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase ${
+                                    (cust.origin || 'POS') === 'STOREFRONT' ? 'bg-purple-50 text-purple-700 border border-purple-200' : 'bg-blue-50 text-blue-700 border border-blue-200'
+                                  }`}>
+                                    {cust.origin || 'POS'}
+                                  </span>
+                                </td>
+                                <td className="p-3.5 text-right space-x-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEditCustomerModal(cust)}
+                                    className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl text-[10px] transition cursor-pointer border border-indigo-200"
+                                  >
+                                    Edit ✏️
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteCustomer(cust.id, cust.name)}
+                                    className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl text-[10px] transition cursor-pointer border border-rose-200"
+                                  >
+                                    Delete 🗑️
+                                  </button>
+                                </td>
+                              </tr>
+                            )
+                          })
                         ) : (
-                          <tr><td colSpan={4} className="text-center py-12 text-slate-400 font-medium">No customers registered in database yet.</td></tr>
+                          <tr><td colSpan={5} className="text-center py-12 text-slate-400 font-medium">No customers registered in database yet.</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -2459,6 +2875,126 @@ const fetchCashLiquidityReport = async () => {
 
         </main>
       </div>
+
+      {/* CUSTOMER ADD / EDIT MODAL & DELIVERY ADDRESS MANAGER */}
+      {showCustomerModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs font-sans">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-lg w-full space-y-5 shadow-2xl text-slate-800">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <h3 className="font-black text-sm uppercase text-slate-900 tracking-wide">
+                {editingCustomer ? '✏️ Edit Customer & Addresses' : '👤 Register New Customer'}
+              </h3>
+              <button onClick={() => setShowCustomerModal(false)} className="w-8 h-8 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 flex items-center justify-center font-bold transition cursor-pointer">✕</button>
+            </div>
+
+            <form onSubmit={handleSaveCustomer} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Customer Full Name *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. John Smith"
+                    value={custNameInput}
+                    onChange={e => setCustNameInput(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-medium text-slate-900 focus:outline-none focus:border-blue-600"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Phone Number *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 03001234567"
+                    value={custPhoneInput}
+                    onChange={e => setCustPhoneInput(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-mono text-slate-900 focus:outline-none focus:border-blue-600 font-bold"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Email Address</label>
+                <input
+                  type="email"
+                  placeholder="customer@domain.com"
+                  value={custEmailInput}
+                  onChange={e => setCustEmailInput(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-medium text-slate-900 focus:outline-none focus:border-blue-600"
+                />
+              </div>
+
+              {/* Delivery Addresses Management Section */}
+              <div className="space-y-2 pt-2 border-t border-slate-200">
+                <label className="block font-bold text-slate-900 uppercase tracking-wider text-[11px]">Delivery Addresses & Default Assignment</label>
+                <p className="text-[10px] text-slate-500">Add multiple addresses, remove obsolete ones, and select which one is the default.</p>
+
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    placeholder="Enter delivery address..."
+                    value={newAddressInput}
+                    onChange={e => setNewAddressInput(e.target.value)}
+                    className="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCustomerAddress}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition cursor-pointer shrink-0"
+                  >
+                    + Add Address
+                  </button>
+                </div>
+
+                <div className="space-y-2 max-h-44 overflow-y-auto pr-1 pt-1">
+                  {custAddresses.length > 0 ? (
+                    custAddresses.map((addr, aIdx) => {
+                      const isDefault = custDefaultAddressIndex === aIdx
+                      return (
+                        <div key={aIdx} className={`p-3 rounded-2xl border flex items-center justify-between transition ${isDefault ? 'bg-emerald-50/60 border-emerald-300' : 'bg-slate-50 border-slate-200'}`}>
+                          <div className="flex items-center space-x-2.5 truncate">
+                            <input
+                              type="radio"
+                              name="default_address_radio"
+                              checked={isDefault}
+                              onChange={() => setCustDefaultAddressIndex(aIdx)}
+                              className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-0 cursor-pointer"
+                            />
+                            <span className={`text-xs truncate ${isDefault ? 'font-bold text-emerald-900' : 'text-slate-800'}`}>{addr}</span>
+                          </div>
+                          <div className="flex items-center space-x-2 shrink-0">
+                            {isDefault && <span className="bg-emerald-600 text-white font-black px-2 py-0.5 rounded text-[9px] uppercase">Default</span>}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCustomerAddress(aIdx)}
+                              className="text-rose-600 hover:text-rose-800 font-bold px-2 py-1 rounded text-[11px] cursor-pointer"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })
+                  ) : (
+                    <p className="text-slate-400 italic text-center py-3 bg-slate-50 rounded-xl border border-slate-200">No delivery addresses added yet.</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-2.5 pt-4 border-t border-slate-200">
+                <button type="button" onClick={() => setShowCustomerModal(false)} className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl cursor-pointer border border-slate-200">Cancel</button>
+                <button
+                  type="submit"
+                  disabled={savingCustomer}
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold rounded-xl shadow-md shadow-blue-500/20 transition cursor-pointer border border-blue-400/30"
+                >
+                  {savingCustomer ? 'Saving Customer...' : editingCustomer ? 'Update Customer Details 💾' : 'Save Customer & Sync Ecosystem 🚀'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* STAFF & QR SECURITY MANAGEMENT SLIDE-OVER DRAWER */}
       {showStaffDrawer && (

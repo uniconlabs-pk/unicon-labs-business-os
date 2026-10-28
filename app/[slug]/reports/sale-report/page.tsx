@@ -21,7 +21,7 @@ export default function SaleReportPage({ params }: PageProps) {
   const [salesReportData, setSalesReportData] = useState<any[]>([])
   const [loadingSales, setLoadingSales] = useState(false)
 
-  // Filters
+  // Filters & Pagination States
   const [filterDateFrom, setFilterDateFrom] = useState('')
   const [filterDateTo, setFilterDateTo] = useState('')
   const [filterCustQuery, setFilterCustQuery] = useState('')
@@ -30,6 +30,8 @@ export default function SaleReportPage({ params }: PageProps) {
   const [filterPaymentMode, setFilterPaymentMode] = useState('ALL')
   const [filterWaiterName, setFilterWaiterName] = useState('')
   const [filterRiderName, setFilterRiderName] = useState('')
+  const [rowsPerPage, setRowsPerPage] = useState<number>(25)
+  const [currentPage, setCurrentPage] = useState<number>(1)
 
   useEffect(() => {
     const rawSession = localStorage.getItem(`tenant_session_${slug}`)
@@ -101,6 +103,30 @@ export default function SaleReportPage({ params }: PageProps) {
     })
   }, [salesReportData, filterDateFrom, filterDateTo, filterCustQuery, filterOrderNo, filterOrderType, filterPaymentMode, filterWaiterName, filterRiderName])
 
+  // Grand Totals across all filtered records
+  const grandTotals = useMemo(() => {
+    return filteredSalesReports.reduce((acc, ord) => {
+      acc.amount += parseFloat(ord.total_amount) || 0
+      return acc
+    }, { amount: 0 })
+  }, [filteredSalesReports])
+
+  // Pagination Slice
+  const paginatedSalesReports = useMemo(() => {
+    const start = (currentPage - 1) * rowsPerPage
+    return filteredSalesReports.slice(start, start + rowsPerPage)
+  }, [filteredSalesReports, currentPage, rowsPerPage])
+
+  const totalPages = Math.ceil(filteredSalesReports.length / rowsPerPage) || 1
+
+  // Page Subtotals for active page
+  const pageSubtotals = useMemo(() => {
+    return paginatedSalesReports.reduce((acc, ord) => {
+      acc.amount += parseFloat(ord.total_amount) || 0
+      return acc
+    }, { amount: 0 })
+  }, [paginatedSalesReports])
+
   if (loading) {
     return <div className="min-h-screen bg-gray-50 flex items-center justify-center font-bold text-gray-700 text-xs">Loading Sale Report...</div>
   }
@@ -121,34 +147,44 @@ export default function SaleReportPage({ params }: PageProps) {
         <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs space-y-3">
           <div className="font-black text-gray-900 uppercase tracking-wide text-[11px] flex justify-between items-center">
             <span>🔍 Sales Report Filters</span>
-            <button 
-              onClick={() => { setFilterDateFrom(''); setFilterDateTo(''); setFilterCustQuery(''); setFilterOrderNo(''); setFilterOrderType('ALL'); setFilterPaymentMode('ALL'); setFilterWaiterName(''); setFilterRiderName(''); }}
-              className="text-rose-600 hover:underline font-bold text-[10px] cursor-pointer"
-            >
-              Clear Filters
-            </button>
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-1.5">
+                <span className="text-[10px] font-bold text-gray-500">Rows per page:</span>
+                <select value={rowsPerPage} onChange={e => { setRowsPerPage(Number(e.target.value)); setCurrentPage(1); }} className="bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 font-bold text-xs">
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+              <button 
+                onClick={() => { setFilterDateFrom(''); setFilterDateTo(''); setFilterCustQuery(''); setFilterOrderNo(''); setFilterOrderType('ALL'); setFilterPaymentMode('ALL'); setFilterWaiterName(''); setFilterRiderName(''); setCurrentPage(1); }}
+                className="text-rose-600 hover:underline font-bold text-[10px] cursor-pointer"
+              >
+                Clear Filters
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             <div>
               <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Date From</label>
-              <input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 font-mono" />
+              <input type="date" value={filterDateFrom} onChange={e => { setFilterDateFrom(e.target.value); setCurrentPage(1); }} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 font-mono" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Date To</label>
-              <input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 font-mono" />
+              <input type="date" value={filterDateTo} onChange={e => { setFilterDateTo(e.target.value); setCurrentPage(1); }} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 font-mono" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Customer Name / Phone</label>
-              <input type="text" placeholder="Search customer..." value={filterCustQuery} onChange={e => setFilterCustQuery(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-medium" />
+              <input type="text" placeholder="Search customer..." value={filterCustQuery} onChange={e => { setFilterCustQuery(e.target.value); setCurrentPage(1); }} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-medium" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Order Number / ID</label>
-              <input type="text" placeholder="KB-..." value={filterOrderNo} onChange={e => setFilterOrderNo(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-mono" />
+              <input type="text" placeholder="KB-..." value={filterOrderNo} onChange={e => { setFilterOrderNo(e.target.value); setCurrentPage(1); }} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-mono" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Order Type</label>
-              <select value={filterOrderType} onChange={e => setFilterOrderType(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-bold uppercase">
+              <select value={filterOrderType} onChange={e => { setFilterOrderType(e.target.value); setCurrentPage(1); }} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-bold uppercase">
                 <option value="ALL">ALL TYPES</option>
                 <option value="DINE-IN">DINE-IN</option>
                 <option value="TAKEAWAY">TAKEAWAY</option>
@@ -158,7 +194,7 @@ export default function SaleReportPage({ params }: PageProps) {
             </div>
             <div>
               <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Payment Mode</label>
-              <select value={filterPaymentMode} onChange={e => setFilterPaymentMode(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-bold uppercase">
+              <select value={filterPaymentMode} onChange={e => { setFilterPaymentMode(e.target.value); setCurrentPage(1); }} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-bold uppercase">
                 <option value="ALL">ALL MODES</option>
                 <option value="CASH">CASH</option>
                 <option value="CARD">CARD</option>
@@ -168,11 +204,11 @@ export default function SaleReportPage({ params }: PageProps) {
             </div>
             <div>
               <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Waiter Name</label>
-              <input type="text" placeholder="Search waiter..." value={filterWaiterName} onChange={e => setFilterWaiterName(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-medium" />
+              <input type="text" placeholder="Search waiter..." value={filterWaiterName} onChange={e => { setFilterWaiterName(e.target.value); setCurrentPage(1); }} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-medium" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-gray-500 mb-0.5">Delivery Rider Name</label>
-              <input type="text" placeholder="Search rider..." value={filterRiderName} onChange={e => setFilterRiderName(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-medium" />
+              <input type="text" placeholder="Search rider..." value={filterRiderName} onChange={e => { setFilterRiderName(e.target.value); setCurrentPage(1); }} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 font-medium" />
             </div>
           </div>
         </div>
@@ -191,8 +227,8 @@ export default function SaleReportPage({ params }: PageProps) {
             <tbody className="divide-y divide-gray-100">
               {loadingSales ? (
                 <tr><td colSpan={5} className="text-center py-12 text-gray-400 font-bold">Querying sales archive...</td></tr>
-              ) : filteredSalesReports.length > 0 ? (
-                filteredSalesReports.map(ord => {
+              ) : paginatedSalesReports.length > 0 ? (
+                paginatedSalesReports.map(ord => {
                   const isPendingCash = (ord.settlement_status || '').toUpperCase() === 'PENDING_CASH' || 
                     (!ord.settlement_status && (
                       ((ord.service_type || '').toUpperCase() === 'DINE-IN' && ord.waiter_name) ||
@@ -242,8 +278,47 @@ export default function SaleReportPage({ params }: PageProps) {
                 <tr><td colSpan={5} className="text-center py-12 text-gray-400">No matching sales records found.</td></tr>
               )}
             </tbody>
+
+            {paginatedSalesReports.length > 0 && (
+              <tfoot className="bg-gray-50 border-t-2 border-gray-200 font-mono font-bold text-xs">
+                <tr>
+                  <td colSpan={4} className="p-3 uppercase text-[10px] text-gray-500">Page Subtotal (Showing {paginatedSalesReports.length} of {filteredSalesReports.length})</td>
+                  <td className="p-3 text-right text-emerald-700 font-black">{business?.currency_symbol || 'Rs.'} {pageSubtotals.amount.toFixed(2)}</td>
+                </tr>
+                <tr className="bg-gray-100 border-t border-gray-200 text-gray-900">
+                  <td colSpan={4} className="p-3 uppercase text-[11px] font-black">Grand Total (All Filtered Records)</td>
+                  <td className="p-3 text-right font-black text-emerald-700 text-sm">{business?.currency_symbol || 'Rs.'} {grandTotals.amount.toFixed(2)}</td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
+
+        {totalPages > 1 && (
+          <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs">
+            <span className="text-[11px] text-gray-500 font-medium">
+              Page <span className="font-bold text-gray-800">{currentPage}</span> of <span className="font-bold text-gray-800">{totalPages}</span>
+            </span>
+            <div className="flex space-x-2">
+              <button
+                type="button"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 disabled:opacity-40 rounded-xl font-bold text-xs transition cursor-pointer"
+              >
+                ← Previous
+              </button>
+              <button
+                type="button"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 disabled:opacity-40 rounded-xl font-bold text-xs transition cursor-pointer"
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   )
