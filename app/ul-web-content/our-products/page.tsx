@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 
@@ -8,7 +8,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-export default function ProductLandingPage() {
+function ProductLandingContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const productId = searchParams.get('id')
@@ -138,5 +138,17 @@ export default function ProductLandingPage() {
         </div>
       </main>
     </div>
+  )
+}
+
+export default function ProductLandingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-cyan-300 font-mono text-xs">
+        Loading product specification...
+      </div>
+    }>
+      <ProductLandingContent />
+    </Suspense>
   )
 }
