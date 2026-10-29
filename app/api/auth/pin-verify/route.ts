@@ -8,7 +8,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey)
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { businessId, pin, requiredModule } = body
+    const { businessId, pin, requiredModule, isOverride } = body
 
     if (!businessId || pin === undefined || pin === null || pin === '') {
       return NextResponse.json({ error: 'Missing businessId or PIN/Badge code' }, { status: 400 })
@@ -16,7 +16,6 @@ export async function POST(req: Request) {
 
     const cleanedInput = String(pin).replace(/[\r\n\x00-\x1F\x7F]/g, '').trim()
 
-    // Resolve business UUID & fetch seat limit if slug was passed
     let resolvedBusinessId = businessId
     const { data: bizMatch, error: bizErr } = await supabase
       .from('businesses')
@@ -65,48 +64,51 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Staff member lacks KDS module permission' }, { status: 403 })
     }
 
-    // --- CONCERN NO. 1: Strict Single Active Session Per User Check ---
-  const { data: existingUserSession, error: fetchSessionErr } = await supabase
-    .from('active_pos_sessions')
-    .select('*')
-    .eq('business_id', resolvedBusinessId)
-    .eq('staff_id', staff.id)
-    .maybeSingle()
+    // If this is an override/approval request, skip session locking and seat checks completely
+    if (!isOverride) {
+      // --- CONCERN NO. 1: Strict Single Active Session Per User Check ---
+      const { data: existingUserSession, error: fetchSessionErr } = await supabase
+        .from('active_pos_sessions')
+        .select('*')
+        .eq('business_id', resolvedBusinessId)
+        .eq('staff_id', staff.id)
+        .maybeSingle()
 
-  if (existingUserSession) {
-    return NextResponse.json({
-      error: 'This user is already logged in or using the POS Terminal, right now you are not allowed to log-in. Please close the existing session and try again.'
-    }, { status: 409 })
-  }
+      if (existingUserSession) {
+        return NextResponse.json({
+          error: 'This user is already logged in or using the POS Terminal, right now you are not allowed to log-in. Please close the existing session and try again.'
+        }, { status: 409 })
+      }
 
-    // --- CONCERN NO. 2: POS Seat Limit Licensing Check ---
-    const { count: activeSessionsCount, error: countErr } = await supabase
-      .from('active_pos_sessions')
-      .select('*', { count: 'exact', head: true })
-      .eq('business_id', resolvedBusinessId)
+      // --- CONCERN NO. 2: POS Seat Limit Licensing Check ---
+      const { count: activeSessionsCount, error: countErr } = await supabase
+        .from('active_pos_sessions')
+        .select('*', { count: 'exact', head: true })
+        .eq('business_id', resolvedBusinessId)
 
-    if (countErr) {
-      console.warn('Active session count error:', countErr.message)
-    }
+      if (countErr) {
+        console.warn('Active session count error:', countErr.message)
+      }
 
-    if ((activeSessionsCount || 0) >= seatLimit) {
-      return NextResponse.json({
-        error: `POS Terminal seat limit reached (${activeSessionsCount}/${seatLimit} active seats). Please log out an existing terminal or contact UNICON LABS to assign additional seats.`
-      }, { status: 403 })
-    }
+      if ((activeSessionsCount || 0) >= seatLimit) {
+        return NextResponse.json({
+          error: `POS Terminal seat limit reached (${activeSessionsCount}/${seatLimit} active seats). Please log out an existing terminal or contact UNICON LABS to assign additional seats.`
+        }, { status: 403 })
+      }
 
-    // Register new active session explicitly with error capture
-    const { error: upsertErr } = await supabase.from('active_pos_sessions').upsert({
-      business_id: resolvedBusinessId,
-      staff_id: staff.id,
-      last_heartbeat_at: new Date().toISOString()
-    }, {
-      onConflict: 'business_id,staff_id'
-    })
+      // Register new active session explicitly with error capture
+      const { error: upsertErr } = await supabase.from('active_pos_sessions').upsert({
+        business_id: resolvedBusinessId,
+        staff_id: staff.id,
+        last_heartbeat_at: new Date().toISOString()
+      }, {
+        onConflict: 'business_id,staff_id'
+      })
 
-    if (upsertErr) {
-      console.error('Failed to insert active POS session:', upsertErr.message)
-      return NextResponse.json({ error: 'Failed to initialize session tracking: ' + upsertErr.message }, { status: 500 })
+      if (upsertErr) {
+        console.error('Failed to insert active POS session:', upsertErr.message)
+        return NextResponse.json({ error: 'Failed to initialize session tracking: ' + upsertErr.message }, { status: 500 })
+      }
     }
 
     return NextResponse.json({

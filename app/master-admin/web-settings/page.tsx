@@ -51,21 +51,27 @@ export default function WebSettingsPage() {
   const [newHeroTextBgOpacity, setNewHeroTextBgOpacity] = useState(80)
 
   const [products, setProducts] = useState([
-    { id: 1, name: 'Adaptive POS Terminal', desc: 'Feature-rich multi-surface touchscreen cash register and terminal engine.', image: '🖥️' },
-    { id: 2, name: 'Kitchen Display System (KDS)', desc: 'Live order ticket dispatch routing with speed-of-service performance meters.', image: '🍳' },
-    { id: 3, name: 'Dispatch & Fulfillment', desc: 'Complete delivery order queue manager with rider tracking and analytics.', image: '📦' },
-    { id: 4, name: 'Enterprise ERP & Finance', desc: 'Automated ledger tracking, tax compliance, and comprehensive audit reports.', image: '📊' },
-    { id: 5, name: 'Customer Storefront Portal', desc: 'Branded public web ordering storefront connected directly to your POS.', image: '🛍️' }
+    { id: 1, name: 'Adaptive POS Terminal', desc: 'Feature-rich multi-surface touchscreen cash register and terminal engine.', image: '🖥️', extendedDesc: '', gallery: [], features: [] },
+    { id: 2, name: 'Kitchen Display System (KDS)', desc: 'Live order ticket dispatch routing with speed-of-service performance meters.', image: '🍳', extendedDesc: '', gallery: [], features: [] },
+    { id: 3, name: 'Dispatch & Fulfillment', desc: 'Complete delivery order queue manager with rider tracking and analytics.', image: '📦', extendedDesc: '', gallery: [], features: [] },
+    { id: 4, name: 'Enterprise ERP & Finance', desc: 'Automated ledger tracking, tax compliance, and comprehensive audit reports.', image: '📊', extendedDesc: '', gallery: [], features: [] },
+    { id: 5, name: 'Customer Storefront Portal', desc: 'Branded public web ordering storefront connected directly to your POS.', image: '🛍️', extendedDesc: '', gallery: [], features: [] }
   ])
   const [newProdName, setNewProdName] = useState('')
   const [newProdDesc, setNewProdDesc] = useState('')
   const [newProdImage, setNewProdImage] = useState('📦')
+  const [newProdExtendedDesc, setNewProdExtendedDesc] = useState('')
+  const [newProdGalleryInput, setNewProdGalleryInput] = useState('')
+  const [newProdFeaturesInput, setNewProdFeaturesInput] = useState('')
 
   // Product Edit & Drag States
   const [editingProductId, setEditingProductId] = useState<number | null>(null)
   const [editProdName, setEditProdName] = useState('')
   const [editProdDesc, setEditProdDesc] = useState('')
   const [editProdImage, setEditProdImage] = useState('')
+  const [editProdExtendedDesc, setEditProdExtendedDesc] = useState('')
+  const [editProdGalleryInput, setEditProdGalleryInput] = useState('')
+  const [editProdFeaturesInput, setEditProdFeaturesInput] = useState('')
   const [draggedProductId, setDraggedProductId] = useState<number | null>(null)
 
   const [partners, setPartners] = useState(
@@ -243,6 +249,19 @@ export default function WebSettingsPage() {
     }
   }
 
+  // Helper to parse features input (Format: Title | Description)
+  const parseFeaturesInput = (inputStr: string) => {
+    return inputStr.split('\n').map((line, idx) => {
+      const trimmed = line.trim()
+      if (!trimmed) return null
+      const parts = trimmed.split('|')
+      if (parts.length >= 2) {
+        return { title: parts[0].trim(), desc: parts.slice(1).join('|').trim() }
+      }
+      return { title: `Feature #${idx + 1}`, desc: trimmed }
+    }).filter(Boolean)
+  }
+
   // Product Drag and Drop Handlers
   const handleDragStart = (e: React.DragEvent, id: number) => {
     setDraggedProductId(id)
@@ -311,7 +330,6 @@ export default function WebSettingsPage() {
               <button onClick={() => setIsMediaModalOpen(false)} className="text-slate-400 hover:text-white font-bold cursor-pointer text-xs">✕ Close</button>
             </div>
 
-            {/* Direct Upload Tab inside Modal */}
             <div className="bg-slate-950 border border-slate-800 p-3 rounded-xl flex items-center justify-between">
               <span className="text-xs text-slate-300 font-bold">Upload New Image to Bucket:</span>
               <input
@@ -330,7 +348,6 @@ export default function WebSettingsPage() {
               />
             </div>
 
-            {/* Existing Images Grid */}
             <div className="flex-1 overflow-y-auto pr-1">
               {loadingMedia ? (
                 <div className="text-center py-10 text-xs text-slate-400 font-bold">Loading available storage images...</div>
@@ -433,7 +450,6 @@ export default function WebSettingsPage() {
               <h2 className="font-extrabold text-sm uppercase text-blue-400">Header Branding & Inquiry Contact</h2>
               <div className="space-y-4 text-xs">
                 
-                {/* UNICON LABS Brand Logo Section */}
                 <div className="space-y-2 bg-slate-950 p-4 rounded-xl border border-slate-800">
                   <label className="block text-slate-400 font-bold uppercase text-[10px]">UNICON LABS Brand Logo Image</label>
                   <div className="flex items-center space-x-3">
@@ -478,7 +494,6 @@ export default function WebSettingsPage() {
                   </div>
                 </div>
 
-                {/* Immediate Inquiry Phone Number Section */}
                 <div className="space-y-1 bg-slate-950 p-4 rounded-xl border border-slate-800">
                   <label className="block text-slate-400 font-bold uppercase text-[10px]">Immediate Inquiry Phone Number</label>
                   <p className="text-[10px] text-slate-500 mb-2">Shown alongside: <span className="text-slate-300 font-mono">"For immediate inquiry please call (9:00 AM - 6:00 PM / Mon - Sat)"</span></p>
@@ -780,10 +795,15 @@ export default function WebSettingsPage() {
                             setEditProdName(p.name)
                             setEditProdDesc(p.desc)
                             setEditProdImage(p.image)
+                            setEditProdExtendedDesc(p.extendedDesc || '')
+                            setEditProdGalleryInput((p.gallery || []).join('\n'))
+                            // Format features for edit textarea: "Title | Description"
+                            const featFormatted = (p.features || []).map((f: any) => typeof f === 'object' && f !== null ? `${f.title} | ${f.desc}` : f).join('\n')
+                            setEditProdFeaturesInput(featFormatted)
                           }}
                           className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-blue-300 font-bold rounded-lg cursor-pointer text-[11px]"
                         >
-                          Edit
+                          Edit Details ✏️
                         </button>
                         <button 
                           onClick={async () => {
@@ -803,22 +823,48 @@ export default function WebSettingsPage() {
 
                 {/* Edit Product Section */}
                 {editingProductId !== null && (
-                  <div className="p-4 bg-blue-950/30 border border-blue-800/60 rounded-xl space-y-3 mt-4">
+                  <div className="p-4 bg-blue-950/30 border border-blue-800/60 rounded-xl space-y-4 mt-4">
                     <div className="flex justify-between items-center">
-                      <span className="font-bold text-blue-400 uppercase text-[11px]">✏️ Edit Product ID #{editingProductId}</span>
+                      <span className="font-bold text-blue-400 uppercase text-[11px]">✏️ Edit Product ID #{editingProductId} (Details, Gallery & Features)</span>
                       <button onClick={() => setEditingProductId(null)} className="text-slate-400 hover:text-white text-xs font-bold cursor-pointer">Cancel</button>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <div>
                         <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Product Name</label>
                         <input type="text" value={editProdName} onChange={e => setEditProdName(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Short Description</label>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Short Description (Card Overview)</label>
                         <input type="text" value={editProdDesc} onChange={e => setEditProdDesc(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
                       </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold text-blue-400 uppercase mb-1">Detailed Description (Appears below main card)</label>
+                        <textarea rows={3} value={editProdExtendedDesc} onChange={e => setEditProdExtendedDesc(e.target.value)} placeholder="Provide full product explanation..." className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white resize-none" />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold text-blue-400 uppercase mb-1">Image Catalog Gallery URLs (One image URL per line)</label>
+                        <textarea rows={3} value={editProdGalleryInput} onChange={e => setEditProdGalleryInput(e.target.value)} placeholder="https://...&#10;https://..." className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white font-mono text-[11px] resize-none" />
+                        <button
+                          type="button"
+                          onClick={() => openMediaPicker((url) => {
+                            setEditProdGalleryInput(prev => prev ? `${prev}\n${url}` : url)
+                          })}
+                          className="mt-1 py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-cyan-300 font-bold rounded text-[10px] uppercase cursor-pointer"
+                        >
+                          + Pick Image from Media Library for Gallery
+                        </button>
+                      </div>
+
+                      {/* Key Features Breakdown Configuration */}
+                      <div>
+                        <label className="block text-[10px] font-bold text-blue-400 uppercase mb-1">Key Features Breakdown (Format: Feature Title | Description per line)</label>
+                        <textarea rows={3} value={editProdFeaturesInput} onChange={e => setEditProdFeaturesInput(e.target.value)} placeholder="Real-Time Sync | Instant multi-location visibility&#10;Smart Billing | Lightning-fast cash register" className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white text-[11px] resize-none font-mono" />
+                      </div>
+
                       <div className="space-y-1">
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase">Product Image (Media Library, URL, or Emoji)</label>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase">Primary Product Image (Media Library, URL, or Emoji)</label>
                         <div className="flex items-center space-x-2">
                           {editProdImage && (editProdImage.startsWith('http') || editProdImage.startsWith('/') || editProdImage.startsWith('data:')) ? (
                             <div className="w-12 h-10 rounded border border-slate-700 overflow-hidden shrink-0 bg-slate-900 flex items-center justify-center">
@@ -840,18 +886,30 @@ export default function WebSettingsPage() {
                             📁 Choose / Upload Image
                           </button>
                         </div>
-                        <input type="text" placeholder="Or paste image URL / Emoji..." value={editProdImage} onChange={e => setEditProdImage(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs font-mono text-white" />
+                        <input type="text" placeholder="Or paste image URL / Emoji..." value={editProdImage} onChange={e => setEditProdImage(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs font-mono text-white mt-1" />
                       </div>
                     </div>
+
                     <button
                       onClick={() => {
                         if (!editProdName.trim()) return
-                        setProducts(products.map(p => p.id === editingProductId ? { ...p, name: editProdName.trim(), desc: editProdDesc.trim(), image: editProdImage.trim() || '📦' } : p))
+                        const galleryArray = editProdGalleryInput.split('\n').map(s => s.trim()).filter(Boolean)
+                        const featuresArray = parseFeaturesInput(editProdFeaturesInput)
+
+                        setProducts(products.map(p => p.id === editingProductId ? {
+                          ...p,
+                          name: editProdName.trim(),
+                          desc: editProdDesc.trim(),
+                          image: editProdImage.trim() || '📦',
+                          extendedDesc: editProdExtendedDesc.trim(),
+                          gallery: galleryArray,
+                          features: featuresArray
+                        } : p))
                         setEditingProductId(null)
                       }}
                       className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl cursor-pointer"
                     >
-                      Update Product Tile
+                      Update Product Tile & Details
                     </button>
                   </div>
                 )}
@@ -861,6 +919,19 @@ export default function WebSettingsPage() {
                   <input type="text" placeholder="Product Name..." value={newProdName} onChange={e => setNewProdName(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
                   <input type="text" placeholder="Short Description..." value={newProdDesc} onChange={e => setNewProdDesc(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
                   
+                  <div>
+                    <label className="block text-[10px] font-bold text-blue-400 uppercase mb-1">Detailed Description</label>
+                    <textarea rows={2} placeholder="Full product description..." value={newProdExtendedDesc} onChange={e => setNewProdExtendedDesc(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white resize-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-blue-400 uppercase mb-1">Gallery Image URLs (One per line)</label>
+                    <textarea rows={2} placeholder="https://..." value={newProdGalleryInput} onChange={e => setNewProdGalleryInput(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white font-mono text-[11px] resize-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-blue-400 uppercase mb-1">Key Features (Format: Title | Description per line)</label>
+                    <textarea rows={2} placeholder="Real-Time Sync | Instant visibility..." value={newProdFeaturesInput} onChange={e => setNewProdFeaturesInput(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white text-[11px] resize-none font-mono" />
+                  </div>
+
                   <div className="space-y-1">
                     <label className="block text-[10px] font-bold text-slate-400 uppercase">Product Image (Media Library, URL, or Emoji)</label>
                     <div className="flex items-center space-x-2">
@@ -884,16 +955,30 @@ export default function WebSettingsPage() {
                         📁 Choose / Upload Image
                       </button>
                     </div>
-                    <input type="text" placeholder="Or paste image URL / Emoji..." value={newProdImage} onChange={e => setNewProdImage(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs font-mono text-white" />
+                    <input type="text" placeholder="Or paste image URL / Emoji..." value={newProdImage} onChange={e => setNewProdImage(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs font-mono text-white mt-1" />
                   </div>
 
                   <button
                     onClick={() => {
                       if (!newProdName.trim()) return
-                      setProducts([...products, { id: Date.now(), name: newProdName.trim(), desc: newProdDesc.trim(), image: newProdImage.trim() || '📦' }])
+                      const galleryArray = newProdGalleryInput.split('\n').map(s => s.trim()).filter(Boolean)
+                      const featuresArray = parseFeaturesInput(newProdFeaturesInput)
+
+                      setProducts([...products, {
+                        id: Date.now(),
+                        name: newProdName.trim(),
+                        desc: newProdDesc.trim(),
+                        image: newProdImage.trim() || '📦',
+                        extendedDesc: newProdExtendedDesc.trim(),
+                        gallery: galleryArray,
+                        features: featuresArray
+                      }])
                       setNewProdName('')
                       setNewProdDesc('')
                       setNewProdImage('📦')
+                      setNewProdExtendedDesc('')
+                      setNewProdGalleryInput('')
+                      setNewProdFeaturesInput('')
                     }}
                     className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl cursor-pointer"
                   >

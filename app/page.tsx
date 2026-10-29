@@ -14,6 +14,10 @@ export default function UniconLabsLandingPage() {
   const [isPaused, setIsPaused] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
+  // In-Page Product Detail View State (Keeps user on home page)
+  const [selectedProduct, setSelectedProduct] = useState<any>(null)
+  const [activeCatalogSlide, setActiveCatalogSlide] = useState(0)
+
   // Contact Modal States
   const [isContactModalOpen, setIsContactModalOpen] = useState(false)
   const [contactName, setContactName] = useState('')
@@ -109,12 +113,28 @@ export default function UniconLabsLandingPage() {
     return () => clearInterval(timer)
   }, [heroBanners.length, heroSlideInterval, isPaused])
 
-  const handleNextSlide = () => {
+  // Catalog Images Auto-Slider (Every 3 seconds, respects pause state)
+  useEffect(() => {
+    if (!selectedProduct || isPaused) return
+    const catalogImages = selectedProduct.gallery && selectedProduct.gallery.length > 0 
+      ? selectedProduct.gallery 
+      : [selectedProduct.image]
+
+    if (catalogImages.length <= 1) return
+
+    const catalogTimer = setInterval(() => {
+      setActiveCatalogSlide(prev => (prev + 1) % catalogImages.length)
+    }, 3000)
+
+    return () => clearInterval(catalogTimer)
+  }, [selectedProduct, isPaused])
+
+  const handleNextHeroSlide = () => {
     if (heroBanners.length === 0) return
     setActiveHeroSlide(prev => (prev + 1) % heroBanners.length)
   }
 
-  const handlePrevSlide = () => {
+  const handlePrevHeroSlide = () => {
     if (heroBanners.length === 0) return
     setActiveHeroSlide(prev => (prev - 1 + heroBanners.length) % heroBanners.length)
   }
@@ -208,10 +228,13 @@ export default function UniconLabsLandingPage() {
 
   const handleMenuClick = (e: React.MouseEvent, itemLabel: string, itemHref: string) => {
     if (itemLabel.toUpperCase() === 'HOME') {
+      setSelectedProduct(null)
       scrollToTop(e)
     } else if (itemLabel.toUpperCase() === 'CONTACT US' || itemHref === '#contact') {
       e.preventDefault()
       setIsContactModalOpen(true)
+    } else {
+      setSelectedProduct(null)
     }
   }
 
@@ -427,285 +450,514 @@ export default function UniconLabsLandingPage() {
         <div className="w-full h-[6px] bg-gradient-to-r from-red-500 via-yellow-400 via-green-400 via-cyan-400 via-blue-500 to-purple-600 shadow-[0_0_18px_rgba(255,255,255,0.7)] relative z-50"></div>
       </div>
 
-      {/* 3. HERO BANNER SECTION */}
-      <section
-        id="home"
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
-        className="bg-gradient-to-b from-blue-900 to-blue-950 text-white px-8 py-24 relative overflow-hidden min-h-[420px] flex items-center justify-center"
-      >
-        <div className="absolute inset-0 w-full h-full flex items-center justify-center">
-          {heroBanners.length === 0 ? (
-            <div className="text-blue-300 text-xs italic">Loading hero banners...</div>
-          ) : (
-            heroBanners.map((hb, idx) => {
-              const isActive = idx === activeHeroSlide
-              return (
-                <div
-                  key={hb.id || idx}
-                  className={`absolute inset-0 w-full h-full flex items-center justify-center px-8 transition-all duration-700 ease-in-out ${
-                    isActive
-                      ? 'opacity-100 translate-x-0 scale-100 filter blur-0 pointer-events-auto'
-                      : 'opacity-0 translate-x-20 scale-95 filter blur-sm pointer-events-none'
-                  }`}
-                  style={{
-                    backgroundImage: hb.bgImage ? `url('${hb.bgImage}')` : 'none',
-                    backgroundSize: '100% 100%',
-                    backgroundPosition: 'center'
-                  }}
-                >
-                  <div 
-                    className="max-w-5xl mx-auto text-center space-y-6 relative z-10 p-8 rounded-3xl border border-white/10 backdrop-blur-xs transition-all shadow-xl"
-                    style={{
-                      backgroundColor: `rgba(15, 23, 42, ${(hb.textBgOpacity ?? 80) / 100})`
-                    }}
-                  >
-                    <h1 className="text-3xl md:text-5xl font-black tracking-tight uppercase leading-tight max-w-4xl mx-auto">
-                      {hb.title}
-                    </h1>
-                    
-                    <p className="text-blue-100 max-w-2xl mx-auto text-sm md:text-base font-medium leading-relaxed">
-                      {hb.subtitle}
-                    </p>
-                  </div>
-                </div>
-              )
-            })
-          )}
-        </div>
-
-        {heroBanners.length > 0 && (
-          <>
-            <button
-              onClick={handlePrevSlide}
-              className="absolute left-6 top-1/2 -translate-y-1/2 z-30 w-11 h-11 bg-white/10 hover:bg-white/25 backdrop-blur-md rounded-full flex items-center justify-center text-white text-lg font-bold transition shadow-lg cursor-pointer border border-white/20"
-              title="Previous Banner"
-            >
-              ‹
-            </button>
-            <button
-              onClick={handleNextSlide}
-              className="absolute right-6 top-1/2 -translate-y-1/2 z-30 w-11 h-11 bg-white/10 hover:bg-white/25 backdrop-blur-md rounded-full flex items-center justify-center text-white text-lg font-bold transition shadow-lg cursor-pointer border border-white/20"
-              title="Next Banner"
-            >
-              ›
-            </button>
-
-            <div className="absolute bottom-6 left-0 right-0 z-30 flex justify-center space-x-2">
-              {heroBanners.map((_, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setActiveHeroSlide(idx)}
-                  className={`h-2.5 rounded-full transition-all cursor-pointer ${activeHeroSlide === idx ? 'w-8 bg-white shadow' : 'w-2.5 bg-blue-700/80'}`}
-                />
-              ))}
-            </div>
-          </>
-        )}
-      </section>
-
-      {/* 4. CORE OPERATIONS DISPLAY ROW */}
-      <section 
-        id="products" 
-        className="px-4 md:px-8 pt-7 pb-16 md:py-24 relative overflow-hidden text-white"
-        style={{
-          backgroundImage: `
-            radial-gradient(circle at 50% 30%, rgba(34, 211, 238, 0.2) 0%, transparent 60%),
-            linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #172554 100%),
-            repeating-linear-gradient(0deg, rgba(56, 189, 248, 0.03) 0px, rgba(56, 189, 248, 0.03) 1px, transparent 1px, transparent 40px),
-            repeating-linear-gradient(90deg, rgba(56, 189, 248, 0.03) 0px, rgba(56, 189, 248, 0.03) 1px, transparent 1px, transparent 40px)
-          `,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center'
-        }}
-      >
-        <div className="absolute inset-0 pointer-events-none overflow-hidden select-none animate-pulse-glow">
-          <div className="absolute left-[10%] top-[15%] w-52 h-52 rounded-full border border-cyan-400/25 flex items-center justify-center">
-            <div className="w-26 h-26 rounded-full border border-cyan-400/35 flex items-center justify-center text-[10px] font-mono text-cyan-300">SYNC</div>
-          </div>
-          <div className="absolute right-[10%] bottom-[15%] w-60 h-60 rounded-full border border-blue-400/25 flex items-center justify-center">
-            <div className="w-30 h-30 rounded-full border border-blue-400/35 flex items-center justify-center text-[10px] font-mono text-blue-300">NODE</div>
-          </div>
-          <div className="absolute left-1/2 top-0 -translate-x-1/2 w-px h-full bg-gradient-to-b from-transparent via-cyan-400/30 to-transparent"></div>
-          <div className="absolute left-1/4 top-1/2 w-48 h-px bg-gradient-to-r from-transparent via-blue-400/30 to-transparent"></div>
-          <div className="absolute right-1/4 top-1/3 w-48 h-px bg-gradient-to-r from-transparent via-cyan-400/30 to-transparent"></div>
-        </div>
-
-        <div className="max-w-7xl mx-auto w-full space-y-8 relative z-10">
-          <div className="text-center space-y-2">
-            <h2 className="text-3xl font-black tracking-wide text-white">Digital Ecosystem / Core Operations</h2>
-            <p className="text-xs text-blue-200">Integrated multi-surface modules engineered for high-performance enterprise execution.</p>
-          </div>
-
-          {products.length === 0 ? (
-            <div className="text-center py-10 text-blue-200 text-xs italic">No core operations listed at the moment.</div>
-          ) : (
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3 md:gap-5">
-              {products.map((prod, idx) => (
-                <div key={prod.id || idx} className="bg-slate-900/90 border border-cyan-500/30 rounded-3xl p-3 md:p-5 shadow-xl shadow-blue-950/50 flex flex-col justify-between hover:border-cyan-400 hover:shadow-cyan-500/20 transition group backdrop-blur-xs">
-                  <div className="space-y-3 md:space-y-4">
-                    <div className="w-full h-24 md:h-32 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-center overflow-hidden shadow-inner group-hover:scale-105 transition duration-300">
-                      {prod.image && (prod.image.startsWith('data:') || prod.image.startsWith('http') || prod.image.startsWith('/') || prod.image.length > 50) ? (
-                        <img 
-                          src={prod.image.startsWith('data:') && !prod.image.includes('base64,') ? `data:image/jpeg;base64,${prod.image}` : prod.image} 
-                          alt={prod.name} 
-                          className="w-full h-full object-cover" 
-                        />
-                      ) : (
-                        <span className="text-3xl md:text-4xl">{prod.image || '📦'}</span>
-                      )}
-                    </div>
-                    <h3 className="font-black text-xs md:text-sm uppercase text-cyan-300">{prod.name}</h3>
-                    <p className="text-blue-100 text-[11px] md:text-xs leading-relaxed text-justify">{prod.desc}</p>
-                  </div>
-                  <div className="pt-4 md:pt-6">
-                    <button
-                      onClick={() => alert(`Details for ${prod.name}`)}
-                      className="w-full py-2 bg-blue-600 hover:bg-cyan-500 text-white font-bold rounded-xl text-[11px] md:text-xs transition uppercase tracking-wider border border-blue-500 cursor-pointer shadow-md shadow-blue-600/30"
-                    >
-                      Read more...
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* 5. OUR RESPECTED PARTNERS SECTION */}
-      <section id="partners" className="bg-slate-50 border-y border-slate-200 px-4 md:px-8 pt-6 pb-12 md:py-20">
-        <div className="max-w-7xl mx-auto space-y-8 md:space-y-12">
-          <div className="text-center space-y-2">
-            <h2 className="text-3xl font-black tracking-wide text-blue-950">Powering Pakistan's Top Hospitality & Retail Brands</h2>
-            <p className="text-xs text-slate-500">Proudly empowering top-tier businesses and fast-growing enterprises worldwide.</p>
-          </div>
-
-          {partners.length === 0 ? (
-            <div className="text-center py-10 text-slate-400 text-xs italic">No partners listed at the moment.</div>
-          ) : (
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(110px,1fr))] gap-3 md:gap-6 items-center">
-              {partners.map(partner => (
-                <div key={partner.id} className="bg-white border border-slate-100 rounded-2xl md:rounded-3xl p-3 md:p-5 flex flex-col items-center justify-center h-36 md:h-48 shadow-lg shadow-slate-200/60 hover:shadow-xl hover:border-blue-200 transition-all duration-300 group overflow-hidden">
-                  {partner.logo && (partner.logo.startsWith('data:') || partner.logo.startsWith('http') || partner.logo.startsWith('/') || partner.logo.length > 50) ? (
-                    <div className="w-full h-20 md:h-32 flex items-center justify-center shrink-0 mb-1">
-                      <img 
-                        src={partner.logo.startsWith('data:') && !partner.logo.includes('base64,') ? `data:image/png;base64,${partner.logo}` : partner.logo} 
-                        alt={partner.name} 
-                        className="w-full h-full object-contain" 
-                      />
-                    </div>
-                  ) : (
-                    <span className="text-5xl md:text-8xl mb-1">{partner.logo || '🏢'}</span>
-                  )}
-                  <span className="font-black text-[10px] md:text-xs text-slate-800 text-center truncate w-full uppercase tracking-wide">{partner.name}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* 6. DAILY BLOGS SECTION */}
-      <section id="blogs" className="px-4 md:px-8 pt-4 md:pt-14 pb-4 max-w-7xl mx-auto w-full space-y-6">
-        <div className="space-y-2 text-center">
-          <h2 className="text-3xl font-black tracking-wide text-blue-950">Tech Insights & Architecture Blogs</h2>
-        </div>
-
-        {blogs.length === 0 ? (
-          <div className="text-center py-10 text-slate-400 text-xs italic">No daily blogs published at the moment.</div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 justify-items-center">
-            {blogs.map((blog, idx) => (
-              <div key={blog.id || idx} className="bg-white border border-blue-100 rounded-2xl md:rounded-3xl p-3 md:p-5 shadow-lg shadow-blue-900/5 flex flex-col justify-between hover:border-blue-400 transition group w-full max-w-xs">
-                <div className="space-y-3">
-                  <div className="w-full h-24 md:h-36 bg-blue-900 rounded-2xl flex items-center justify-center text-2xl md:text-3xl text-white font-black shadow-inner group-hover:bg-blue-600 transition overflow-hidden">
-                    {blog.image && (blog.image.startsWith('data:') || blog.image.startsWith('http') || blog.image.startsWith('/') || blog.image.length > 50) ? (
-                      <img 
-                        src={blog.image.startsWith('data:') && !blog.image.includes('base64,') ? `data:image/jpeg;base64,${blog.image}` : blog.image} 
-                        alt="" 
-                        className="w-full h-full object-cover" 
-                      />
-                    ) : (
-                      <span>📰</span>
-                    )}
-                  </div>
-                  <div className="flex justify-between items-center text-[9px] md:text-[10px] text-slate-400 font-bold uppercase">
-                    <span>{blog.category}</span>
-                    <span>{blog.date}</span>
-                  </div>
-                  <h3 className="font-black text-xs md:text-sm text-blue-950 leading-snug">{blog.title}</h3>
-                  <p className="text-slate-600 text-[11px] md:text-xs leading-relaxed line-clamp-3 text-justify">{blog.desc}</p>
-                  {blog.writer && (
-                    <p className="text-[10px] text-green-600 font-semibold italic">Shared by : {blog.writer}</p>
-                  )}
-                </div>
-                <div className="pt-3 md:pt-4 mt-3 md:mt-4 border-t border-slate-100">
+      {/* DYNAMIC IN-PAGE RENDERING: PRODUCT DETAIL VIEW OR NORMAL HOME SECTIONS */}
+      {selectedProduct ? (
+        <main className="flex-1 px-4 md:px-8 pt-2 md:pt-4 pb-10 md:pb-16 max-w-7xl mx-auto w-full space-y-12 bg-white">
+          
+          {/* 1. LARGE PRODUCT TILE CARD AT THE TOP */}
+          <div className="bg-slate-900 border border-cyan-500/40 rounded-3xl p-6 md:p-12 shadow-2xl space-y-8 text-white">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+              <div className="w-full h-72 md:h-96 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-center overflow-hidden shadow-inner">
+                {selectedProduct.image && (selectedProduct.image.startsWith('data:') || selectedProduct.image.startsWith('http') || selectedProduct.image.startsWith('/') || selectedProduct.image.length > 50) ? (
+                  <img 
+                    src={selectedProduct.image.startsWith('data:') && !selectedProduct.image.includes('base64,') ? `data:image/jpeg;base64,${selectedProduct.image}` : selectedProduct.image} 
+                    alt={selectedProduct.name} 
+                    className="w-full h-full object-cover" 
+                  />
+                ) : (
+                  <span className="text-6xl">{selectedProduct.image || '📦'}</span>
+                )}
+              </div>
+              <div className="space-y-4">
+                <h1 className="text-2xl md:text-4xl font-black uppercase tracking-wide text-cyan-300">
+                  {selectedProduct.name}
+                </h1>
+                <p className="text-blue-100 text-sm md:text-base leading-relaxed text-justify">
+                  {selectedProduct.desc}
+                </p>
+                <div className="pt-4">
                   <button
-                    onClick={() => alert(`Opening article: ${blog.title}`)}
-                    className="text-[11px] md:text-xs font-extrabold text-blue-600 hover:text-blue-800 tracking-wide flex items-center space-x-1 cursor-pointer"
+                    onClick={() => setIsContactModalOpen(true)}
+                    className="px-6 py-3 bg-blue-600 hover:bg-cyan-500 text-white font-black text-xs rounded-xl transition uppercase tracking-wider cursor-pointer shadow-lg shadow-blue-600/30"
                   >
-                    <span>Read more...</span>
+                    INQUIRE ABOUT THIS PRODUCT
                   </button>
                 </div>
               </div>
-            ))}
+            </div>
           </div>
-        )}
 
-        {/* "Read all blogs..." Link positioned perfectly in the bottom right corner */}
-        <div className="flex justify-end pt-2">
-          <button
-            onClick={() => alert('Opening full blog archive...')}
-            className="text-xs font-black text-blue-600 hover:text-blue-800 font-semibold italic"
+          {/* 2. DETAILED DESCRIPTION SECTION (NO BOX, JUSTIFIED & INCREASED BOTTOM MARGIN BY 60%) */}
+          {selectedProduct.extendedDesc && (
+            <div className="mt-3 md:mt-5 mb-8 md:mb-14 px-4 md:px-12 text-slate-800">
+              <p className="text-sm md:text-base leading-relaxed text-slate-700 text-justify whitespace-pre-line">
+                {selectedProduct.extendedDesc}
+              </p>
+            </div>
+          )}
+
+          {/* 3. IMAGES CATALOG / GALLERY SLIDER (TRUE FULL IMAGE, MINIMAL EXTERNAL ARROWS & PLAY/PAUSE ICON) */}
+          {selectedProduct.gallery && selectedProduct.gallery.length > 0 && (
+            <div className="relative w-full flex flex-col items-center space-y-4">
+              <div 
+                className="relative w-full flex items-center justify-center px-8 md:px-12"
+                onMouseEnter={() => setIsPaused(true)}
+                onMouseLeave={() => setIsPaused(false)}
+              >
+                {/* Image Container with Smooth Dissolving/Appearing Transition */}
+                <div className="relative w-full flex items-center justify-center overflow-hidden">
+                  {selectedProduct.gallery.map((imgSrc: string, cIdx: number) => {
+                    const isActive = cIdx === activeCatalogSlide
+                    return (
+                      <div
+                        key={cIdx}
+                        className={`w-full flex justify-center transition-all duration-700 ease-in-out ${
+                          isActive
+                            ? 'opacity-100 scale-100 relative z-10 pointer-events-auto'
+                            : 'opacity-0 scale-95 absolute inset-0 z-0 pointer-events-none'
+                        }`}
+                      >
+                        <img 
+                          src={imgSrc} 
+                          alt="Catalog Preview" 
+                          className="w-full h-auto max-h-[750px] object-contain" 
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {selectedProduct.gallery.length > 1 && (
+                  <>
+                    <button
+                      onClick={() => setActiveCatalogSlide(prev => (prev - 1 + selectedProduct.gallery.length) % selectedProduct.gallery.length)}
+                      className="absolute left-0 top-1/2 -translate-y-1/2 z-20 text-slate-700 hover:text-cyan-600 text-3xl md:text-4xl font-bold transition-all duration-300 cursor-pointer hover:scale-125 px-1"
+                      title="Previous Image"
+                    >
+                      ‹
+                    </button>
+                    <button
+                      onClick={() => setActiveCatalogSlide(prev => (prev + 1) % selectedProduct.gallery.length)}
+                      className="absolute right-0 top-1/2 -translate-y-1/2 z-20 text-slate-700 hover:text-cyan-600 text-3xl md:text-4xl font-bold transition-all duration-300 cursor-pointer hover:scale-125 px-1"
+                      title="Next Image"
+                    >
+                      ›
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {selectedProduct.gallery.length > 1 && (
+                <div className="flex items-center space-x-4 pt-2">
+                  {/* Dots Pagination */}
+                  <div className="flex items-center space-x-2">
+                    {selectedProduct.gallery.map((_: any, idx: number) => (
+                      <button
+                        key={idx}
+                        onClick={() => setActiveCatalogSlide(idx)}
+                        className={`h-2.5 rounded-full transition-all cursor-pointer ${activeCatalogSlide === idx ? 'w-8 bg-blue-600 shadow' : 'w-2.5 bg-slate-300'}`}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Standalone Play / Pause Icon Button */}
+                  <button
+                    onClick={() => setIsPaused(!isPaused)}
+                    className="p-1 text-slate-700 hover:text-cyan-600 transition-all cursor-pointer text-base font-bold"
+                    title={isPaused ? "Play Animation" : "Pause Animation"}
+                  >
+                    <span>{isPaused ? '▶' : '⏸'}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 4. KEY FEATURES BREAKDOWN SECTION (VIBRANT LIGHT COLOR TONE BACKGROUND) */}
+          {selectedProduct.features && selectedProduct.features.length > 0 && (
+            <div className="w-full">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs md:text-sm">
+                {selectedProduct.features.map((feat: any, fIdx: number) => {
+                  const featTitle = typeof feat === 'object' && feat !== null ? (feat.title || `Feature #${fIdx + 1}`) : `Feature #${fIdx + 1}`
+                  const featDesc = typeof feat === 'object' && feat !== null ? (feat.desc || feat) : feat
+                  return (
+                    <div key={fIdx} className="p-5 bg-gradient-to-br from-blue-50 via-cyan-50 to-white text-slate-900 border border-cyan-200 rounded-3xl shadow-md space-y-2 flex flex-col justify-between hover:shadow-xl transition-all duration-300">
+                      <h4 className="font-extrabold text-blue-600 uppercase tracking-wide">• {featTitle}</h4>
+                      <p className="text-slate-700 text-xs leading-relaxed text-justify">{featDesc}</p>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* 5. CALL-TO-ACTION (CTA) SECTION TO GET DEMO / FULL CONTROL */}
+          <div 
+            className="rounded-3xl p-8 md:p-12 text-center text-white space-y-6 shadow-2xl relative overflow-hidden"
+            style={{
+              backgroundImage: `
+                radial-gradient(circle at 50% 50%, rgba(34, 211, 238, 0.3) 0%, transparent 70%),
+                linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #1e1b4b 100%)
+              `,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center'
+            }}
           >
-            <span>Read all BLOGS...</span>            
-          </button>
-        </div>
-      </section>
+            <h3 className="text-2xl md:text-3xl font-black uppercase tracking-wide">
+              Ready to Experience {selectedProduct.name}?
+            </h3>
+            <p className="text-blue-100 text-xs md:text-sm max-w-2xl mx-auto leading-relaxed">
+              Contact Unicon Labs today to schedule a personalized live software demo or get full administrative control access for your enterprise.
+            </p>
+            <div className="pt-2 flex flex-wrap justify-center gap-4">
+              <button
+                onClick={() => setIsContactModalOpen(true)}
+                className="px-8 py-3.5 bg-blue-600 hover:bg-cyan-500 text-white font-black text-xs rounded-xl transition uppercase tracking-wider cursor-pointer shadow-lg shadow-blue-600/30"
+              >
+                REQUEST FREE DEMO NOW
+              </button>
+              <a
+                href="https://wa.me/923333776556"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-8 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl transition uppercase tracking-wider cursor-pointer shadow-lg"
+              >
+                WHATSAPP SALES TEAM
+              </a>
+            </div>
+          </div>
 
-      {/* ABOUT US SECTION */}
-      <section 
-        id="about" 
-        className="text-white px-8 py-24 relative overflow-hidden"
-        style={{
-          backgroundImage: `
-            radial-gradient(circle at 20% 30%, rgba(34, 211, 238, 0.25) 0%, transparent 50%),
-            radial-gradient(circle at 80% 70%, rgba(59, 130, 246, 0.4) 0%, transparent 60%),
-            linear-gradient(120deg, #0f172a 0%, #1e3a8a 50%, #1e1b4b 100%),
-            repeating-linear-gradient(0deg, rgba(56, 189, 248, 0.05) 0px, rgba(56, 189, 248, 0.05) 1px, transparent 1px, transparent 40px),
-            repeating-linear-gradient(90deg, rgba(56, 189, 248, 0.05) 0px, rgba(56, 189, 248, 0.05) 1px, transparent 1px, transparent 40px)
-          `,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center'
-        }}
-      >
-        <div className="absolute inset-0 pointer-events-none opacity-30 flex items-center justify-between px-16 overflow-hidden select-none">
-          <div className="absolute left-10 top-1/4 w-32 h-32 rounded-full border border-cyan-400/30 flex items-center justify-center animate-pulse">
-            <div className="w-16 h-16 rounded-full border border-cyan-400/50 flex items-center justify-center text-[9px] font-mono text-cyan-300">SYNC</div>
-          </div>
-          <div className="absolute right-12 bottom-1/4 w-40 h-40 rounded-full border border-blue-400/30 flex items-center justify-center animate-pulse">
-            <div className="w-20 h-20 rounded-full border border-blue-400/50 flex items-center justify-center text-[9px] font-mono text-blue-300">CORE</div>
-          </div>
-          <div className="absolute left-1/3 top-10 h-24 w-px bg-gradient-to-b from-transparent via-cyan-400 to-transparent"></div>
-          <div className="absolute right-1/3 bottom-10 h-24 w-px bg-gradient-to-b from-transparent via-blue-400 to-transparent"></div>
-        </div>
+          {/* PRODUCT FOOTER: EXACT HOMEPAGE PRODUCT TILES FOR REMAINING PRODUCTS */}
+          <div className="space-y-6 pt-6 border-t border-slate-200">
+            <div className="text-center space-y-2">
+              <h3 className="text-3xl font-black tracking-wide text-blue-950">Explore Other Products & Modules</h3>
+              <p className="text-xs text-slate-500">Integrated multi-surface modules engineered for high-performance enterprise execution.</p>
+            </div>
 
-        <div className="max-w-5xl mx-auto text-center space-y-4 flex flex-col items-center relative z-10">
-          <div className="mb-2">
-            <img
-              src="/unicon-logo1.png"
-              alt="Unicon Labs Enlarged Logo"
-              className="h-20 w-auto object-contain filter drop-shadow-[0_0_16px_rgba(34,211,238,1)] drop-shadow-[0_0_32px_rgba(56,189,248,0.8)]"
-            />
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3 md:gap-5">
+              {products
+                .filter(p => (p.id ? p.id !== selectedProduct.id : p.name !== selectedProduct.name))
+                .map((prod, idx) => (
+                  <div key={prod.id || idx} className="bg-slate-900/90 border border-cyan-500/30 rounded-3xl p-3 md:p-5 shadow-xl shadow-blue-950/50 flex flex-col justify-between hover:border-cyan-400 hover:shadow-cyan-500/20 transition group backdrop-blur-xs text-white">
+                    <div className="space-y-3 md:space-y-4">
+                      <div className="w-full h-24 md:h-32 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-center overflow-hidden shadow-inner group-hover:scale-105 transition duration-300">
+                        {prod.image && (prod.image.startsWith('data:') || prod.image.startsWith('http') || prod.image.startsWith('/') || prod.image.length > 50) ? (
+                          <img 
+                            src={prod.image.startsWith('data:') && !prod.image.includes('base64,') ? `data:image/jpeg;base64,${prod.image}` : prod.image} 
+                            alt={prod.name} 
+                            className="w-full h-full object-cover" 
+                          />
+                        ) : (
+                          <span className="text-3xl md:text-4xl">{prod.image || '📦'}</span>
+                        )}
+                      </div>
+                      <h4 className="font-black text-xs md:text-sm uppercase text-cyan-300">{prod.name}</h4>
+                      <p className="text-blue-100 text-[11px] md:text-xs leading-relaxed text-justify">{prod.desc}</p>
+                    </div>
+                    <div className="pt-4 md:pt-6">
+                      <button
+                        onClick={() => {
+                          setSelectedProduct(prod)
+                          setActiveCatalogSlide(0)
+                          window.scrollTo({ top: 0, behavior: 'smooth' })
+                        }}
+                        className="w-full py-2 bg-blue-600 hover:bg-cyan-500 text-white font-bold rounded-xl text-[11px] md:text-xs transition uppercase tracking-wider border border-blue-500 cursor-pointer shadow-md shadow-blue-600/30"
+                      >
+                        READ MORE...
+                      </button>
+                    </div>
+                  </div>
+                ))}
+            </div>
           </div>
-          <h2 className="text-xs font-black uppercase tracking-widest text-cyan-300">ABOUT UNICON LABS</h2>
-          <h3 className="text-2xl font-black uppercase tracking-wide">Engineering Robust Software Solutions</h3>
-          <p className="text-blue-100 text-xs md:text-sm max-w-3xl mx-auto leading-relaxed whitespace-pre-line">
-            {aboutText}
-          </p>
-        </div>
-      </section>
+        </main>
+      ) : (
+        <>
+          {/* 3. HERO BANNER SECTION */}
+          <section
+            id="home"
+            onMouseEnter={() => setIsPaused(true)}
+            onMouseLeave={() => setIsPaused(false)}
+            className="bg-gradient-to-b from-blue-900 to-blue-950 text-white px-8 py-24 relative overflow-hidden min-h-[420px] flex items-center justify-center"
+          >
+            <div className="absolute inset-0 w-full h-full flex items-center justify-center">
+              {heroBanners.length === 0 ? (
+                <div className="text-blue-300 text-xs italic">Loading hero banners...</div>
+              ) : (
+                heroBanners.map((hb, idx) => {
+                  const isActive = idx === activeHeroSlide
+                  return (
+                    <div
+                      key={hb.id || idx}
+                      className={`absolute inset-0 w-full h-full flex items-center justify-center px-8 transition-all duration-700 ease-in-out ${
+                        isActive
+                          ? 'opacity-100 translate-x-0 scale-100 filter blur-0 pointer-events-auto'
+                          : 'opacity-0 translate-x-20 scale-95 filter blur-sm pointer-events-none'
+                      }`}
+                      style={{
+                        backgroundImage: hb.bgImage ? `url('${hb.bgImage}')` : 'none',
+                        backgroundSize: '100% 100%',
+                        backgroundPosition: 'center'
+                      }}
+                    >
+                      <div 
+                        className="max-w-5xl mx-auto text-center space-y-6 relative z-10 p-8 rounded-3xl border border-white/10 backdrop-blur-xs transition-all shadow-xl"
+                        style={{
+                          backgroundColor: `rgba(15, 23, 42, ${(hb.textBgOpacity ?? 80) / 100})`
+                        }}
+                      >
+                        <h1 className="text-3xl md:text-5xl font-black tracking-tight uppercase leading-tight max-w-4xl mx-auto">
+                          {hb.title}
+                        </h1>
+                        
+                        <p className="text-blue-100 max-w-2xl mx-auto text-sm md:text-base font-medium leading-relaxed">
+                          {hb.subtitle}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+
+            {heroBanners.length > 0 && (
+              <>
+                <button
+                  onClick={handlePrevHeroSlide}
+                  className="absolute left-6 top-1/2 -translate-y-1/2 z-30 w-11 h-11 bg-white/10 hover:bg-white/25 backdrop-blur-md rounded-full flex items-center justify-center text-white text-lg font-bold transition shadow-lg cursor-pointer border border-white/20"
+                  title="Previous Banner"
+                >
+                  ‹
+                </button>
+                <button
+                  onClick={handleNextHeroSlide}
+                  className="absolute right-6 top-1/2 -translate-y-1/2 z-30 w-11 h-11 bg-white/10 hover:bg-white/25 backdrop-blur-md rounded-full flex items-center justify-center text-white text-lg font-bold transition shadow-lg cursor-pointer border border-white/20"
+                  title="Next Banner"
+                >
+                  ›
+                </button>
+
+                <div className="absolute bottom-6 left-0 right-0 z-30 flex justify-center space-x-2">
+                  {heroBanners.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setActiveHeroSlide(idx)}
+                      className={`h-2.5 rounded-full transition-all cursor-pointer ${activeHeroSlide === idx ? 'w-8 bg-white shadow' : 'w-2.5 bg-blue-700/80'}`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </section>
+
+          {/* 4. CORE OPERATIONS DISPLAY ROW */}
+          <section 
+            id="products" 
+            className="px-4 md:px-8 pt-7 pb-16 md:py-24 relative overflow-hidden text-white"
+            style={{
+              backgroundImage: `
+                radial-gradient(circle at 50% 30%, rgba(34, 211, 238, 0.2) 0%, transparent 60%),
+                linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #172554 100%),
+                repeating-linear-gradient(0deg, rgba(56, 189, 248, 0.03) 0px, rgba(56, 189, 248, 0.03) 1px, transparent 1px, transparent 40px),
+                repeating-linear-gradient(90deg, rgba(56, 189, 248, 0.03) 0px, rgba(56, 189, 248, 0.03) 1px, transparent 1px, transparent 40px)
+              `,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center'
+            }}
+          >
+            <div className="absolute inset-0 pointer-events-none overflow-hidden select-none animate-pulse-glow">
+              <div className="absolute left-[10%] top-[15%] w-52 h-52 rounded-full border border-cyan-400/25 flex items-center justify-center">
+                <div className="w-26 h-26 rounded-full border border-cyan-400/35 flex items-center justify-center text-[10px] font-mono text-cyan-300">SYNC</div>
+              </div>
+              <div className="absolute right-[10%] bottom-[15%] w-60 h-60 rounded-full border border-blue-400/25 flex items-center justify-center">
+                <div className="w-30 h-30 rounded-full border border-blue-400/35 flex items-center justify-center text-[10px] font-mono text-blue-300">NODE</div>
+              </div>
+              <div className="absolute left-1/2 top-0 -translate-x-1/2 w-px h-full bg-gradient-to-b from-transparent via-cyan-400/30 to-transparent"></div>
+              <div className="absolute left-1/4 top-1/2 w-48 h-px bg-gradient-to-r from-transparent via-blue-400/30 to-transparent"></div>
+              <div className="absolute right-1/4 top-1/3 w-48 h-px bg-gradient-to-r from-transparent via-cyan-400/30 to-transparent"></div>
+            </div>
+
+            <div className="max-w-7xl mx-auto w-full space-y-8 relative z-10">
+              <div className="text-center space-y-2">
+                <h2 className="text-3xl font-black tracking-wide text-white">Digital Ecosystem / Core Operations</h2>
+                <p className="text-xs text-blue-200">Integrated multi-surface modules engineered for high-performance enterprise execution.</p>
+              </div>
+
+              {products.length === 0 ? (
+                <div className="text-center py-10 text-blue-200 text-xs italic">No core operations listed at the moment.</div>
+              ) : (
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3 md:gap-5">
+                  {products.map((prod, idx) => (
+                    <div key={prod.id || idx} className="bg-slate-900/90 border border-cyan-500/30 rounded-3xl p-3 md:p-5 shadow-xl shadow-blue-950/50 flex flex-col justify-between hover:border-cyan-400 hover:shadow-cyan-500/20 transition group backdrop-blur-xs">
+                      <div className="space-y-3 md:space-y-4">
+                        <div className="w-full h-24 md:h-32 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-center overflow-hidden shadow-inner group-hover:scale-105 transition duration-300">
+                          {prod.image && (prod.image.startsWith('data:') || prod.image.startsWith('http') || prod.image.startsWith('/') || prod.image.length > 50) ? (
+                            <img 
+                              src={prod.image.startsWith('data:') && !prod.image.includes('base64,') ? `data:image/jpeg;base64,${prod.image}` : prod.image} 
+                              alt={prod.name} 
+                              className="w-full h-full object-cover" 
+                            />
+                          ) : (
+                            <span className="text-3xl md:text-4xl">{prod.image || '📦'}</span>
+                          )}
+                        </div>
+                        <h3 className="font-black text-xs md:text-sm uppercase text-cyan-300">{prod.name}</h3>
+                        <p className="text-blue-100 text-[11px] md:text-xs leading-relaxed text-justify">{prod.desc}</p>
+                      </div>
+                      <div className="pt-4 md:pt-6">
+                        <button
+                          onClick={() => {
+                            setSelectedProduct(prod)
+                            setActiveCatalogSlide(0)
+                            window.scrollTo({ top: 0, behavior: 'smooth' })
+                          }}
+                          className="w-full py-2 bg-blue-600 hover:bg-cyan-500 text-white font-bold rounded-xl text-[11px] md:text-xs transition uppercase tracking-wider border border-blue-500 cursor-pointer shadow-md shadow-blue-600/30"
+                        >
+                          READ MORE...
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* 5. OUR RESPECTED PARTNERS SECTION */}
+          <section id="partners" className="bg-slate-50 border-y border-slate-200 px-4 md:px-8 pt-6 pb-12 md:py-20">
+            <div className="max-w-7xl mx-auto space-y-8 md:space-y-12">
+              <div className="text-center space-y-2">
+                <h2 className="text-3xl font-black tracking-wide text-blue-950">Powering Pakistan's Top Hospitality & Retail Brands</h2>
+                <p className="text-xs text-slate-500">Proudly empowering top-tier businesses and fast-growing enterprises worldwide.</p>
+              </div>
+
+              {partners.length === 0 ? (
+                <div className="text-center py-10 text-slate-400 text-xs italic">No partners listed at the moment.</div>
+              ) : (
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(110px,1fr))] gap-3 md:gap-6 items-center">
+                  {partners.map(partner => (
+                    <div key={partner.id} className="bg-white border border-slate-100 rounded-2xl md:rounded-3xl p-3 md:p-5 flex flex-col items-center justify-center h-36 md:h-48 shadow-lg shadow-slate-200/60 hover:shadow-xl hover:border-blue-200 transition-all duration-300 group overflow-hidden">
+                      {partner.logo && (partner.logo.startsWith('data:') || partner.logo.startsWith('http') || partner.logo.startsWith('/') || partner.logo.length > 50) ? (
+                        <div className="w-full h-20 md:h-32 flex items-center justify-center shrink-0 mb-1">
+                          <img 
+                            src={partner.logo.startsWith('data:') && !partner.logo.includes('base64,') ? `data:image/png;base64,${partner.logo}` : partner.logo} 
+                            alt={partner.name} 
+                            className="w-full h-full object-contain" 
+                          />
+                        </div>
+                      ) : (
+                        <span className="text-5xl md:text-8xl mb-1">{partner.logo || '🏢'}</span>
+                      )}
+                      <span className="font-black text-[10px] md:text-xs text-slate-800 text-center truncate w-full uppercase tracking-wide">{partner.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* 6. DAILY BLOGS SECTION */}
+          <section id="blogs" className="px-4 md:px-8 pt-4 md:pt-14 pb-4 max-w-7xl mx-auto w-full space-y-6">
+            <div className="space-y-2 text-center">
+              <h2 className="text-3xl font-black tracking-wide text-blue-950">Tech Insights & Architecture Blogs</h2>
+            </div>
+
+            {blogs.length === 0 ? (
+              <div className="text-center py-10 text-slate-400 text-xs italic">No daily blogs published at the moment.</div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 justify-items-center">
+                {blogs.map((blog, idx) => (
+                  <div key={blog.id || idx} className="bg-white border border-blue-100 rounded-2xl md:rounded-3xl p-3 md:p-5 shadow-lg shadow-blue-900/5 flex flex-col justify-between hover:border-blue-400 transition group w-full max-w-xs">
+                    <div className="space-y-3">
+                      <div className="w-full h-24 md:h-36 bg-blue-900 rounded-2xl flex items-center justify-center text-2xl md:text-3xl text-white font-black shadow-inner group-hover:bg-blue-600 transition overflow-hidden">
+                        {blog.image && (blog.image.startsWith('data:') || blog.image.startsWith('http') || blog.image.startsWith('/') || blog.image.length > 50) ? (
+                          <img 
+                            src={blog.image.startsWith('data:') && !blog.image.includes('base64,') ? `data:image/jpeg;base64,${blog.image}` : blog.image} 
+                            alt="" 
+                            className="w-full h-full object-cover" 
+                          />
+                        ) : (
+                          <span>📰</span>
+                        )}
+                      </div>
+                      <div className="flex justify-between items-center text-[9px] md:text-[10px] text-slate-400 font-bold uppercase">
+                        <span>{blog.category}</span>
+                        <span>{blog.date}</span>
+                      </div>
+                      <h3 className="font-black text-xs md:text-sm text-blue-950 leading-snug">{blog.title}</h3>
+                      <p className="text-slate-600 text-[11px] md:text-xs leading-relaxed line-clamp-3 text-justify">{blog.desc}</p>
+                      {blog.writer && (
+                        <p className="text-[10px] text-green-600 font-semibold italic">Shared by : {blog.writer}</p>
+                      )}
+                    </div>
+                    <div className="pt-3 md:pt-4 mt-3 md:mt-4 border-t border-slate-100">
+                      <button
+                        onClick={() => alert(`Opening article: ${blog.title}`)}
+                        className="text-[11px] md:text-xs font-extrabold text-blue-600 hover:text-blue-800 tracking-wide flex items-center space-x-1 cursor-pointer"
+                      >
+                        <span>Read more...</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* "Read all blogs..." Link positioned perfectly in the bottom right corner */}
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => alert('Opening full blog archive...')}
+                className="text-xs font-black text-blue-600 hover:text-blue-800 font-semibold italic"
+              >
+                <span>Read all BLOGS...</span>    
+              </button>
+            </div>
+          </section>
+
+          {/* ABOUT US SECTION */}
+          <section 
+            id="about" 
+            className="text-white px-8 py-24 relative overflow-hidden"
+            style={{
+              backgroundImage: `
+                radial-gradient(circle at 20% 30%, rgba(34, 211, 238, 0.25) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(59, 130, 246, 0.4) 0%, transparent 60%),
+                linear-gradient(120deg, #0f172a 0%, #1e3a8a 50%, #1e1b4b 100%),
+                repeating-linear-gradient(0deg, rgba(56, 189, 248, 0.05) 0px, rgba(56, 189, 248, 0.05) 1px, transparent 1px, transparent 40px),
+                repeating-linear-gradient(90deg, rgba(56, 189, 248, 0.05) 0px, rgba(56, 189, 248, 0.05) 1px, transparent 1px, transparent 40px)
+              `,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center'
+            }}
+          >
+            <div className="absolute inset-0 pointer-events-none opacity-30 flex items-center justify-between px-16 overflow-hidden select-none">
+              <div className="absolute left-10 top-1/4 w-32 h-32 rounded-full border border-cyan-400/30 flex items-center justify-center animate-pulse">
+                <div className="w-16 h-16 rounded-full border border-cyan-400/50 flex items-center justify-center text-[9px] font-mono text-cyan-300">SYNC</div>
+              </div>
+              <div className="absolute right-12 bottom-1/4 w-40 h-40 rounded-full border border-blue-400/30 flex items-center justify-center animate-pulse">
+                <div className="w-20 h-20 rounded-full border border-blue-400/50 flex items-center justify-center text-[9px] font-mono text-blue-300">CORE</div>
+              </div>
+              <div className="absolute left-1/3 top-10 h-24 w-px bg-gradient-to-b from-transparent via-cyan-400 to-transparent"></div>
+              <div className="absolute right-1/3 bottom-10 h-24 w-px bg-gradient-to-b from-transparent via-blue-400 to-transparent"></div>
+            </div>
+
+            <div className="max-w-5xl mx-auto text-center space-y-4 flex flex-col items-center relative z-10">
+              <div className="mb-2">
+                <img
+                  src="/unicon-logo1.png"
+                  alt="Unicon Labs Enlarged Logo"
+                  className="h-20 w-auto object-contain filter drop-shadow-[0_0_16px_rgba(34,211,238,1)] drop-shadow-[0_0_32px_rgba(56,189,248,0.8)]"
+                />
+              </div>
+              <h2 className="text-xs font-black uppercase tracking-widest text-cyan-300">ABOUT UNICON LABS</h2>
+              <h3 className="text-2xl font-black uppercase tracking-wide">Engineering Robust Software Solutions</h3>
+              <p className="text-blue-100 text-xs md:text-sm max-w-3xl mx-auto leading-relaxed whitespace-pre-line">
+                {aboutText}
+              </p>
+            </div>
+          </section>
+        </>
+      )}
 
       {/* 7. PROFESSIONAL FOOTER AREA */}
       <footer 
@@ -756,7 +1008,7 @@ export default function UniconLabsLandingPage() {
               <li>KDS Kitchen Display System</li>
               <li>DDC Digital Dispatch Center</li>
               <li>Online Store-Front</li>
-	      <li>ERP & Finance Software</li> 	
+              <li>ERP & Finance Software</li> 	
             </ul>
           </div>
           <div className="space-y-2">
