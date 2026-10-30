@@ -34,6 +34,11 @@ export default function UniconLabsLandingPage() {
   const [tenantPassword, setTenantPassword] = useState('')
   const [authLoading, setAuthLoading] = useState(false)
 
+  // Footer Modal States (Privacy, Terms, Security Compliance)
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false)
+  const [isTermsModalOpen, setIsTermsModalOpen] = useState(false)
+  const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false)
+
   // Dynamic Content State loaded from Supabase
   const [headerBrand, setHeaderBrand] = useState('UNICON LABS')
   const [headerSlogan, setHeaderSlogan] = useState('YOU THINK WE BUILD')
@@ -909,7 +914,7 @@ export default function UniconLabsLandingPage() {
                 onClick={() => alert('Opening full blog archive...')}
                 className="text-xs font-black text-blue-600 hover:text-blue-800 font-semibold italic"
               >
-                <span>Read all BLOGS...</span>    
+                <span>Read all BLOGS...</span>   
               </button>
             </div>
           </section>
@@ -1004,11 +1009,31 @@ export default function UniconLabsLandingPage() {
           <div className="space-y-2">
             <h4 className="font-black uppercase tracking-wider text-cyan-300 text-sm">Core Operations</h4>
             <ul className="space-y-1.5 text-blue-200">
-              <li>POS Terminal Software</li>
-              <li>KDS Kitchen Display System</li>
-              <li>DDC Digital Dispatch Center</li>
-              <li>Online Store-Front</li>
-              <li>ERP & Finance Software</li> 	
+              {['POS Terminal Software', 'KDS Kitchen Display System', 'DDC Digital Dispatch Center', 'Online Store-Front', 'ERP & Finance Software'].map((opName) => {
+                const matchedProduct = products.find(p => p.name.toLowerCase().includes(opName.split(' ')[0].toLowerCase()))
+                return (
+                  <li key={opName}>
+                    <button
+                      onClick={() => {
+                        if (matchedProduct) {
+                          setSelectedProduct(matchedProduct)
+                          setActiveCatalogSlide(0)
+                        } else {
+                          if (products.length > 0) {
+                            setSelectedProduct(products[0])
+                          } else {
+                            setIsContactModalOpen(true)
+                          }
+                        }
+                        window.scrollTo({ top: 0, behavior: 'smooth' })
+                      }}
+                      className="hover:text-cyan-300 transition cursor-pointer bg-transparent border-none p-0 text-inherit font-inherit text-left"
+                    >
+                      {opName}
+                    </button>
+                  </li>
+                )
+              })}
             </ul>
           </div>
           <div className="space-y-2">
@@ -1081,9 +1106,24 @@ export default function UniconLabsLandingPage() {
           <div className="flex flex-col md:flex-row justify-between items-center w-full">
             <p>© 2026 <a href="/master-admin" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-300">{headerBrand}</a>. All rights reserved.</p>
             <div className="flex flex-wrap justify-center items-center gap-4 md:space-x-6 mt-3 md:mt-0">
-              <span className="hover:text-cyan-300 cursor-pointer">Privacy Policy</span>
-              <span className="hover:text-cyan-300 cursor-pointer">Terms of Service</span>
-              <span className="hover:text-cyan-300 cursor-pointer">Security Compliance</span>
+              <button 
+                onClick={() => setIsPrivacyModalOpen(true)}
+                className="hover:text-cyan-300 cursor-pointer bg-transparent border-none p-0 text-inherit font-inherit"
+              >
+                Privacy Policy
+              </button>
+              <button 
+                onClick={() => setIsTermsModalOpen(true)}
+                className="hover:text-cyan-300 cursor-pointer bg-transparent border-none p-0 text-inherit font-inherit"
+              >
+                Terms of Service
+              </button>
+              <button 
+                onClick={() => setIsSecurityModalOpen(true)}
+                className="hover:text-cyan-300 cursor-pointer bg-transparent border-none p-0 text-inherit font-inherit"
+              >
+                Security Compliance
+              </button>
             </div>
           </div>
           
@@ -1318,6 +1358,360 @@ export default function UniconLabsLandingPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* PRIVACY POLICY POPUP MODAL PALETTE */}
+      {isPrivacyModalOpen && (
+        <div 
+          onClick={() => setIsPrivacyModalOpen(false)}
+          className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => { if (e.key === 'Escape') setIsPrivacyModalOpen(false); }}
+            tabIndex={-1}
+            className="bg-slate-900 border border-cyan-500/50 rounded-3xl w-[95%] sm:max-w-4xl max-h-[92vh] overflow-y-auto shadow-[0_0_50px_rgba(34,211,238,0.2)] text-slate-100 relative flex flex-col my-auto outline-none"
+          >
+            
+            {/* STICKY MODAL HEADER */}
+            <div className="sticky top-0 z-20 bg-slate-900/95 backdrop-blur-md px-6 py-5 border-b border-cyan-500/30 flex justify-between items-center">
+              <div className="flex items-center space-x-3.5">
+                <div className="h-14 w-auto flex items-center justify-center">
+                  <img src="/unicon-logo1.png" alt="Unicon Logo" className="h-full w-auto object-contain drop-shadow-[0_0_10px_rgba(34,211,238,0.4)]" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black uppercase text-cyan-300 tracking-wider">Privacy Policy</h3>
+                  <p className="text-[11px] text-blue-200/70 tracking-wide font-mono">UNICON LABS Digital Ecosystems & Multi-Tenant Security Standards</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsPrivacyModalOpen(false)}
+                className="w-9 h-9 rounded-full bg-slate-800 hover:bg-cyan-500 hover:text-slate-950 text-slate-300 font-bold flex items-center justify-center text-sm transition-all duration-300 shadow-lg cursor-pointer border border-slate-700 hover:border-cyan-400"
+                title="Close Window"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* MODAL CONTENT BODY */}
+            <div className="p-6 sm:p-8 space-y-6 text-xs sm:text-sm leading-relaxed text-blue-100">
+              
+              <div className="p-4 rounded-2xl bg-cyan-950/30 border border-cyan-500/20 text-cyan-200 text-xs flex items-start space-x-3">
+                <span className="text-cyan-400 text-base font-bold">ℹ️</span>
+                <p>
+                  Effective Date: October 2026. This policy outlines how UNICON LABS ("we", "our", or "us") manages, encrypts, and protects enterprise data across our multi-tenant SaaS architecture.
+                </p>
+              </div>
+
+              {/* SECTION 1 */}
+              <div className="p-5 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-cyan-500/40 transition-all space-y-2">
+                <h4 className="font-black text-cyan-300 uppercase tracking-wider text-xs sm:text-sm flex items-center space-x-2">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+                  <span>Scope & Multi-Tenant Architecture</span>
+                </h4>
+                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed text-justify pl-4 border-l-2 border-cyan-500/30">
+                  This Privacy Policy applies universally to the UNICON LABS website platform, Business OS frontend, Point of Sale (POS) terminals, Kitchen Display Systems (KDS), Digital Dispatch Centers (DDC), and cloud-synced databases. Our multi-tenant framework ensures strict logical separation between individual client entities, guaranteeing absolute tenant isolation.
+                </p>
+              </div>
+
+              {/* SECTION 2 */}
+              <div className="p-5 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-cyan-500/40 transition-all space-y-2">
+                <h4 className="font-black text-cyan-300 uppercase tracking-wider text-xs sm:text-sm flex items-center space-x-2">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+                  <span>Information Collection & Telemetry</span>
+                </h4>
+                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed text-justify pl-4 border-l-2 border-cyan-500/30">
+                  We gather operational metadata necessary for high-performance enterprise execution, including staff credentials, encrypted billing ledgers, inventory matrices, recipe management logs, and real-time synchronization telemetry. Personal identification information is restricted to authorized administrative contacts.
+                </p>
+              </div>
+
+              {/* SECTION 3 */}
+              <div className="p-5 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-cyan-500/40 transition-all space-y-2">
+                <h4 className="font-black text-cyan-300 uppercase tracking-wider text-xs sm:text-sm flex items-center space-x-2">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+                  <span>Operational Data Usage</span>
+                </h4>
+                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed text-justify pl-4 border-l-2 border-cyan-500/30">
+                  Collected data is utilized exclusively to maintain cloud stability, execute automated financial auditing, facilitate rider and staff cash settlements, and power real-time dashboard analytics. UNICON LABS never sells, trades, or leases proprietary business records to third parties.
+                </p>
+              </div>
+
+              {/* SECTION 4 */}
+              <div className="p-5 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-cyan-500/40 transition-all space-y-2">
+                <h4 className="font-black text-cyan-300 uppercase tracking-wider text-xs sm:text-sm flex items-center space-x-2">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+                  <span>Cloud Security & Encryption Standards</span>
+                </h4>
+                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed text-justify pl-4 border-l-2 border-cyan-500/30">
+                  All transmissions between tenant terminals and our central Supabase cloud infrastructure are secured via TLS encryption. Data at rest is protected with enterprise-grade encryption keys, backed by automated redundancy and continuous security posture monitoring.
+                </p>
+              </div>
+
+              {/* SECTION 5 */}
+              <div className="p-5 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-cyan-500/40 transition-all space-y-2">
+                <h4 className="font-black text-cyan-300 uppercase tracking-wider text-xs sm:text-sm flex items-center space-x-2">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+                  <span>Enterprise Rights & Administrative Contact</span>
+                </h4>
+                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed text-justify pl-4 border-l-2 border-cyan-500/30">
+                  Clients retain absolute ownership of their operational data. To request data audits, permission modifications, or system compliance reports, reach out directly to our engineering team at <span className="text-cyan-300 font-bold font-mono">+92 333 3776556</span> or via email at <span className="text-cyan-300 font-bold font-mono">info.uniconlabs@gmail.com</span>.
+                </p>
+              </div>
+
+            </div>
+
+            {/* STICKY MODAL FOOTER ACTION BAR */}
+            <div className="sticky bottom-0 z-20 bg-slate-900/95 backdrop-blur-md px-6 py-4 border-t border-cyan-500/30 flex flex-col sm:flex-row justify-between items-center gap-4">
+              <span className="text-[11px] text-slate-400 font-mono">
+                UNICON LABS Compliance Framework v2.4
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsPrivacyModalOpen(false)}
+                className="w-full sm:w-auto px-8 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-black text-xs uppercase tracking-wider rounded-xl transition shadow-[0_0_20px_rgba(34,211,238,0.4)] cursor-pointer"
+              >
+                Acknowledge & Close
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* TERMS OF SERVICE POPUP MODAL PALETTE */}
+      {isTermsModalOpen && (
+        <div 
+          onClick={() => setIsTermsModalOpen(false)}
+          className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => { if (e.key === 'Escape') setIsTermsModalOpen(false); }}
+            tabIndex={-1}
+            className="bg-slate-900 border border-cyan-500/50 rounded-3xl w-[95%] sm:max-w-4xl max-h-[92vh] overflow-y-auto shadow-[0_0_50px_rgba(34,211,238,0.2)] text-slate-100 relative flex flex-col my-auto outline-none"
+          >
+            
+            {/* STICKY MODAL HEADER */}
+            <div className="sticky top-0 z-20 bg-slate-900/95 backdrop-blur-md px-6 py-5 border-b border-cyan-500/30 flex justify-between items-center">
+              <div className="flex items-center space-x-3.5">
+                <div className="h-14 w-auto flex items-center justify-center">
+                  <img src="/unicon-logo1.png" alt="Unicon Logo" className="h-full w-auto object-contain drop-shadow-[0_0_10px_rgba(34,211,238,0.4)]" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black uppercase text-cyan-300 tracking-wider">Terms of Service</h3>
+                  <p className="text-[11px] text-blue-200/70 tracking-wide font-mono">UNICON LABS Software Licensing & Enterprise Usage Agreements</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsTermsModalOpen(false)}
+                className="w-9 h-9 rounded-full bg-slate-800 hover:bg-cyan-500 hover:text-slate-950 text-slate-300 font-bold flex items-center justify-center text-sm transition-all duration-300 shadow-lg cursor-pointer border border-slate-700 hover:border-cyan-400"
+                title="Close Window"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* MODAL CONTENT BODY */}
+            <div className="p-6 sm:p-8 space-y-6 text-xs sm:text-sm leading-relaxed text-blue-100">
+              
+              <div className="p-4 rounded-2xl bg-cyan-950/30 border border-cyan-500/20 text-cyan-200 text-xs flex items-start space-x-3">
+                <span className="text-cyan-400 text-base font-bold">ℹ️</span>
+                <p>
+                  Agreement Overview: By accessing or utilizing UNICON LABS digital ecosystems, POS terminals, web applications, and multi-tenant modules, you agree to comply with and be bound by these Terms of Service.
+                </p>
+              </div>
+
+              {/* SECTION 1 */}
+              <div className="p-5 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-cyan-500/40 transition-all space-y-2">
+                <h4 className="font-black text-cyan-300 uppercase tracking-wider text-xs sm:text-sm flex items-center space-x-2">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+                  <span>Software License & Platform Access</span>
+                </h4>
+                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed text-justify pl-4 border-l-2 border-cyan-500/30">
+                  UNICON LABS grants authorized enterprise clients a non-exclusive, non-transferable, limited license to access our multi-tenant Business OS, Point of Sale (POS) software, Kitchen Display Systems (KDS), and Digital Dispatch Centers (DDC) strictly for internal business operations. Reverse engineering, unauthorized distribution, or license sharing is strictly prohibited.
+                </p>
+              </div>
+
+              {/* SECTION 2 */}
+              <div className="p-5 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-cyan-500/40 transition-all space-y-2">
+                <h4 className="font-black text-cyan-300 uppercase tracking-wider text-xs sm:text-sm flex items-center space-x-2">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+                  <span>Tenant Responsibilities & Account Security</span>
+                </h4>
+                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed text-justify pl-4 border-l-2 border-cyan-500/30">
+                  Clients are solely responsible for maintaining the confidentiality of their tenant credentials, administrative access tokens, and staff login permissions. Any activity originating from your assigned store slug or user account remains your direct operational responsibility.
+                </p>
+              </div>
+
+              {/* SECTION 3 */}
+              <div className="p-5 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-cyan-500/40 transition-all space-y-2">
+                <h4 className="font-black text-cyan-300 uppercase tracking-wider text-xs sm:text-sm flex items-center space-x-2">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+                  <span>Service Availability & Cloud Maintenance</span>
+                </h4>
+                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed text-justify pl-4 border-l-2 border-cyan-500/30">
+                  We deploy robust cloud infrastructure via Supabase to ensure continuous uptime and real-time synchronization. However, UNICON LABS reserves the right to perform scheduled maintenance, system updates, and security patches designed to optimize overall ecosystem stability.
+                </p>
+              </div>
+
+              {/* SECTION 4 */}
+              <div className="p-5 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-cyan-500/40 transition-all space-y-2">
+                <h4 className="font-black text-cyan-300 uppercase tracking-wider text-xs sm:text-sm flex items-center space-x-2">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+                  <span>Intellectual Property Rights</span>
+                </h4>
+                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed text-justify pl-4 border-l-2 border-cyan-500/30">
+                  All source code, user interface designs, frontend landing pages, branding elements, architectural frameworks, and proprietary software modules developed by UNICON LABS remain the exclusive intellectual property of UNICON LABS. Unauthorized reproduction or commercial exploitation is subject to legal action.
+                </p>
+              </div>
+
+              {/* SECTION 5 */}
+              <div className="p-5 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-cyan-500/40 transition-all space-y-2">
+                <h4 className="font-black text-cyan-300 uppercase tracking-wider text-xs sm:text-sm flex items-center space-x-2">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+                  <span>Support & Enterprise Inquiries</span>
+                </h4>
+                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed text-justify pl-4 border-l-2 border-cyan-500/30">
+                  For technical assistance, software modifications, or service level agreements (SLAs), clients can connect with our support desk through our official communication channels at <span className="text-cyan-300 font-bold font-mono">+92 333 3776556</span> or via email at <span className="text-cyan-300 font-bold font-mono">info.uniconlabs@gmail.com</span>.
+                </p>
+              </div>
+
+            </div>
+
+            {/* STICKY MODAL FOOTER ACTION BAR */}
+            <div className="sticky bottom-0 z-20 bg-slate-900/95 backdrop-blur-md px-6 py-4 border-t border-cyan-500/30 flex flex-col sm:flex-row justify-between items-center gap-4">
+              <span className="text-[11px] text-slate-400 font-mono">
+                UNICON LABS Service Agreement v2.4
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsTermsModalOpen(false)}
+                className="w-full sm:w-auto px-8 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-black text-xs uppercase tracking-wider rounded-xl transition shadow-[0_0_20px_rgba(34,211,238,0.4)] cursor-pointer"
+              >
+                Acknowledge & Close
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* SECURITY COMPLIANCE POPUP MODAL PALETTE */}
+      {isSecurityModalOpen && (
+        <div 
+          onClick={() => setIsSecurityModalOpen(false)}
+          className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => { if (e.key === 'Escape') setIsSecurityModalOpen(false); }}
+            tabIndex={-1}
+            className="bg-slate-900 border border-cyan-500/50 rounded-3xl w-[95%] sm:max-w-4xl max-h-[92vh] overflow-y-auto shadow-[0_0_50px_rgba(34,211,238,0.2)] text-slate-100 relative flex flex-col my-auto outline-none"
+          >
+            
+            {/* STICKY MODAL HEADER */}
+            <div className="sticky top-0 z-20 bg-slate-900/95 backdrop-blur-md px-6 py-5 border-b border-cyan-500/30 flex justify-between items-center">
+              <div className="flex items-center space-x-3.5">
+                <div className="h-14 w-auto flex items-center justify-center">
+                  <img src="/unicon-logo1.png" alt="Unicon Logo" className="h-full w-auto object-contain drop-shadow-[0_0_10px_rgba(34,211,238,0.4)]" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black uppercase text-cyan-300 tracking-wider">Security Compliance</h3>
+                  <p className="text-[11px] text-blue-200/70 tracking-wide font-mono">UNICON LABS Cloud Protection & Infrastructure Security Standards</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsSecurityModalOpen(false)}
+                className="w-9 h-9 rounded-full bg-slate-800 hover:bg-cyan-500 hover:text-slate-950 text-slate-300 font-bold flex items-center justify-center text-sm transition-all duration-300 shadow-lg cursor-pointer border border-slate-700 hover:border-cyan-400"
+                title="Close Window"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* MODAL CONTENT BODY */}
+            <div className="p-6 sm:p-8 space-y-6 text-xs sm:text-sm leading-relaxed text-blue-100">
+              
+              <div className="p-4 rounded-2xl bg-cyan-950/30 border border-cyan-500/20 text-cyan-200 text-xs flex items-start space-x-3">
+                <span className="text-cyan-400 text-base font-bold">🛡️</span>
+                <p>
+                  Security Commitment: UNICON LABS enforces rigorous enterprise-grade security protocols, multi-layer encryption, and strict tenant data isolation across all digital ecosystems, POS hardware integrations, and cloud databases.
+                </p>
+              </div>
+
+              {/* SECTION 1 */}
+              <div className="p-5 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-cyan-500/40 transition-all space-y-2">
+                <h4 className="font-black text-cyan-300 uppercase tracking-wider text-xs sm:text-sm flex items-center space-x-2">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+                  <span>Multi-Tenant Data Isolation</span>
+                </h4>
+                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed text-justify pl-4 border-l-2 border-cyan-500/30">
+                  Our Business OS architecture utilizes advanced logical partitioning. Each client entity operates within a securely segregated environment, ensuring that restaurant and retail transaction records, financial ledgers, and inventory matrices remain entirely isolated and protected from cross-tenant access.
+                </p>
+              </div>
+
+              {/* SECTION 2 */}
+              <div className="p-5 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-cyan-500/40 transition-all space-y-2">
+                <h4 className="font-black text-cyan-300 uppercase tracking-wider text-xs sm:text-sm flex items-center space-x-2">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+                  <span>Encryption Protocols (In-Transit & At-Rest)</span>
+                </h4>
+                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed text-justify pl-4 border-l-2 border-cyan-500/30">
+                  All communication channels between POS terminals, KDS displays, DDC dispatch hubs, and our Supabase cloud databases are encrypted using industry-standard TLS protocols. Stored data is safeguarded with robust encryption keys to prevent unauthorized physical or digital decryption.
+                </p>
+              </div>
+
+              {/* SECTION 3 */}
+              <div className="p-5 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-cyan-500/40 transition-all space-y-2">
+                <h4 className="font-black text-cyan-300 uppercase tracking-wider text-xs sm:text-sm flex items-center space-x-2">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+                  <span>Access Control & Authentication Security</span>
+                </h4>
+                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed text-justify pl-4 border-l-2 border-cyan-500/30">
+                  Access to administrative dashboards requires strict credential validation and secure session tokens. Staff and rider cash settlements, inventory adjustments, and financial audits are logged with immutable audit trails to maintain absolute operational accountability.
+                </p>
+              </div>
+
+              {/* SECTION 4 */}
+              <div className="p-5 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-cyan-500/40 transition-all space-y-2">
+                <h4 className="font-black text-cyan-300 uppercase tracking-wider text-xs sm:text-sm flex items-center space-x-2">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+                  <span>Infrastructure Monitoring & Redundancy</span>
+                </h4>
+                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed text-justify pl-4 border-l-2 border-cyan-500/30">
+                  We maintain continuous real-time synchronization monitoring, automated database backups, and rapid threat detection frameworks to mitigate potential vulnerabilities and ensure high-availability performance across all enterprise deployments.
+                </p>
+              </div>
+
+              {/* SECTION 5 */}
+              <div className="p-5 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-cyan-500/40 transition-all space-y-2">
+                <h4 className="font-black text-cyan-300 uppercase tracking-wider text-xs sm:text-sm flex items-center space-x-2">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+                  <span>Security Incident Reporting</span>
+                </h4>
+                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed text-justify pl-4 border-l-2 border-cyan-500/30">
+                  If you suspect any security anomaly, unauthorized credential usage, or system vulnerability, report it immediately to our security response team at <span className="text-cyan-300 font-bold font-mono">+92 333 3776556</span> or via email at <span className="text-cyan-300 font-bold font-mono">info.uniconlabs@gmail.com</span>.
+                </p>
+              </div>
+
+            </div>
+
+            {/* STICKY MODAL FOOTER ACTION BAR */}
+            <div className="sticky bottom-0 z-20 bg-slate-900/95 backdrop-blur-md px-6 py-4 border-t border-cyan-500/30 flex flex-col sm:flex-row justify-between items-center gap-4">
+              <span className="text-[11px] text-slate-400 font-mono">
+                UNICON LABS Security Compliance v2.4
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsSecurityModalOpen(false)}
+                className="w-full sm:w-auto px-8 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-black text-xs uppercase tracking-wider rounded-xl transition shadow-[0_0_20px_rgba(34,211,238,0.4)] cursor-pointer"
+              >
+                Acknowledge & Close
+              </button>
+            </div>
+
           </div>
         </div>
       )}
