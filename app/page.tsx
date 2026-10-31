@@ -47,14 +47,16 @@ export default function UniconLabsLandingPage() {
   const [menuItems, setMenuItems] = useState([
     { id: 1, label: 'HOME', href: '#home' },
     { id: 2, label: 'Products', href: '#products' },
-    { id: 3, label: 'Our Partners', href: '#partners' },
-    { id: 4, label: 'About UNICON LABS', href: '#about' },
-    { id: 5, label: 'Blogs', href: '#blogs' },
-    { id: 6, label: 'Contact Us', href: '#contact' },
+    { id: 3, label: 'Hardware', href: '#hardware' },
+    { id: 4, label: 'Our Partners', href: '#partners' },
+    { id: 5, label: 'About UNICON LABS', href: '#about' },
+    { id: 6, label: 'Blogs', href: '#blogs' },
+    { id: 7, label: 'Contact Us', href: '#contact' },
   ])
   const [heroSlideInterval, setHeroSlideInterval] = useState(4500)
   const [heroBanners, setHeroBanners] = useState<any[]>([])
   const [products, setProducts] = useState<any[]>([])
+  const [hardwareItems, setHardwareItems] = useState<any[]>([])
   const [partners, setPartners] = useState<any[]>([])
   const [blogs, setBlogs] = useState<any[]>([])
   const [aboutText, setAboutText] = useState('Founded with a vision to revolutionize enterprise operations, Unicon Labs specializes in building end-to-end digital ecosystems. From multi-tenant POS hardware integrations to cloud synchronization and automated financial auditing, we provide the infrastructure businesses need to thrive.')
@@ -103,6 +105,7 @@ export default function UniconLabsLandingPage() {
     if (s.heroSlideInterval) setHeroSlideInterval(s.heroSlideInterval)
     if (s.heroBanners && s.heroBanners.length > 0) setHeroBanners(s.heroBanners)
     if (s.products && s.products.length > 0) setProducts(s.products)
+    if (s.hardwareItems !== undefined) setHardwareItems(s.hardwareItems)
     if (s.partners && s.partners.length > 0) setPartners(s.partners)
     if (s.blogs !== undefined) setBlogs(s.blogs)
     if (s.aboutText) setAboutText(s.aboutText)
@@ -828,7 +831,79 @@ export default function UniconLabsLandingPage() {
             </div>
           </section>
 
-          {/* 5. OUR RESPECTED PARTNERS SECTION */}
+          {/* 5. HARDWARE PRODUCTS SECTION (6 TILES IN A ROW ON DESKTOP) */}
+          <section 
+            id="hardware" 
+            className="px-4 md:px-8 pt-2 pb-14 md:py-20 relative overflow-hidden bg-gradient-to-br from-white via-cyan-50/50 to-blue-50/60 text-slate-900 border-t border-cyan-500/20 shadow-inner"
+          >
+            <div className="max-w-[98%] mx-auto w-full space-y-6 md:space-y-8 relative z-10">
+              <div className="text-center space-y-1.5 md:space-y-2">
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-black tracking-wide text-blue-950 uppercase">Hardware Solutions & POS Accessories</h2>
+                <p className="text-[11px] sm:text-xs text-slate-600 max-w-2xl mx-auto px-2">High-reliability thermal printers, barcode scanners, deskjet printers, displays, and cash counters available for online order.</p>
+              </div>
+
+              {hardwareItems.length === 0 ? (
+                <div className="text-center py-10 text-slate-500 text-xs italic">No hardware products currently added in CMS settings.</div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3.5 md:gap-4">
+                  {hardwareItems.map((hw: any, idx: number) => {
+                    const rawPrice = Number(hw.price) || 0
+                    const formattedPrice = rawPrice > 0 ? rawPrice.toLocaleString('en-PK') : hw.price
+
+                    return (
+                      <div key={hw.id || idx} className="bg-white border border-cyan-100 rounded-2xl md:rounded-3xl p-3 md:p-3.5 shadow-xl shadow-cyan-950/5 flex flex-col justify-between hover:border-cyan-400 hover:shadow-cyan-500/10 transition group space-y-3">
+                        <div className="space-y-2">
+                          <div className="w-full h-24 sm:h-32 bg-slate-50 rounded-xl md:rounded-2xl border border-slate-100 flex items-center justify-center overflow-hidden shadow-inner group-hover:scale-102 transition duration-300">
+                            {hw.image && (hw.image.startsWith('data:') || hw.image.startsWith('http') || hw.image.startsWith('/') || hw.image.length > 20) ? (
+                              <img src={hw.image} alt={hw.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-3xl md:text-4xl">🖨️</span>
+                            )}
+                          </div>
+                          <div className="flex justify-between items-center text-[7px] sm:text-[9px] uppercase font-mono">
+                            <span className="bg-blue-100 text-blue-800 px-1 py-0.5 rounded font-bold truncate max-w-[60px] sm:max-w-[80px]">{hw.category || 'Hardware'}</span>
+                            <span className="text-slate-500 font-semibold truncate max-w-[50px] sm:max-w-[70px]">{hw.brand}</span>
+                          </div>
+                          <h3 className="font-black text-[11px] sm:text-xs md:text-sm uppercase text-blue-950 line-clamp-2">{hw.name}</h3>
+                        </div>
+                        
+                        {/* PRICE & RESPONSIVE "+ADD" / "+ADD TO CART" BUTTON IN THE SAME ROW */}
+                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1">
+                          <span className="text-blue-900 font-mono font-black text-[11px] sm:text-xs tracking-tight shrink-0">
+                            Rs.{formattedPrice}/-
+                          </span>
+                          <button
+                            onClick={() => {
+                              alert(`Added to Cart: ${hw.name} (Rs.${formattedPrice}/-)`)
+                            }}
+                            className="px-2 sm:px-2.5 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[10px] sm:text-[11px] uppercase tracking-wider rounded-xl transition shadow-md shadow-amber-400/30 cursor-pointer shrink-0"
+                            title="Add to Cart"
+                          >
+                            <span className="sm:hidden">+Add</span>
+                            <span className="hidden sm:inline">+Add to Cart</span>
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* EXPLORE ALL PRODUCTS LINK POSITIONED ON THE BOTTOM RIGHT */}
+              <div className="flex justify-end pt-2">
+                <button
+                  onClick={() => {
+                    alert('Opening dedicated hardware & accessories catalog page...')
+                  }}
+                  className="text-xs font-black text-blue-600 hover:text-blue-800 font-semibold italic cursor-pointer transition"
+                >
+                  <span>Explore all products...</span>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          {/* 6. OUR RESPECTED PARTNERS SECTION */}
           <section id="partners" className="bg-slate-50 border-y border-slate-200 px-4 md:px-8 pt-6 pb-12 md:py-20">
             <div className="max-w-7xl mx-auto space-y-8 md:space-y-12">
               <div className="text-center space-y-2">
@@ -861,7 +936,7 @@ export default function UniconLabsLandingPage() {
             </div>
           </section>
 
-          {/* 6. DAILY BLOGS SECTION */}
+          {/* 7. DAILY BLOGS SECTION */}
           <section id="blogs" className="px-4 md:px-8 pt-4 md:pt-14 pb-4 max-w-7xl mx-auto w-full space-y-6">
             <div className="space-y-2 text-center">
               <h2 className="text-3xl font-black tracking-wide text-blue-950">Tech Insights & Architecture Blogs</h2>
@@ -964,7 +1039,7 @@ export default function UniconLabsLandingPage() {
         </>
       )}
 
-      {/* 7. PROFESSIONAL FOOTER AREA */}
+      {/* 8. PROFESSIONAL FOOTER AREA */}
       <footer 
         id="contact" 
         className="text-white border-t border-cyan-500/20 px-8 pt-16 pb-6 relative overflow-hidden"

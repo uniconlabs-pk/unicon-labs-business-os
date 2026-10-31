@@ -10,7 +10,7 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 export default function WebSettingsPage() {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'header' | 'menu' | 'hero' | 'products' | 'partners' | 'blogs' | 'about' | 'footer'>('header')
+  const [activeTab, setActiveTab] = useState<'header' | 'menu' | 'hero' | 'products' | 'hardware' | 'partners' | 'blogs' | 'about' | 'footer'>('header')
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
@@ -30,13 +30,15 @@ export default function WebSettingsPage() {
   const [menuItems, setMenuItems] = useState([
     { id: 1, label: 'HOME', href: '#home' },
     { id: 2, label: 'Products', href: '#products' },
-    { id: 3, label: 'Our Partners', href: '#partners' },
-    { id: 4, label: 'About UNICON LABS', href: '#about' },
-    { id: 5, label: 'Blogs', href: '#blogs' },
-    { id: 6, label: 'Contact Us', href: '#contact' },
+    { id: 3, label: 'Hardware', href: '#hardware' },
+    { id: 4, label: 'Our Partners', href: '#partners' },
+    { id: 5, label: 'About UNICON LABS', href: '#about' },
+    { id: 6, label: 'Blogs', href: '#blogs' },
+    { id: 7, label: 'Contact Us', href: '#contact' },
   ])
   const [newMenuLabel, setNewMenuLabel] = useState('')
   const [newMenuHref, setNewMenuHref] = useState('')
+  const [draggedMenuId, setDraggedMenuId] = useState<number | null>(null)
 
   const [heroSlideInterval, setHeroSlideInterval] = useState(4500)
   const [heroBanners, setHeroBanners] = useState([
@@ -73,6 +75,24 @@ export default function WebSettingsPage() {
   const [editProdGalleryInput, setEditProdGalleryInput] = useState('')
   const [editProdFeaturesInput, setEditProdFeaturesInput] = useState('')
   const [draggedProductId, setDraggedProductId] = useState<number | null>(null)
+
+  // Hardware Management States
+  const [hardwareItems, setHardwareItems] = useState<any[]>([])
+  const [newHardwareName, setNewHardwareName] = useState('')
+  const [newHardwareCategory, setNewHardwareCategory] = useState('')
+  const [newHardwareBrand, setNewHardwareBrand] = useState('')
+  const [newHardwareImage, setNewHardwareImage] = useState('')
+  const [newHardwareDetail, setNewHardwareDetail] = useState('')
+  const [newHardwarePrice, setNewHardwarePrice] = useState('')
+
+  // Hardware Edit States
+  const [editingHardwareId, setEditingHardwareId] = useState<number | null>(null)
+  const [editHardwareName, setEditHardwareName] = useState('')
+  const [editHardwareCategory, setEditHardwareCategory] = useState('')
+  const [editHardwareBrand, setEditHardwareBrand] = useState('')
+  const [editHardwareImage, setEditHardwareImage] = useState('')
+  const [editHardwareDetail, setEditHardwareDetail] = useState('')
+  const [editHardwarePrice, setEditHardwarePrice] = useState('')
 
   const [partners, setPartners] = useState(
     Array.from({ length: 18 }, (_, i) => ({ id: i + 1, name: `Partner Brand ${i + 1}`, logo: '🏢' }))
@@ -132,6 +152,7 @@ export default function WebSettingsPage() {
         if (s.heroSlideInterval) setHeroSlideInterval(s.heroSlideInterval)
         if (s.heroBanners) setHeroBanners(s.heroBanners)
         if (s.products) setProducts(s.products)
+        if (s.hardwareItems !== undefined) setHardwareItems(s.hardwareItems)
         if (s.partners) setPartners(s.partners)
         if (s.blogs !== undefined) setBlogs(s.blogs)
         if (s.aboutText) setAboutText(s.aboutText)
@@ -231,6 +252,7 @@ export default function WebSettingsPage() {
       heroSlideInterval,
       heroBanners,
       products,
+      hardwareItems,
       partners,
       blogs,
       aboutText,
@@ -260,6 +282,34 @@ export default function WebSettingsPage() {
       }
       return { title: `Feature #${idx + 1}`, desc: trimmed }
     }).filter(Boolean)
+  }
+
+  // Menu Item Drag and Drop Handlers
+  const handleMenuDragStart = (e: React.DragEvent, id: number) => {
+    setDraggedMenuId(id)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleMenuDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleMenuDrop = (e: React.DragEvent, targetId: number) => {
+    e.preventDefault()
+    if (draggedMenuId === null || draggedMenuId === targetId) return
+
+    const updatedMenu = [...menuItems]
+    const draggedIndex = updatedMenu.findIndex(m => m.id === draggedMenuId)
+    const targetIndex = updatedMenu.findIndex(m => m.id === targetId)
+
+    if (draggedIndex < 0 || targetIndex < 0) return
+
+    const [removed] = updatedMenu.splice(draggedIndex, 1)
+    updatedMenu.splice(targetIndex, 0, removed)
+
+    setMenuItems(updatedMenu)
+    setDraggedMenuId(null)
   }
 
   // Product Drag and Drop Handlers
@@ -295,6 +345,7 @@ export default function WebSettingsPage() {
     { key: 'menu', label: 'Menu Bar Options', icon: '📑' },
     { key: 'hero', label: 'Hero Banners', icon: '🚀' },
     { key: 'products', label: 'Products Display', icon: '📦' },
+    { key: 'hardware', label: 'Hardware Products', icon: '🖨️' },
     { key: 'partners', label: 'Respected Partners', icon: '🤝' },
     { key: 'blogs', label: 'Daily Blogs', icon: '📰' },
     { key: 'about', label: 'About UNICON', icon: '🏢' },
@@ -385,7 +436,7 @@ export default function WebSettingsPage() {
           </div>
           <div>
             <h1 className="text-base font-black tracking-wide uppercase">UNICON LABS — Website CMS Settings</h1>
-            <p className="text-[10px] text-slate-400 uppercase tracking-widest">Manage Header, Menu, Banners, Products, Partners, Blogs & Footer</p>
+            <p className="text-[10px] text-slate-400 uppercase tracking-widest">Manage Header, Menu, Banners, Products, Hardware, Partners, Blogs & Footer</p>
           </div>
         </div>
         <div className="flex items-center space-x-3">
@@ -513,12 +564,23 @@ export default function WebSettingsPage() {
           {/* 2. MENU BAR SETTINGS */}
           {activeTab === 'menu' && (
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
-              <h2 className="font-extrabold text-sm uppercase text-blue-400">Horizontal Menu Bar Options</h2>
+              <div className="flex justify-between items-center">
+                <h2 className="font-extrabold text-sm uppercase text-blue-400">Horizontal Menu Bar Options</h2>
+                <span className="text-[10px] text-slate-400 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">💡 Drag and drop ⠿ to reorder menu items permanently</span>
+              </div>
               <div className="space-y-3 text-xs">
                 <div className="space-y-2">
                   {menuItems.map((m, idx) => (
-                    <div key={m.id} className="flex items-center justify-between bg-slate-950 border border-slate-800 p-3 rounded-xl">
-                      <div className="flex space-x-3 items-center">
+                    <div
+                      key={m.id}
+                      draggable
+                      onDragStart={e => handleMenuDragStart(e, m.id)}
+                      onDragOver={handleMenuDragOver}
+                      onDrop={e => handleMenuDrop(e, m.id)}
+                      className="flex items-center justify-between bg-slate-950 border border-slate-800 p-3 rounded-xl cursor-grab active:cursor-grabbing hover:border-blue-500/50 transition"
+                    >
+                      <div className="flex space-x-3 items-center flex-1">
+                        <span className="text-slate-500 font-mono text-sm select-none">⠿</span>
                         <span className="font-mono text-slate-500">#{idx + 1}</span>
                         <input
                           type="text"
@@ -528,7 +590,7 @@ export default function WebSettingsPage() {
                             updated[idx].label = e.target.value
                             setMenuItems(updated)
                           }}
-                          className="bg-slate-900 border border-slate-700 px-2.5 py-1 rounded-lg text-white font-bold"
+                          className="bg-slate-900 border border-slate-700 px-2.5 py-1 rounded-lg text-white font-bold flex-1 max-w-[200px]"
                         />
                         <input
                           type="text"
@@ -538,12 +600,12 @@ export default function WebSettingsPage() {
                             updated[idx].href = e.target.value
                             setMenuItems(updated)
                           }}
-                          className="bg-slate-900 border border-slate-700 px-2.5 py-1 rounded-lg text-slate-300 font-mono text-[11px]"
+                          className="bg-slate-900 border border-slate-700 px-2.5 py-1 rounded-lg text-slate-300 font-mono text-[11px] w-40"
                         />
                       </div>
                       <button
                         onClick={() => setMenuItems(menuItems.filter(item => item.id !== m.id))}
-                        className="text-red-400 hover:text-red-300 font-bold cursor-pointer px-2"
+                        className="text-red-400 hover:text-red-300 font-bold cursor-pointer px-2 shrink-0"
                       >
                         Delete
                       </button>
@@ -797,7 +859,6 @@ export default function WebSettingsPage() {
                             setEditProdImage(p.image)
                             setEditProdExtendedDesc(p.extendedDesc || '')
                             setEditProdGalleryInput((p.gallery || []).join('\n'))
-                            // Format features for edit textarea: "Title | Description"
                             const featFormatted = (p.features || []).map((f: any) => typeof f === 'object' && f !== null ? `${f.title} | ${f.desc}` : f).join('\n')
                             setEditProdFeaturesInput(featFormatted)
                           }}
@@ -857,7 +918,6 @@ export default function WebSettingsPage() {
                         </button>
                       </div>
 
-                      {/* Key Features Breakdown Configuration */}
                       <div>
                         <label className="block text-[10px] font-bold text-blue-400 uppercase mb-1">Key Features Breakdown (Format: Feature Title | Description per line)</label>
                         <textarea rows={3} value={editProdFeaturesInput} onChange={e => setEditProdFeaturesInput(e.target.value)} placeholder="Real-Time Sync | Instant multi-location visibility&#10;Smart Billing | Lightning-fast cash register" className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white text-[11px] resize-none font-mono" />
@@ -989,7 +1049,194 @@ export default function WebSettingsPage() {
             </div>
           )}
 
-          {/* 5. PARTNERS MANAGEMENT */}
+          {/* 5. HARDWARE PRODUCTS MANAGEMENT */}
+          {activeTab === 'hardware' && (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
+              <h2 className="font-extrabold text-sm uppercase text-blue-400">Hardware Products Catalog ({hardwareItems.length})</h2>
+              <p className="text-[10px] text-slate-400">Manage hardware items (Thermal Printers, Barcode Scanners, Monitors, Cash Counters, etc.) displayed directly on the UNICON LABS website.</p>
+              
+              <div className="space-y-3 text-xs">
+                {hardwareItems.length === 0 ? (
+                  <div className="text-slate-400 text-xs py-4 italic">No hardware items currently added. Use the form below to add one.</div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {hardwareItems.map((hw: any) => (
+                      <div key={hw.id} className="bg-slate-950 border border-slate-800 p-3.5 rounded-xl flex flex-col justify-between space-y-3">
+                        <div className="flex space-x-3 items-start">
+                          {hw.image && (hw.image.startsWith('http') || hw.image.startsWith('/') || hw.image.startsWith('data:')) ? (
+                            <div className="w-14 h-14 rounded-lg overflow-hidden border border-slate-800 shrink-0 bg-slate-900 flex items-center justify-center">
+                              <img src={hw.image} alt="" className="w-full h-full object-cover" />
+                            </div>
+                          ) : (
+                            <div className="w-14 h-14 rounded-lg border border-slate-800 flex items-center justify-center text-xl bg-slate-900 shrink-0">🖨️</div>
+                          )}
+                          <div className="space-y-1 flex-1">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-[10px] bg-blue-950 text-blue-300 px-2 py-0.5 rounded font-bold uppercase">{hw.category || 'General'}</span>
+                              <span className="text-[10px] text-slate-400 font-semibold">{hw.brand}</span>
+                            </div>
+                            <h4 className="font-bold text-white text-sm">{hw.name}</h4>
+                            <p className="text-slate-400 text-xs line-clamp-2">{hw.detail}</p>
+                            <p className="text-blue-400 font-mono font-bold text-xs pt-1">${hw.price}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-800/60">
+                          <button
+                            onClick={() => {
+                              setEditingHardwareId(hw.id)
+                              setEditHardwareName(hw.name)
+                              setEditHardwareCategory(hw.category || '')
+                              setEditHardwareBrand(hw.brand || '')
+                              setEditHardwareImage(hw.image || '')
+                              setEditHardwareDetail(hw.detail || '')
+                              setEditHardwarePrice(hw.price || '')
+                            }}
+                            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-blue-300 font-bold rounded-lg cursor-pointer text-[11px]"
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            onClick={async () => {
+                              if (hw.image) await deleteFileFromSupabaseStorage(hw.image)
+                              setHardwareItems(hardwareItems.filter((item: any) => item.id !== hw.id))
+                            }} 
+                            className="text-red-400 hover:text-red-300 font-bold cursor-pointer text-[11px]"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Edit Hardware Section */}
+                {editingHardwareId !== null && (
+                  <div className="p-4 bg-blue-950/30 border border-blue-800/60 rounded-xl space-y-3 mt-4">
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-blue-400 uppercase text-[11px]">✏️ Edit Hardware Item ID #{editingHardwareId}</span>
+                      <button onClick={() => setEditingHardwareId(null)} className="text-slate-400 hover:text-white text-xs font-bold cursor-pointer">Cancel</button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <input type="text" placeholder="Products Name..." value={editHardwareName} onChange={e => setEditHardwareName(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
+                      <input type="text" placeholder="Category (e.g. Thermal Printer)..." value={editHardwareCategory} onChange={e => setEditHardwareCategory(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
+                      <input type="text" placeholder="Brand..." value={editHardwareBrand} onChange={e => setEditHardwareBrand(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
+                      <input type="text" placeholder="Price (e.g. 149.00)..." value={editHardwarePrice} onChange={e => setEditHardwarePrice(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white font-mono" />
+                    </div>
+                    <textarea rows={2} placeholder="Product Detail / Specification..." value={editHardwareDetail} onChange={e => setEditHardwareDetail(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white resize-none" />
+                    
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase">Product Image (Media Library or URL)</label>
+                      <div className="flex items-center space-x-2">
+                        {editHardwareImage ? (
+                          <div className="w-12 h-10 rounded border border-slate-700 overflow-hidden shrink-0 bg-slate-900 flex items-center justify-center">
+                            <img src={editHardwareImage} alt="" className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <div className="w-12 h-10 rounded border border-slate-700 flex items-center justify-center text-lg bg-slate-900 shrink-0">🖨️</div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => openMediaPicker(async (url) => {
+                            if (editHardwareImage && editHardwareImage !== url) await deleteFileFromSupabaseStorage(editHardwareImage)
+                            setEditHardwareImage(url)
+                          })}
+                          className="py-2 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-[10px] uppercase cursor-pointer shadow"
+                        >
+                          📁 Choose / Upload Image
+                        </button>
+                      </div>
+                      <input type="text" placeholder="Or paste image URL..." value={editHardwareImage} onChange={e => setEditHardwareImage(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs font-mono text-white" />
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        if (!editHardwareName.trim()) return
+                        setHardwareItems(hardwareItems.map((hw: any) => hw.id === editingHardwareId ? {
+                          ...hw,
+                          name: editHardwareName.trim(),
+                          category: editHardwareCategory.trim(),
+                          brand: editHardwareBrand.trim(),
+                          image: editHardwareImage.trim(),
+                          detail: editHardwareDetail.trim(),
+                          price: editHardwarePrice.trim()
+                        } : hw))
+                        setEditingHardwareId(null)
+                      }}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl cursor-pointer"
+                    >
+                      Update Hardware Item
+                    </button>
+                  </div>
+                )}
+
+                {/* Add New Hardware Section */}
+                <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3 mt-4">
+                  <span className="font-bold text-blue-400 uppercase text-[11px] block">+ Add Hardware Product</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <input type="text" placeholder="Products Name (e.g. Epson TM-T20III)..." value={newHardwareName} onChange={e => setNewHardwareName(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
+                    <input type="text" placeholder="Category (e.g. Thermal Printer)..." value={newHardwareCategory} onChange={e => setNewHardwareCategory(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
+                    <input type="text" placeholder="Brand (e.g. Epson)..." value={newHardwareBrand} onChange={e => setNewHardwareBrand(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white" />
+                    <input type="text" placeholder="Price (e.g. 149.00)..." value={newHardwarePrice} onChange={e => setNewHardwarePrice(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white font-mono" />
+                  </div>
+                  <textarea rows={2} placeholder="Product Detail / Specification..." value={newHardwareDetail} onChange={e => setNewHardwareDetail(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-2 text-white resize-none" />
+
+                  <div className="space-y-1">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase">Product Image (Media Library or URL)</label>
+                    <div className="flex items-center space-x-2">
+                      {newHardwareImage ? (
+                        <div className="w-12 h-10 rounded border border-slate-700 overflow-hidden shrink-0 bg-slate-900 flex items-center justify-center">
+                          <img src={newHardwareImage} alt="" className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="w-12 h-10 rounded border border-slate-700 flex items-center justify-center text-lg bg-slate-900 shrink-0">🖨️</div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => openMediaPicker(async (url) => {
+                          if (newHardwareImage && newHardwareImage !== url) await deleteFileFromSupabaseStorage(newHardwareImage)
+                          setNewHardwareImage(url)
+                        })}
+                        className="py-2 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-[10px] uppercase cursor-pointer shadow"
+                      >
+                        📁 Choose / Upload Image
+                      </button>
+                    </div>
+                    <input type="text" placeholder="Or paste image URL..." value={newHardwareImage} onChange={e => setNewHardwareImage(e.target.value)} className="w-full bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs font-mono text-white" />
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      if (!newHardwareName.trim()) return
+                      setHardwareItems(prev => [
+                        ...prev,
+                        {
+                          id: Date.now(),
+                          name: newHardwareName.trim(),
+                          category: newHardwareCategory.trim(),
+                          brand: newHardwareBrand.trim(),
+                          image: newHardwareImage.trim(),
+                          detail: newHardwareDetail.trim(),
+                          price: newHardwarePrice.trim()
+                        }
+                      ])
+                      setNewHardwareName('')
+                      setNewHardwareCategory('')
+                      setNewHardwareBrand('')
+                      setNewHardwareImage('')
+                      setNewHardwareDetail('')
+                      setNewHardwarePrice('')
+                    }}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl cursor-pointer"
+                  >
+                    Save & Add Hardware Product
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 6. PARTNERS MANAGEMENT */}
           {activeTab === 'partners' && (
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
               <h2 className="font-extrabold text-sm uppercase text-blue-400">Respected Partners Directory ({partners.length})</h2>
@@ -1139,7 +1386,7 @@ export default function WebSettingsPage() {
             </div>
           )}
 
-          {/* 6. BLOGS MANAGEMENT */}
+          {/* 7. BLOGS MANAGEMENT */}
           {activeTab === 'blogs' && (
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
               <h2 className="font-extrabold text-sm uppercase text-blue-400">Daily Blogs Management</h2>
@@ -1351,7 +1598,7 @@ export default function WebSettingsPage() {
             </div>
           )}
 
-          {/* 7. ABOUT US & FOOTER SETTINGS */}
+          {/* 8. ABOUT US & FOOTER SETTINGS */}
           {(activeTab === 'about' || activeTab === 'footer') && (
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
               <h2 className="font-extrabold text-sm uppercase text-blue-400">About Us & Footer Configuration</h2>
